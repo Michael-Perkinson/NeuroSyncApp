@@ -3,10 +3,11 @@ name: Build and Release NeuroSyncApp Executable
 on:
   push:
     tags:
-      - 'v*' # Trigger only on tags that start with "v" (e.g., v2.0.15)
+      - 'v*'  # Trigger only on tags that start with "v" (e.g., v2.0.15)
 
 permissions:
   contents: write   # Allow GitHub Actions to write to the repository
+
 jobs:
   build:
     runs-on: windows-latest
@@ -33,8 +34,12 @@ jobs:
         run: |
           pyinstaller --onefile src/main_app.py --name "NeuroSyncApp_${{ github.ref_name }}" --icon icon/icon.ico --distpath "dist/NeuroSyncApp_${{ github.ref_name }}"
 
+      - name: Verify .exe file path
+        run: |
+          if [ -f dist/NeuroSyncApp_${{ github.ref_name }}/NeuroSyncApp_${{ github.ref_name }}.exe ]; then echo "File exists."; else echo "File does not exist."; exit 1; fi
+
       - name: Upload .exe artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-executable
           path: dist/NeuroSyncApp_${{ github.ref_name }}/NeuroSyncApp_${{ github.ref_name }}.exe
