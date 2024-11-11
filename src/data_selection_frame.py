@@ -6,8 +6,9 @@ from tkinter import messagebox
 from tkinter import simpledialog
 from tkinter import ttk
 import pandas as pd
-from window_utils import center_window_on_screen
-from app_settings_manager import AppSettingsManager
+
+from src.window_utils import center_window_on_screen
+from src.app_settings_manager import AppSettingsManager
 
 
 class DataSelectionFrame(ttk.Frame):

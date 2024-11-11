@@ -19,13 +19,13 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from tkinter import colorchooser
 from datetime import datetime, time, timedelta
 
-from behaviour_event_input_frame import BehaviourInputFrame
-from data_selection_frame import DataSelectionFrame
-from graph_settings_container import GraphSettingsContainer
-from static_inputs_frame import StaticInputsFrame
-from export_options_container import ExportOptionsContainer
-from app_settings_manager import AppSettingsManager
-from window_utils import center_window_on_screen
+from src.behaviour_event_input_frame import BehaviourInputFrame
+from src.data_selection_frame import DataSelectionFrame
+from src.graph_settings_container import GraphSettingsContainer
+from src.static_inputs_frame import StaticInputsFrame
+from src.export_options_container import ExportOptionsContainer
+from src.app_settings_manager import AppSettingsManager
+from src.window_utils import center_window_on_screen
 
 
 class MenopauseDataProcessingApp(ttk.Frame):

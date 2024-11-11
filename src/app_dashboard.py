@@ -2,9 +2,10 @@ import pickle
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk
-from align_photometry_behaviour import DataProcessingSingleInstance
-from align_telemetry_opto_photom import MenopauseDataProcessingApp
-from window_utils import center_window_on_screen
+
+from src.align_photometry_behaviour import DataProcessingSingleInstance
+from src.align_telemetry_opto_photom import MenopauseDataProcessingApp
+from src.window_utils import center_window_on_screen
 
 
 class AppDashboard(tk.Tk):
