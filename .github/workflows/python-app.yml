@@ -3,11 +3,10 @@ name: Build and Release NeuroSyncApp Executable
 on:
   push:
     tags:
-      - 'v*' # Trigger only on tags that start with "v" (e.g., v1.x.x)
+      - 'v*' # Trigger only on tags that start with "v" (e.g., v2.0.15)
 
 permissions:
-  contents: write # Allow the workflow to read and write the repository contents
-
+  contents: write   # Allow GitHub Actions to write to the repository
 jobs:
   build:
     runs-on: windows-latest
@@ -39,3 +38,19 @@ jobs:
         with:
           name: app-executable
           path: dist/NeuroSyncApp_${{ github.ref_name }}/NeuroSyncApp_${{ github.ref_name }}.exe
+
+      - name: Install GitHub CLI
+        run: |
+          choco install gh  # Install GitHub CLI on Windows
+
+      - name: Authenticate GitHub CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} dist/NeuroSyncApp_${{ github.ref_name }}/NeuroSyncApp_${{ github.ref_name }}.exe --title "NeuroSyncApp ${{ github.ref_name }}" --notes "Automated release of NeuroSyncApp version ${{ github.ref_name }}"
