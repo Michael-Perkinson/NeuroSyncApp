@@ -257,7 +257,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         self.export_options_tab.grid_rowconfigure(0, weight=1)
         self.export_options_tab.grid_columnconfigure(0, weight=1)
 
-        # Create tabs
         self.graph_tab = ttk.Frame(
             self.notebook_graphs, style="CustomNotebook.TFrame")
         self.table_tab = ttk.Frame(
@@ -868,31 +867,39 @@ class DataProcessingSingleInstance(ttk.Frame):
         """Read the CSV file and process its contents."""
         df = pd.read_csv(file_path)
         df.columns = map(str.lower, df.columns)
+
+        # Retrieve and lowercase user-specified column mappings
         column_names = self.prompt_column_names()
         column_names = {key: value.lower()
                         for key, value in column_names.items()}
 
+        # Convert time columns based on user input
         time_unit = self.time_input_unit_var.get().lower()
         if time_unit == "minutes":
             df[column_names['Start Time']] *= 60
             df[column_names['End Time']] *= 60
 
-        required_columns = [column_names['Behaviours/events'],
-                            column_names['Start Time'], column_names['End Time']]
-        required_columns = [col.lower() for col in required_columns]
+        # Define required columns and ensure they exist in df
+        required_columns = [
+            column_names['Behaviours/events'],
+            column_names['Start Time'],
+            column_names['End Time']
+        ]
 
-        behaviour_events_column = column_names['Behaviours/events'].lower()
-        df = df.dropna(subset=[behaviour_events_column])
-
+        # Check that all required columns, including 'behaviour_events_column', are present
         for col in required_columns:
             if col not in df.columns:
-                # Filter out columns containing 'Unnamed' and join the names
-                available_columns = [c for c in df.columns if not c.lower().startswith('unnamed') and c not in required_columns]
-                available_columns_str = ", ".join(available_columns)
+                available_columns = [
+                    c for c in df.columns if not c.startswith('unnamed')]
+                available_columns_str = "\n  - ".join(available_columns)
                 raise ValueError(
-                    f'''Failed to parse the CSV file: Required column **'{col}'** is not present in the CSV file.\n\n'''
-                    f'''Available columns (excluding already specified ones):\n  - {available_columns_str.replace(', ', '\n  - ')}'''
+                    f"Failed to parse the CSV file: Required column '{col}' is not present in the CSV file.\n\n"
+                    f"Available columns (excluding already specified ones):\n  - {available_columns_str}"
                 )
+
+        # Drop rows with NaNs in the behaviour events column
+        behaviour_events_column = column_names['Behaviours/events']
+        df = df.dropna(subset=[behaviour_events_column])
 
         return df, column_names
 
@@ -1422,8 +1429,8 @@ class DataProcessingSingleInstance(ttk.Frame):
 
         if behaviours_to_export:
             behaviours_str = ", ".join(behaviours_to_export)
-            proceed_message = f"The following behaviours will be exported: {
-                behaviours_str}\nDo you want to proceed?"
+            proceed_message = f'''The following behaviours will be exported: {
+                behaviours_str}\nDo you want to proceed?'''
             proceed = messagebox.askokcancel(
                 "Behaviours to Export", proceed_message)
         else:
@@ -1791,8 +1798,8 @@ class DataProcessingSingleInstance(ttk.Frame):
                 negative_behaviours_str = ", ".join(negative_behaviours)
                 messagebox.showwarning(
                     "Negative Time Warning",
-                    f"The following behaviours have a start time that, when adjusted by the pre-behaviour time, becomes negative: {
-                        negative_behaviours_str}"
+                    f'''The following behaviours have a start time that, when adjusted by the pre-behaviour time, becomes negative: {
+                        negative_behaviours_str}'''
                 )
                 # Set the flag to indicate that the warning has been shown
                 self.warning_shown = True
@@ -2211,8 +2218,8 @@ class DataProcessingSingleInstance(ttk.Frame):
             else:
                 # Add the selected column name to the file name
                 selected_column_name = self.selected_column_var.get()
-                results_file_name = f"{behaviour_name}_{
-                    selected_column_name}_raw.csv"
+                results_file_name = f'''{behaviour_name}_{
+                    selected_column_name}_raw.csv'''
 
                 # Add '_baseline' if self.use_baseline_var is 1
                 if self.checkbox_state:
@@ -2450,8 +2457,8 @@ class DataProcessingSingleInstance(ttk.Frame):
         original_file_name += f"_{selected_column_name}"
 
         if self.checkbox_state:
-            original_file_name += f"_baseline_{
-                self.data_selection_frame.baseline_start_entry.get()}"
+            original_file_name += f'''_baseline_{
+                self.data_selection_frame.baseline_start_entry.get()}'''
 
         return os.path.join(folder_path, f"{original_file_name}.xlsx")
 
@@ -2483,8 +2490,8 @@ class DataProcessingSingleInstance(ttk.Frame):
         file_name_without_extension += f"_{selected_column_name}"
 
         if self.checkbox_state:
-            file_name_without_extension += f"_baseline_{
-                self.data_selection_frame.baseline_start_entry.get()}"
+            file_name_without_extension += f'''_baseline_{
+                self.data_selection_frame.baseline_start_entry.get()}'''
 
         if self.export_options_container.use_binned_data_var.get() == 1:
             file_name_without_extension += "_binned"
@@ -2731,8 +2738,8 @@ class DataProcessingSingleInstance(ttk.Frame):
 
                 # Add '_baseline' if self.use_baseline_var is 1
                 if self.checkbox_state:
-                    original_file_name += f"_baseline_{
-                        self.data_selection_frame.baseline_start_entry.get()}"
+                    original_file_name += f'''_baseline_{
+                        self.data_selection_frame.baseline_start_entry.get()}'''
 
                 output_file_name = self.get_output_file_name(
                     file_path, folder_path)
@@ -2769,8 +2776,8 @@ class DataProcessingSingleInstance(ttk.Frame):
 
                 # Add '_baseline' if self.use_baseline_var is 1
                 if self.checkbox_state:
-                    file_name_without_extension += f"_baseline_{
-                        self.data_selection_frame.baseline_start_entry.get()}"
+                    file_name_without_extension += f'''_baseline_{
+                        self.data_selection_frame.baseline_start_entry.get()}'''
 
                 # Create the summary results file path
                 df_results_path = os.path.join(
@@ -3916,8 +3923,8 @@ class DataProcessingSingleInstance(ttk.Frame):
         # If figure display type is "Behaviour Mean and SEM", add the behaviour choice to the base name
         if figure_display == "Behaviour Mean and SEM":
             behaviour_choice = self.behaviour_choice_graph.get()
-            base_name = f"{self.mouse_name}_{
-                figure_display}_{behaviour_choice}"
+            base_name = f'''{self.mouse_name}_{
+                figure_display}_{behaviour_choice}'''
         else:
             base_name = f"{self.mouse_name}_{figure_display}"
 
