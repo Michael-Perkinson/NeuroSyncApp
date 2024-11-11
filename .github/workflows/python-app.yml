@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.10"
           auto-activate-base: true
-          environment-file: environment.yml  # You can specify dependencies here
+          environment-file: environment.yml  # Use dependencies from environment.yml
           auto-update-conda: true
 
       # Cache conda environment for faster builds
@@ -31,10 +31,14 @@ jobs:
           path: ~/.conda/envs
           key: ${{ runner.os }}-conda-${{ hashFiles('environment.yml') }}
 
-      - name: Install dependencies with conda
+      # Test tkinter import to ensure it's working
+      - name: Test tkinter import
         run: |
-          conda install -y tkinter  # Ensure tkinter is included
-          pip install -r requirements.txt
+          python -c "import tkinter; print('tkinter is working')"
+
+      # Install PyInstaller with pip
+      - name: Install PyInstaller
+        run: |
           pip install pyinstaller
 
       - name: Create dist directory
@@ -42,13 +46,21 @@ jobs:
           mkdir -p dist/NeuroSyncApp_${{ github.ref_name }}
 
       - name: Build executable with PyInstaller
+        shell: cmd
         run: |
-          pyinstaller --onefile src/main_app.py --name "NeuroSyncApp_${{ github.ref_name }}" --icon icon/icon.ico --distpath "dist/NeuroSyncApp_${{ github.ref_name }}"
+          pyinstaller --onefile src\main_app.py ^
+            --name "NeuroSyncApp_${{ github.ref_name }}" ^
+            --icon icon\icon.ico ^
+            --distpath "dist\NeuroSyncApp_${{ github.ref_name }}" ^
+            --hidden-import=tkinter ^
+            --hidden-import=_tkinter ^
+            --add-binary "%CONDA_PREFIX%\DLLs\tcl86t.dll;." ^
+            --add-binary "%CONDA_PREFIX%\DLLs\tk86t.dll;."
 
       - name: Verify .exe file path
         shell: powershell
         run: |
-          if (Test-Path "dist/NeuroSyncApp_${{ github.ref_name }}/NeuroSyncApp_${{ github.ref_name }}.exe") {
+          if (Test-Path "dist/NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe") {
             Write-Output "File exists."
           } else {
             Write-Output "File does not exist."
@@ -59,7 +71,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-executable
-          path: dist/NeuroSyncApp_${{ github.ref_name }}/NeuroSyncApp_${{ github.ref_name }}.exe
+          path: dist/NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe
 
       - name: Install GitHub CLI
         run: |
@@ -69,4 +81,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ github.ref_name }} dist/NeuroSyncApp_${{ github.ref_name }}/NeuroSyncApp_${{ github.ref_name }}.exe --title "NeuroSyncApp ${{ github.ref_name }}" --notes "Automated release of NeuroSyncApp version ${{ github.ref_name }}"
+          gh release create ${{ github.ref_name }} dist/NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe --title "NeuroSyncApp ${{ github.ref_name }}" --notes "Automated release of NeuroSyncApp version ${{ github.ref_name }}"
