@@ -305,7 +305,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         self.static_inputs_frame.grid(
             row=0, column=3, padx=10, pady=10, sticky=tk.NSEW)
 
-        # Define custom styles for ttk widgets
         style = ttk.Style()
         style.configure('Custom.TFrame', background='snow')
         style.configure('Bordered.TFrame', background='snow',
@@ -328,7 +327,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         Parameters:
         - frame: The parent frame to contain the graphs.
         """
-        # Graphs container frame
         graphs_container_frame = ttk.Frame(
             frame, style='NoBorder.TFrame', borderwidth=2, relief='solid')
         graphs_container_frame.grid(
@@ -350,9 +348,8 @@ class DataProcessingSingleInstance(ttk.Frame):
         def behaviour_selection_changed(*args):
             """Callback function for when the behaviour selection dropdown is changed."""
 
-            # Check if self.selected_behaviour is an empty string
             if self.selected_behaviour.get() == "":
-                return  # Exit the function if it is empty
+                return
 
             if self.selected_column_var.get() == "Behaviour Mean and SEM":
                 self.handle_figure_display_selection(None)
@@ -366,8 +363,7 @@ class DataProcessingSingleInstance(ttk.Frame):
             graphs_container_frame, state="readonly", width=30, textvariable=self.selected_behaviour)
         self.behaviour_choice_graph.grid(row=0, column=2, padx=5, sticky=tk.W)
         self.behaviour_choice_graph.configure(
-            state=tk.DISABLED)  # Disable the dropdown initially
-
+            state=tk.DISABLED)
         self.figure_display_choices = [
             "Full Trace Display", "Single Row Display", "Behaviour Mean and SEM"]
         self.figure_display_dropdown = ttk.Combobox(
@@ -375,14 +371,13 @@ class DataProcessingSingleInstance(ttk.Frame):
         self.figure_display_dropdown.grid(row=0, column=3, padx=5, sticky=tk.W)
         self.figure_display_dropdown.bind(
             "<<ComboboxSelected>>", self.handle_figure_display_selection)
-        # Set the initial value to "Full Trace Display"
+
         self.figure_display_dropdown.set(self.figure_display_choices[0])
         self.data_selection_frame.set_figure_display_dropdown(
             self.figure_display_dropdown)
         self.data_selection_frame.set_figure_display_choices(
             self.figure_display_choices)
 
-        # Create a canvas to display the graphs
         self.graph_canvas = tk.Canvas(
             graphs_container_frame, bg='snow', highlightthickness=1)
         self.graph_canvas.grid(row=1, column=0, columnspan=4, sticky=tk.NSEW)
@@ -402,19 +397,15 @@ class DataProcessingSingleInstance(ttk.Frame):
         Parameters:
         frame (ttk.Frame): The parent frame where the table container will be placed.
         """
-        # Create the table container frame
         table_container_frame = ttk.Frame(
-            frame, style='NoBorder.TFrame')  # Set a minimum or fixed width
+            frame, style='NoBorder.TFrame')
         table_container_frame.grid(
             row=0, column=0, columnspan=3, padx=10, pady=10, sticky=tk.NSEW)
 
-        # Create a horizontal scrollbar for the table, linked to the canvas
         table_hscrollbar = ttk.Scrollbar(
             table_container_frame, orient=tk.HORIZONTAL)
-        # Pack the scrollbar first so it stays at the bottom
         table_hscrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # Add a vertical scrollbar for the canvas
         self.table_vscrollbar = ttk.Scrollbar(
             table_container_frame, orient="vertical")
         self.table_vscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -423,12 +414,10 @@ class DataProcessingSingleInstance(ttk.Frame):
                                       yscrollcommand=self.table_vscrollbar.set, height=430)
         self.table_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Create a frame inside the canvas to hold the Treeview
         table_scroll_frame = ttk.Frame(self.table_canvas)
         self.table_canvas.create_window(
             (0, 0), window=table_scroll_frame, anchor='nw')
 
-        # Bind a function to modify the scroll region
         def configure_scroll_region(event):
             """Configure the scroll region to encompass the full height of the frame."""
             self.table_canvas.configure(
@@ -436,21 +425,17 @@ class DataProcessingSingleInstance(ttk.Frame):
 
         table_scroll_frame.bind("<Configure>", configure_scroll_region)
 
-        # Create the Treeview inside the scrollable frame
         self.table_treeview = ttk.Treeview(table_scroll_frame,
                                            columns=['file_name', 'column_title', 'behaviour_name', 'behaviour_type',
                                                     'pre_behaviour_time', 'post_behaviour_time', 'bin_size',
                                                     'start_time', 'end_time'],
                                            show='headings', name='treeview')
 
-        # Set the height of the table to control the number of visible rows
-        table_height = 30  # Set the initial height to 30 rows
+        table_height = 30
         self.table_treeview.configure(height=table_height)
 
-        # Pack the Treeview to make it visible and fill the available space
         self.table_treeview.pack(fill=tk.BOTH, expand=True)
 
-        # Define table columns without lambda functions
         self.table_treeview.heading('file_name', text='File Name')
         self.table_treeview.heading('column_title', text='Column Title')
         self.table_treeview.heading('behaviour_name', text='Behaviour Name')
@@ -471,7 +456,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             self.table_treeview.heading(column, text=column.capitalize().replace('_', ' '),
                                         command=lambda _col=column: self.treeview_sort_column(self.table_treeview, _col, False))
         for column in columns:
-            # Set the width based on the column title length
             if tkf.Font().measure(column) > 110:
                 self.table_treeview.column(
                     column, width=tkf.Font().measure(column) - 20)
@@ -482,11 +466,9 @@ class DataProcessingSingleInstance(ttk.Frame):
         table_hscrollbar.configure(command=self.table_canvas.xview)
         self.table_vscrollbar.configure(command=self.table_treeview.yview)
 
-        # Configure row and column weights to make the frame expand
         table_container_frame.grid_rowconfigure(0, weight=1)
         table_container_frame.grid_columnconfigure(0, weight=1)
 
-        # Bind the column click event to the callback function
         self.table_treeview.bind("<<TreeviewSelect>>",
                                  lambda event: self.on_row_click(event))
 
@@ -495,21 +477,18 @@ class DataProcessingSingleInstance(ttk.Frame):
         color_code = colorchooser.askcolor(title="Choose SEM colour")
         self.settings_manager.selected_sem_color = color_code[1]
 
-        # Call handle_figure_display_selection function
         self.handle_figure_display_selection(event=None)
 
     def pick_trace_color(self):
         """Let the user choose a color for the trace."""
-        # Open the color chooser dialog with the default color
         color = colorchooser.askcolor(
             color=self.settings_manager.selected_trace_color)
 
-        if color[1] is not None:  # Check if a color was selected
+        if color[1] is not None:
             self.settings_manager.selected_trace_color = color[1]
         else:
             pass
 
-        # Call handle_figure_display_selection function
         self.handle_figure_display_selection(event=None)
 
     def assign_behaviour_colors(self, behaviours):
@@ -530,7 +509,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                 # Color from settings
                 self.behaviour_colors[behaviour] = self.settings_manager.behaviour_colors[behaviour]
 
-        # Create or update the BooleanVars for behaviour display status
         for behaviour in self.unique_behaviours:
             if behaviour not in self.behaviour_display_status:
                 self.behaviour_display_status[behaviour] = tk.BooleanVar(
@@ -538,7 +516,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             else:
                 self.behaviour_display_status[behaviour].set(True)
 
-        # Save the new color selection
         self.settings_manager.save_variables()
 
     # class HandleFiles:
@@ -559,7 +536,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             behaviour_data[behaviour_name] = (
                 pre_behaviour_time, post_behaviour_time, bin_size)
 
-        # Save the settings to a new JSON file
         with open('behaviour_settings.json', 'w') as f:
             json.dump(behaviour_data, f)
 
@@ -567,9 +543,7 @@ class DataProcessingSingleInstance(ttk.Frame):
         """Load the static inputs from a JSON file."""
         behaviour_settings = {}
 
-        # Check if the JSON file exists
         if os.path.exists('behaviour_settings.json'):
-            # If it does, open it and load the settings
             with open('behaviour_settings.json', 'r') as f:
                 behaviour_data = json.load(f)
 
@@ -599,7 +573,7 @@ class DataProcessingSingleInstance(ttk.Frame):
             filetypes=[("CSV Files", "*.csv")])
         if manual_file_path:
             self.parse_manual_data(manual_file_path)
-            self.is_file_parsed = True  # Set the flag to indicate that a file has been parsed
+            self.is_file_parsed = True
 
     def clear_previous_behaviour_selections(self):
         """Clear previous selections before parsing new event time file."""
@@ -615,27 +589,20 @@ class DataProcessingSingleInstance(ttk.Frame):
         self.clear_table()
         self.table_treeview.delete(*self.table_treeview.get_children())
 
-        # Clear the dropdown menu by removing all menu items
         menu = self.graph_settings_container_instance.behaviour_to_zero_dropdown["menu"]
         menu.delete(0, "end")
 
-        # Disable the dropdown
         self.graph_settings_container_instance.behaviour_to_zero_dropdown['state'] = 'disabled'
 
-        # Update to full trace display by default
         self.figure_display_dropdown.set("Full Trace Display")
 
-        # Reset the selected value for behaviour_choice_graph to an empty string
         self.selected_behaviour.set("")
 
-        # Disable the behaviour_choice_graph Combobox
         self.behaviour_choice_graph.configure(state=tk.DISABLED)
 
-        # Clear behavior data and related visual elements
         self.create_behaviour_options(
-            destroy_frame=True)  # Clear behavior options
+            destroy_frame=True)
 
-        # Redraw the plot or refresh the app display
         self.handle_figure_display_selection(None)
 
     def create_behaviour_options(self, destroy_frame=True):
@@ -792,13 +759,10 @@ class DataProcessingSingleInstance(ttk.Frame):
             # Redraw only the color changes without affecting the rest of the graph display
             self.figure_canvas.draw_idle()
 
-            # Update button color
             color_hex = '#%02x%02x%02x' % (
                 int(color_rgb[0] * 255), int(color_rgb[1] * 255), int(color_rgb[2] * 255))
-            # Retrieve the button reference from the dictionary
             button_to_update = self.color_buttons.get(behaviour)
 
-            # Update the behaviour color in the dictionary
             self.behaviour_colors[behaviour] = color_rgb
 
             if button_to_update:
@@ -809,7 +773,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                 color_brightness = self.graph_settings_container_instance.brightness(
                     behaviour_color)
 
-                # Decide on text colour
                 if color_brightness > 0.5:
                     text_color = "black"
                 else:
@@ -817,7 +780,6 @@ class DataProcessingSingleInstance(ttk.Frame):
 
                 button_to_update.config(fg=text_color)
 
-        # Update the behaviour colours for saving
         self.settings_manager.update_behaviour_colors(self.behaviour_colors)
 
     def parse_manual_data(self, file_path):
@@ -832,7 +794,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         - ValueError: If the 'Behaviours/events' column is not present in the CSV file.
         """
         try:
-            # Preliminary checks and settings
             if self.checkbox_state and not self.data_selection_frame.baseline_button_pressed:
                 messagebox.showinfo(
                     "Error", "Please remember to save the baseline values.")
@@ -841,17 +802,13 @@ class DataProcessingSingleInstance(ttk.Frame):
             behaviour_settings = self.load_static_inputs()
             self.clear_table()
 
-            # Read and process the file
             df, column_names = self.read_and_process_file(file_path)
 
-            # Process each row of the DataFrame
             table_data, behaviour_names, behavior_durations = self.process_each_row(
                 df, column_names, behaviour_settings, file_path)
 
-            # Calculate the duration metrics for each behavior and store them in the cache
             self.calculate_and_store_behavior_metrics(behavior_durations)
 
-            # Update the UI with the parsed data
             self.update_ui_with_manual_data(
                 table_data, behaviour_names)
 
@@ -873,20 +830,18 @@ class DataProcessingSingleInstance(ttk.Frame):
         column_names = {key: value.lower()
                         for key, value in column_names.items()}
 
-        # Convert time columns based on user input
         time_unit = self.time_input_unit_var.get().lower()
         if time_unit == "minutes":
             df[column_names['Start Time']] *= 60
             df[column_names['End Time']] *= 60
 
-        # Define required columns and ensure they exist in df
         required_columns = [
             column_names['Behaviours/events'],
             column_names['Start Time'],
             column_names['End Time']
         ]
 
-        # Check that all required columns, including 'behaviour_events_column', are present
+        # Check that all required columns are present in the CSV file else throw error
         for col in required_columns:
             if col not in df.columns:
                 available_columns = [
@@ -897,7 +852,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                     f"Available columns (excluding already specified ones):\n  - {available_columns_str}"
                 )
 
-        # Drop rows with NaNs in the behaviour events column
         behaviour_events_column = column_names['Behaviours/events']
         df = df.dropna(subset=[behaviour_events_column])
 
@@ -1055,7 +1009,7 @@ class DataProcessingSingleInstance(ttk.Frame):
             self.duration_data_cache[cache_duration_key] = {
                 "mean_duration": mean_duration_converted,
                 "sem_duration": sem_duration_converted,
-                "mean_sem_df": None,  # Placeholder, update as needed
+                "mean_sem_df": None,
                 "number_of_instances": len(times['start_times'])
             }
 
@@ -1067,35 +1021,28 @@ class DataProcessingSingleInstance(ttk.Frame):
         - table_data: List of tuples containing the processed data.
         - behaviour_names: Set of unique behavior names.
         """
-        # DataFrame for display purposes only
         display_df = pd.DataFrame(table_data, columns=[
             "File Path", "Selected Column", "Behaviour Name", "Behaviour Type",
             "Pre Behaviour Time", "Post Behaviour Time", "Bin Size",
             "Start Time", "End Time"
         ])
 
-        # Assign colours to behaviours
         self.assign_behaviour_colors(behaviour_names)
 
-        # Update dropdowns and create behaviour options
         self.update_behaviour_dropdowns(behaviour_names, table_data)
         self.create_behaviour_options()
 
-        # Generate a unique key for the table and store it
         self.current_table_key = str(uuid.uuid4())
         self.tables[self.current_table_key] = display_df
 
-        # Update the table with new data
         self.update_table(display_df, new=True)
 
-        # Save the static inputs
         self.save_static_inputs(display_df)
 
         # Keep a copy of the original table if it doesn't exist
         if not hasattr(self, 'original_table') or self.original_table is None:
             self.original_table = self.tables[self.current_table_key].copy()
 
-        # Handle figure display selection
         self.handle_figure_display_selection(None)
 
     def update_behaviour_dropdowns(self, behaviour_names, table_data):
@@ -1108,11 +1055,9 @@ class DataProcessingSingleInstance(ttk.Frame):
         """
         sorted_behaviours = sorted(list(behaviour_names))
 
-        # Update static_inputs_frame behaviour dropdown menu
         self.update_menu(self.static_inputs_frame.behaviour_dropdown, [
                          'All Behaviours'] + sorted_behaviours, self.static_inputs_frame.selected_behaviour)
 
-        # Update graph settings container behaviour dropdown menu
         single_instance_behaviours = self.get_single_instance_behaviours(
             table_data)
         self.update_menu(self.graph_settings_container_instance.behaviour_to_zero_dropdown,
@@ -1125,7 +1070,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             self.graph_settings_container_instance.selected_behaviour_to_zero.trace_add(
                 'write', self.handle_behaviour_change)
 
-        # Enable dropdowns
         self.behaviour_choice_graph["values"] = sorted_behaviours
         self.behaviour_choice_graph['state'] = 'normal'
         self.graph_settings_container_instance.behaviour_to_zero_dropdown['state'] = 'normal'
@@ -1181,7 +1125,7 @@ class DataProcessingSingleInstance(ttk.Frame):
                      end in zip(start_times, end_times) if end is not None]
 
         if not durations:
-            return np.nan, np.nan  # Return NaN if there are no valid durations
+            return np.nan, np.nan
 
         mean_duration = np.nanmean(durations)
         sem_duration = np.nanstd(
@@ -1249,7 +1193,7 @@ class DataProcessingSingleInstance(ttk.Frame):
         self.warning_shown = False
 
         self.graph_settings_container_instance.zero_x_axis_checkbox_var.set(
-            0)  # Uncheck the checkbox
+            0)
 
         if 'dFoF_465' in dataframe.columns:
             self.selected_column_var.set('dFoF_465')
@@ -1262,35 +1206,26 @@ class DataProcessingSingleInstance(ttk.Frame):
         self.unique_behaviours = []
         self.clear_table()
         self.table_treeview.delete(*self.table_treeview.get_children())
-        # Clear the dictionary of adjusted behaviour dataframes
         self.adjusted_behaviour_dataframes = {}
 
-        # Update to full trace display by default
         self.figure_display_dropdown.set("Full Trace Display")
 
-        # Reset the selected value for behaviour_choice_graph to an empty string
         self.selected_behaviour.set("")
 
-        # Disable the behaviour_choice_graph Combobox
         self.behaviour_choice_graph.configure(state=tk.DISABLED)
 
-        # Clear behavior data and related visual elements
         self.create_behaviour_options(
-            destroy_frame=True)  # Clear behavior options
+            destroy_frame=True)
 
-        # If 'ax' is defined, clear its content
         if hasattr(self, 'ax'):
-            self.ax.clear()  # Clear the plot
+            self.ax.clear()
 
-        # Clear the dropdown menu by removing all menu items
         menu = self.graph_settings_container_instance.behaviour_to_zero_dropdown["menu"]
         menu.delete(0, "end")
 
-        # Reset the selected value to an empty string or a default value
         self.graph_settings_container_instance.selected_behaviour_to_zero.set(
-            "")  # or set it to a default value if needed
+            "")
 
-        # Disable the dropdown
         self.graph_settings_container_instance.behaviour_to_zero_dropdown['state'] = 'disabled'
 
         self.handle_figure_display_selection(None)
@@ -1326,7 +1261,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         # Update the corresponding dataframe in self.tables
         self.tables[self.current_table_key] = current_df
 
-        # Update the table display
         self.update_table(current_df, new=True)
 
         self.save_static_inputs(current_df)
@@ -1369,7 +1303,7 @@ class DataProcessingSingleInstance(ttk.Frame):
             self.behaviour_event_input_frame.end_time_entry.config(
                 state=tk.DISABLED)
             self.behaviour_event_input_frame.end_time_var.set(
-                "")  # Reset the end time variable
+                "")
         else:
             self.behaviour_event_input_frame.start_time_entry.config(
                 state=tk.NORMAL)
@@ -1407,11 +1341,9 @@ class DataProcessingSingleInstance(ttk.Frame):
         """Refresh the behaviour options"""
         for behaviour in self.behaviour_boxes:
             if not self.behaviour_display_status[behaviour].get():
-                # Hide all the boxes associated with the behaviour
                 for box in self.behaviour_boxes[behaviour]:
                     box.set_visible(False)
             else:
-                # Show all the boxes associated with the behaviour
                 for box in self.behaviour_boxes[behaviour]:
                     box.set_visible(True)
 
@@ -1445,28 +1377,22 @@ class DataProcessingSingleInstance(ttk.Frame):
         else:
             print("Data extraction cancelled.")
 
-        # Save the new color selection regardless of user decision
         self.settings_manager.save_variables()
 
     def select_column_names(self):
         """Function to select the column names in the CSV file."""
-        # Load column names from JSON file
         current_column_names = self.load_column_names()
 
-        # Create the settings window
         settings_window = tk.Toplevel(self.winfo_toplevel())
         settings_window.title("Column Names in CSV")
 
-        # Create labels and entry boxes for each column name
         column_labels = ["Behaviours/events", "Start Time", "End Time"]
         entry_boxes = self.create_column_entries(
             settings_window, column_labels, current_column_names)
 
-        # Dropdown menu for time unit selection
         self.create_time_unit_dropdown(
             settings_window, len(column_labels), current_column_names)
 
-        # Create the save button
         save_button = tk.Button(settings_window, text="Save", command=lambda: self.save_column_names(
             settings_window, entry_boxes))
         save_button.grid(row=len(column_labels) + 1, column=0,
@@ -1543,25 +1469,17 @@ class DataProcessingSingleInstance(ttk.Frame):
         """
         column_names = {}
 
-        # Get the values from the entry boxes
         for label, entry_box in entry_boxes.items():
-            # Get the text from the box and strip leading/trailing spaces
             text = entry_box.get().strip()
-
-            # Store the text in the column names dictionary
             column_names[label] = text
 
-        # Save the selected time unit
         column_names["Time Unit"] = self.time_input_unit_var.get()
 
-        # Assign to self.column_names
         self.column_names = column_names
 
-        # Save the column names in the configuration file or wherever you prefer
         with open("column_names.json", "w") as file:
             json.dump(column_names, file)
 
-        # Close the settings window
         settings_window.destroy()
 
     def prompt_column_names(self):
@@ -1575,14 +1493,12 @@ class DataProcessingSingleInstance(ttk.Frame):
         - IOError: If the file does not exist or cannot be read.
         - json.JSONDecodeError: If the file is not a valid JSON file.
         """
-        # Load column names from JSON file or return default values if file doesn't exist or is invalid
         try:
             with open("column_names.json", "r") as file:
                 column_names = json.load(file)
         except (IOError, json.JSONDecodeError):
             column_names = self.default_column_names
 
-            # Convert the column names dictionary to lowercase
         column_names = {key: value.lower()
                         for key, value in column_names.items()}
 
@@ -1603,7 +1519,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         Returns:
         - truncated_title: The truncated sheet title.
         """
-        # Split the title into words
         words = title.split()
 
         # Truncate the longest word if necessary
@@ -1682,7 +1597,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         time_unit = self.graph_settings_container_instance.time_unit_menu.get()
         time_factor = self.get_time_scale(time_unit)
 
-        # Create a copy of the time data
         if self.checkbox_state:
             time_data = self.dataframe.get(
                 'z_scored_time', self.calculate_z_score()[1]).copy()
@@ -1712,7 +1626,7 @@ class DataProcessingSingleInstance(ttk.Frame):
             if behaviour not in self.behaviour_display_status or not self.behaviour_display_status[behaviour].get() or not behaviour:
                 continue
 
-            min_box_width = 0.01  # Minimum box width in minutes
+            min_box_width = 0.01
             x_position = start_time_min if start_time_min is not None else start_point
             end_x_position = end_time_min if end_time_min is not None else end_point
             box_width = max(
@@ -1765,7 +1679,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             current_df = self.tables[self.current_table_key].copy()
             self.update_table(current_df)
             self.handle_figure_display_selection(None)
-            # Clear the dictionary of adjusted behaviour dataframes
             self.adjusted_behaviour_dataframes = {}
 
     def update_table(self, dataframe, new=False):
@@ -1791,7 +1704,7 @@ class DataProcessingSingleInstance(ttk.Frame):
                     if (start_time - pre_behaviour_time) < 0:
                         negative_behaviours.append(row['Behaviour Name'])
                 except ValueError:
-                    # Handle cases where conversion to float fails
+                    # Handle cases where conversion to float fails, may want to log this later
                     continue
 
             if negative_behaviours:
@@ -1808,7 +1721,7 @@ class DataProcessingSingleInstance(ttk.Frame):
         try:
             dataframe['Start Time'] = dataframe['Start Time'].astype(float)
         except ValueError:
-            # Handle cases where conversion to float fails, you may want to log this or handle it differently
+            # Handle cases where conversion to float fails, may want to log this later
             pass
 
         dataframe = dataframe[dataframe['Start Time'] >= 0]
@@ -1855,7 +1768,7 @@ class DataProcessingSingleInstance(ttk.Frame):
             return time_in_seconds / 3600
         if unit == "minutes":
             return time_in_seconds / 60
-        return time_in_seconds  # assumes time is already in seconds
+        return time_in_seconds
 
     def calculate_mean_sem(self, dataframe, ignore_col):
         """
@@ -1868,26 +1781,20 @@ class DataProcessingSingleInstance(ttk.Frame):
         Returns:
         - calculated_mean_sem_df: A DataFrame with 'Time', 'Mean', and 'SEM' columns.
         """
-        # Drop the ignore_col from the DataFrame
         data_without_ignore_col = dataframe.drop(ignore_col, axis=1)
 
-        # If there's only one instance of the behavior
         if len(data_without_ignore_col.columns) == 1:
             single_value = data_without_ignore_col.iloc[:, 0]
             mean_sem_df = pd.DataFrame({
                 'Time': dataframe['Time'],
-                'Mean': single_value,  # Use the single behavior's value for Mean
-                'SEM': [0] * len(single_value)  # Fill SEM with zeros
+                'Mean': single_value, 
+                'SEM': [0] * len(single_value)
             })
-            # Set calculated_mean_sem_df to mean_sem_df
             calculated_mean_sem_df = mean_sem_df
 
         else:
-            # Calculate the mean for each row
             means = data_without_ignore_col.mean(axis=1)
-            # Calculate the SEM for each row
             sems = data_without_ignore_col.sem(axis=1)
-            # Create a DataFrame with the means and SEMs
             calculated_mean_sem_df = pd.DataFrame(
                 {'Time': dataframe['Time'], 'Mean': means, 'SEM': sems})
 
@@ -1906,14 +1813,11 @@ class DataProcessingSingleInstance(ttk.Frame):
         Returns:
         - mean_sem_df: A DataFrame with 'Time', 'Mean', and 'SEM' columns.
         """
-        # Create a DataFrame using the behaviour_data_by_instance dictionary
         behaviour_data_frame = pd.DataFrame(behaviour_data_by_instance)
 
-        # Insert the time_points as a new column at the beginning of the DataFrame
         behaviour_data_frame.insert(0, 'Time', np.linspace(
             start_time_adjusted, end_time_adjusted, len(time_points)))
 
-        # Calculate mean and SEM
         mean_sem_df = self.calculate_mean_sem(behaviour_data_frame, 'Time')
 
         return mean_sem_df
@@ -2006,7 +1910,7 @@ class DataProcessingSingleInstance(ttk.Frame):
         Returns:
         - float: The computed area under the curve.
         """
-        return simpson(data, dx=dx)
+        return simpson(data, dx=dx) # Need to account for different sampling rates
 
     def calculate_max_amp(self, data):
         """
@@ -2044,7 +1948,7 @@ class DataProcessingSingleInstance(ttk.Frame):
         duration_data = []
 
         for key, value in self.duration_data_cache.items():
-            behavior = key  # Assuming the key is the behavior name
+            behavior = key
             mean_duration = value["mean_duration"] * 60
             sem_duration = value["sem_duration"] * 60
             number_of_instances = value["number_of_instances"]
@@ -2054,7 +1958,7 @@ class DataProcessingSingleInstance(ttk.Frame):
         behavior_duration_stats_df = pd.DataFrame(duration_data, columns=[
             'Behavior', 'Mean Duration (s)', 'SEM (s)', 'Number of Instances'])
         behavior_duration_stats_df = behavior_duration_stats_df.sort_values(
-            by='Behavior')  # Sort by 'Behavior' column
+            by='Behavior')
         return behavior_duration_stats_df
 
     def create_extraction_folder(self, file_path):
@@ -2084,7 +1988,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         - z_scored_time: The z-scored time data.
         - df_duration: Updated DataFrame with mean and STD data.
         """
-        # Retrieve z-scored data and its associated time directly from the dataframe
         z_scored_data = self.dataframe['baselined_z_score']
         z_scored_time = self.dataframe['z_scored_time']
 
@@ -2111,7 +2014,7 @@ class DataProcessingSingleInstance(ttk.Frame):
         - behaviours_results: Dictionary containing the extracted data for each behaviour.
         - time_ranges: Dictionary containing the time ranges for each behaviour.
         """
-        behaviours_results = {}  # To hold the extracted data
+        behaviours_results = {}
         time_ranges = {}
 
         for behaviour_name in behaviours_to_export:
@@ -2125,7 +2028,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                     behaviour_instance['behaviour_start_time'])
 
                 if behaviour_name in behaviours_to_export and behaviour_name not in behaviours_results:
-                    # Only create a new list if it doesn't exist yet
                     behaviours_results[behaviour_name] = []
 
                 if behaviour_name not in behaviours_to_export:
@@ -2148,7 +2050,6 @@ class DataProcessingSingleInstance(ttk.Frame):
 
                     time_ranges[behaviour_name] = time_range
 
-                    # Call extract_data function
                     if self.checkbox_state and z_scored_data is not None:
                         start_data, end_data = self.extract_data(start_time_min, behaviour_start_time_min, end_time_min,
                                                                  column='baselined_z_score', z_scored_data=z_scored_data)
@@ -2156,7 +2057,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                         start_data, end_data = self.extract_data(start_time_min, behaviour_start_time_min, end_time_min,
                                                                  column=self.selected_column_var.get())
 
-                    # Append the extracted data to behaviours_results
                     behaviours_results[behaviour_name].append(
                         (start_data, end_data))
 
@@ -2179,7 +2079,7 @@ class DataProcessingSingleInstance(ttk.Frame):
 
         for behaviour_name in sorted_behaviours:
             data_list = behaviours_results[behaviour_name]
-            df_combined = pd.DataFrame()  # Create a new DataFrame for each behaviour
+            df_combined = pd.DataFrame()
 
             for instance_index, data in enumerate(data_list, start=1):
                 start_data, end_data = data
@@ -2193,10 +2093,7 @@ class DataProcessingSingleInstance(ttk.Frame):
 
             # Only add mean and sem columns if there is more than one instance of the behaviour
             if len(df_combined.columns) > 1:
-                # Calculate the mean for each row
                 df_combined['Mean'] = df_combined.mean(axis=1)
-
-                # Calculate the SEM for each row
                 df_combined['SEM'] = df_combined.sem(axis=1)
 
             time_range = time_ranges[behaviour_name]
@@ -2216,12 +2113,10 @@ class DataProcessingSingleInstance(ttk.Frame):
                 df_list.append((df_combined, behaviour_name))
 
             else:
-                # Add the selected column name to the file name
                 selected_column_name = self.selected_column_var.get()
                 results_file_name = f'''{behaviour_name}_{
                     selected_column_name}_raw.csv'''
 
-                # Add '_baseline' if self.use_baseline_var is 1
                 if self.checkbox_state:
                     results_file_name = results_file_name.replace(
                         "_raw.csv", "_baseline_raw.csv")
@@ -2289,22 +2184,17 @@ class DataProcessingSingleInstance(ttk.Frame):
         """
         metric_values_per_bin = []
 
-        # Iterate over each bin
         for bin_idx in range(expected_num_bins):
-            # Gather data for the current bin from all instances
             bin_data_across_instances = [
                 instance[bin_idx] for instance in instances_data]
 
-            # Calculate metric for each instance for the current bin
             instance_metric_values = [metric_func(
                 instance_data) for instance_data in bin_data_across_instances]
 
-            # If the metric is AUC and the result is somehow wrapped in a list or array, extract the scalar value
             if metric_name == 'auc' and isinstance(instance_metric_values[0], (list, np.ndarray)):
                 instance_metric_values = [value[0]
                                           for value in instance_metric_values]
 
-            # Compute the average metric value across all instances for this bin
             avg_value = sum(
                 instance_metric_values) / len(instance_metric_values) if instance_metric_values else 0
 
@@ -2363,34 +2253,28 @@ class DataProcessingSingleInstance(ttk.Frame):
         for behaviour_name in sorted_behaviours:
             data_list = behaviours_results[behaviour_name]
 
-            # Retrieve parameters for the behaviour
             pre_behaviour_time, post_behaviour_time, bin_size = self.retrieve_static_params(
                 params, behaviour_name)
 
-            # Process and bin the data for the behaviour
             bin_labels, expected_num_bins, behaviour_instances_data = self.process_and_bin_data(
                 data_list, pre_behaviour_time, post_behaviour_time, bin_size)
 
-            # Add the behaviour name and bin labels to the summary
             summary_rows.append([behaviour_name] + bin_labels)
 
             # Segment the instances data based on the expected number of bins
             instances_data = [behaviour_instances_data[i:i + expected_num_bins]
                               for i in range(0, len(behaviour_instances_data), expected_num_bins)]
 
-            # Get metric functions to apply to the data
             metrics_functions = self.get_metric_functions()
 
-            # Calculate metrics for each bin and append to the summary
             for metric_name, metric_func in metrics_functions.items():
                 metric_values_per_bin = self.calculate_metrics_for_bins(
                     instances_data, expected_num_bins, metric_name, metric_func)
                 summary_rows.append([metric_name] + metric_values_per_bin)
 
-            # Add a separator row (optional) for readability
+            # Add a separator row for readability
             summary_rows.append([''] * (1 + len(bin_labels)))
 
-        # Create a DataFrame from the collected summary rows
         df_summary = pd.DataFrame(summary_rows)
 
         return df_summary
@@ -2405,7 +2289,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         Returns:
         - summary_data: List containing the prepared DataFrame and a separator row.
         """
-        # Add the summary data directly
         summary_data = [df_summary]
 
         # Append a row of NaNs as a separator
@@ -2431,24 +2314,18 @@ class DataProcessingSingleInstance(ttk.Frame):
         combined_data = self.prepare_combined_data(df_summary)
         summary_data.extend(combined_data)
 
-        # Concatenate the collected data into a single DataFrame
         df_summary_combined = pd.concat(summary_data, ignore_index=True)
 
-        # Ensure the columns are anonymous (i.e., remove column headers)
         df_summary_combined.columns = [''] * df_summary_combined.shape[1]
 
-        # Reset index and clear column names
         df_summary_combined = df_summary_combined.reset_index(drop=True)
         df_summary_combined.columns.name = None
 
-        # Add the summary results at the start of the DataFrame list
         df_list.insert(0, (df_summary_combined, "Summary Results"))
 
-        # Generate the output file name and save the file
         output_file_name = self.get_output_file_name(file_path, folder_path)
         self.save_to_excel(df_list, output_file_name)
 
-        # Optionally format the Excel file
         self.format_excel(output_file_name, behaviours_results)
 
     def get_output_file_name(self, file_path, folder_path):
@@ -2545,7 +2422,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         - behaviour_instances_data: List of binned data for each behaviour instance.
         """
 
-        # Initialize a list to hold the binned data
         behaviour_instances_data = []
 
         for start_data, end_data in data_list:
@@ -2563,7 +2439,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                     -1, bin_size * sampling_rate)
                 behaviour_instances_data.append(binned_data)
 
-            # Bin Labels
             num_bins_total = (pre_behaviour_time +
                               post_behaviour_time) // bin_size
             bin_ranges = np.linspace(-pre_behaviour_time,
@@ -2583,10 +2458,9 @@ class DataProcessingSingleInstance(ttk.Frame):
         - params: Parameters for data extraction and processing.
         """
 
-        # Create a folder to store the extracted data
         folder_path = self.create_extraction_folder(file_path)
 
-        behaviours_metrics = {}  # To hold the calculated metrics
+        behaviours_metrics = {}
         bin_size = params.get("bin_size")
         behaviours_to_export = params.get("behaviours_to_export", [])
 
@@ -2613,7 +2487,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         else:
             temp_data = []
             for behaviour_name in behaviours_results:
-                # Iterating over the list of dictionaries
                 for behaviour_instance in params[behaviour_name]:
                     pre_behaviour_time = float(
                         behaviour_instance['pre_behaviour_time'])
@@ -2647,7 +2520,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                             data_dict["end_mean_dff"] = self.calculate_mean_dff(
                                 end_data)
 
-                        # Append the dictionary to temp_data
                         temp_data.append(data_dict)
 
             for data in temp_data:
@@ -2656,7 +2528,7 @@ class DataProcessingSingleInstance(ttk.Frame):
                 if behaviour_name not in behaviours_metrics:
                     behaviours_metrics[behaviour_name] = {}
 
-                for key in data.keys():  # Loop through keys in the data dictionary
+                for key in data.keys():
                     if key not in ["behaviour_name", "pre_behaviour_time", "post_behaviour_time", "bin_size"]:
                         if key not in behaviours_metrics[behaviour_name]:
                             behaviours_metrics[behaviour_name][key] = []
@@ -2666,7 +2538,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                 for key in ["pre_behaviour_time", "post_behaviour_time", "bin_size"]:
                     behaviours_metrics[behaviour_name][key] = data[key]
 
-            # Create an empty list to store the individual dataframes for each metric
             dfs = []
 
             def add_empty_column(df):
@@ -2682,7 +2553,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                 df[''] = ""
                 return df
 
-            # Create DataFrame for times and bin size
             df_times = pd.DataFrame(
                 [(k, v["pre_behaviour_time"], v["post_behaviour_time"])
                  for k, v in behaviours_metrics.items()],
@@ -2690,7 +2560,6 @@ class DataProcessingSingleInstance(ttk.Frame):
 
             dfs.append(add_empty_column(df_times))
 
-            # Conditionally create dataframes for the calculated metrics
             if 'start_auc' in behaviours_metrics[next(iter(behaviours_metrics))]:
                 df_auc = pd.DataFrame([(k, np.mean(v.get('start_auc', [np.nan])), np.mean(v.get('end_auc', [np.nan]))) for k, v in behaviours_metrics.items()],
                                       columns=['Behaviour', 'Start AUC', 'End AUC'])
@@ -2710,7 +2579,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                     columns=['Behaviour', 'Start Mean dF/F', 'End Mean dF/F'])
                 dfs.append(add_empty_column(df_mean_dff))
 
-            # Concatenate the dataframes to create the final df_results
             df_results = pd.concat(dfs, axis=1)
 
             if self.checkbox_state:
@@ -2723,16 +2591,12 @@ class DataProcessingSingleInstance(ttk.Frame):
                 df_results.at[0, "Baseline Start Time"] = baseline_start_time
                 df_results.at[0, "Baseline End Time"] = baseline_end_time
 
-            # Assuming df_list is defined somewhere above in your code
-            # Add df_results as the first item in df_list
             df_list.insert(0, (df_results, 'Summary Results'))
 
             if self.export_options_container.combine_csv_var.get() == 1:
-                # Get the original filename without the extension
                 original_file_name = os.path.splitext(
                     os.path.basename(file_path))[0]
 
-                # Add the selected column name to the original filename
                 selected_column_name = self.selected_column_var.get()
                 original_file_name += f"_{selected_column_name}"
 
@@ -2749,20 +2613,16 @@ class DataProcessingSingleInstance(ttk.Frame):
                         sheet_name = sheet_name.replace("/", "_")
                         df.to_excel(writer, sheet_name=sheet_name, index=False)
 
-                # Load the workbook
                 wb = load_workbook(os.path.join(folder_path, output_file_name))
 
-                # Loop through all sheets
                 for sheet_name in wb.sheetnames:
                     ws = wb[sheet_name]
-                    # Clear border from column headers
                     for cell in ws[1]:
                         cell.border = Border(left=Side(style='none'),
                                              right=Side(style='none'),
                                              top=Side(style='none'),
                                              bottom=Side(style='none'))
 
-                # Save the workbook
                 wb.save(os.path.join(folder_path, output_file_name))
 
             else:
@@ -2770,7 +2630,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                 file_name_without_extension = os.path.splitext(
                     file_name)[0]  # Extract file name without extension
 
-                # Add the selected column name to the file name
                 selected_column_name = self.selected_column_var.get()
                 file_name_without_extension += f"_{selected_column_name}"
 
@@ -2779,7 +2638,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                     file_name_without_extension += f'''_baseline_{
                         self.data_selection_frame.baseline_start_entry.get()}'''
 
-                # Create the summary results file path
                 df_results_path = os.path.join(
                     folder_path, f"{file_name_without_extension}_summary.csv")
                 df_results.to_csv(df_results_path, index=False)
@@ -2805,7 +2663,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             df['baselined_z_score'] = z_scored_data
             time_column = df['z_scored_time']
         else:
-            # Use the first column for the time values, regardless of its name
             time_column = df.iloc[:, 0]
 
         # Now, when you need to find the index of the nearest time value, use the first column
@@ -2848,7 +2705,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         bin_size = None
         missing_pre_behaviour = set()
         missing_post_behaviour = set()
-        # Store behaviours that failed the total time divisibility check
         not_divisible_behaviours = set()
 
         if self.checkbox_state:
@@ -2861,12 +2717,11 @@ class DataProcessingSingleInstance(ttk.Frame):
             behaviour_name = row['Behaviour Name']
             status_var = self.behaviour_display_status.get(behaviour_name)
 
-            if status_var and status_var.get() == 1:  # If the checkbox is ticked
+            if status_var and status_var.get() == 1:
                 pre_behaviour_time = row['Pre Behaviour Time']
                 post_behaviour_time = row['Post Behaviour Time']
                 bin_size = row['Bin Size']
 
-                # Create a dictionary for this instance of the behavior
                 this_behaviour_instance = {
                     "pre_behaviour_time": pre_behaviour_time,
                     "post_behaviour_time": post_behaviour_time,
@@ -2874,7 +2729,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                     "behaviour_start_time": float(row['Start Time'])
                 }
 
-                # Add this instance to the list of instances for this behavior
                 if behaviour_name not in params:
                     params[behaviour_name] = []
                 params[behaviour_name].append(this_behaviour_instance)
@@ -3016,7 +2870,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             else:
                 print("X Ticks must be greater than 0")
         else:
-            # Let the plot determine the spacing
             ax.xaxis.set_major_locator(AutoLocator())
 
         if y_ticks_str and y_ticks_str.strip():
@@ -3026,7 +2879,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             else:
                 print("Y Ticks must be greater than 0")
         else:
-            # Let the plot determine the spacing
             ax.yaxis.set_major_locator(AutoLocator())
 
     def retrieve_and_process_behaviour_data(self, current_df=None):
@@ -3047,21 +2899,17 @@ class DataProcessingSingleInstance(ttk.Frame):
         - ValueError: If the start or end time is not a valid
         """
         if current_df is None:
-            # Retrieve data from pandas DataFrame if available
             all_items = self.tables.get(
                 self.current_table_key, pd.DataFrame()).to_dict('records')
         else:
             all_items = current_df.to_dict('records')
 
-        # Extract data using list comprehensions
         behaviours = [record['Behaviour Name'] for record in all_items]
         start_times = [record['Start Time'] for record in all_items]
         end_times = [record['End Time'] for record in all_items]
 
-        # Convert start times to minutes
         start_times_min = [float(time) / 60 for time in start_times]
 
-        # Convert end times to minutes with error handling
         end_times_min = []
         for time in end_times:
             try:
@@ -3081,7 +2929,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         selected_option = self.figure_display_dropdown.get()
         matplotlib.pyplot.close()
 
-        # get user's time unit selection
         time_unit = self.graph_settings_container_instance.time_unit_menu.get()
 
         if not self.is_file_parsed and self.data_selection_frame.baseline_button_pressed:
@@ -3093,12 +2940,10 @@ class DataProcessingSingleInstance(ttk.Frame):
             self.figure_canvas.get_tk_widget().destroy()
             self.toolbar.destroy()
 
-        # Create the figure and axes
         self.fig, ax = plt.subplots(figsize=(6, 4))
 
         self.ax = ax
 
-        # Hide the top and right axis lines
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
@@ -3126,15 +2971,12 @@ class DataProcessingSingleInstance(ttk.Frame):
             ax.set_xlim(self.min_x_for_behaviour_mean_and_sem * scale_factor,
                         self.max_x_for_behaviour_mean_and_sem * scale_factor)
 
-        # Determine tick spacing for the x and y axes after plotting
         self.determines_ax_tick_spacing(ax)
 
         if selected_option not in ["Single Row Display", "Behaviour Mean and SEM"]:
-            current_xlim = ax.get_xlim()  # get current x-axis limits
-            # set x-axis limits to start at 0
+            current_xlim = ax.get_xlim()
             ax.set_xlim(left=current_xlim[0], right=current_xlim[1])
 
-        # Assuming self.fig is your matplotlib figure object
         fig_dpi = self.fig.dpi
         fig_width, fig_height = self.fig.get_size_inches()
         canvas_width, canvas_height = fig_width * fig_dpi, fig_height * fig_dpi
@@ -3147,31 +2989,24 @@ class DataProcessingSingleInstance(ttk.Frame):
             width=canvas_width, height=canvas_height)
         self.figure_canvas.draw()
 
-        # Place the figure canvas in the graph_canvas
         self.figure_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Create the toolbar
         self.toolbar = NavigationToolbar2Tk(
             self.figure_canvas, self.graph_canvas)
         self.toolbar.update()
 
-        # Customize the toolbar background
         self.toolbar.config(background="snow")
         self.toolbar._message_label.config(background="snow")
 
-        # Customize the x and y coordinate labels
         self.toolbar._message_label.config(
             foreground="black", font=("Arial", 10))
 
-        # Remove the canvas border
         self.figure_canvas.get_tk_widget().configure(
             borderwidth=0, highlightthickness=0)
 
-        # Remove the toolbar border
         self.toolbar.configure(background="snow", bd=0)
         self.toolbar._message_label.configure(background="snow", bd=0)
 
-        # Place the toolbar in the graph_canvas
         self.toolbar.pack(side="top", fill="x")
         self.settings_manager.save_variables()
 
@@ -3185,16 +3020,13 @@ class DataProcessingSingleInstance(ttk.Frame):
         if not self.baseline_button_pressed:
             self.calculate_z_score()
 
-        # Check for required columns in dataframe
         if 'baselined_z_score' not in self.dataframe or 'z_scored_time' not in self.dataframe:
             print("Required data columns are missing in the dataframe.")
             return
 
-        # Retrieve z-scored data and its associated time directly from the dataframe
         z_scored_data = self.dataframe['baselined_z_score']
         z_scored_time = self.dataframe['z_scored_time']
 
-        # Retrieve the x-axis label and converted time data based on user's time unit selection
         z_scored_time_copy = z_scored_time.copy()
         converted_time_data, x_label = self.convert_and_retrieve_time(
             z_scored_time_copy, return_label=True)
@@ -3210,7 +3042,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             behaviours, _, _, start_times_min, end_times_min = self.retrieve_and_process_behaviour_data(
                 current_df)
 
-            # Initialize or check time attributes
             self.initialize_or_check_time_attributes(
                 start_times_min, end_times_min)
 
@@ -3227,7 +3058,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                 adjusted_start_times_min = self.original_start_times_min if self.original_start_times_min else start_times_min
                 adjusted_end_times_min = self.original_end_times_min if self.original_end_times_min else end_times_min
 
-        # Plot the data
         ax.plot(adjusted_time, z_scored_data, color=self.settings_manager.selected_trace_color, linewidth=float(
             self.graph_settings_container_instance.line_width_entry.get()))
         ax.set_ylabel('Z-score')
@@ -3256,12 +3086,10 @@ class DataProcessingSingleInstance(ttk.Frame):
 
         behaviours, _, _, start_times_min, end_times_min = self.retrieve_and_process_behaviour_data()
 
-        # Retrieve the x-axis label and converted time data based on user's time unit selection
         converted_time_data, x_label = self.convert_and_retrieve_time(
             time, return_label=True)
         ax.set_xlabel(x_label)
 
-        # Initialize or check time attributes
         self.initialize_or_check_time_attributes(
             start_times_min, end_times_min)
 
@@ -3301,7 +3129,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         selected_data_to_plot = self.dataframe.loc[(
             self.dataframe.iloc[:, 0] >= start_point) & (self.dataframe.iloc[:, 0] <= end_point)]
 
-        # if use_baseline_var is 1, use the z_score column. Otherwise, use the original column
         if self.checkbox_state:
             selected_column = self.calculate_z_score()
         else:
@@ -3324,7 +3151,7 @@ class DataProcessingSingleInstance(ttk.Frame):
         # Add transparent boxes to the graph
         start_times_min = [self.start_time]
         end_times_min = [self.end_time]
-        item = self.table_treeview.selection()[0]  # Get selected item
+        item = self.table_treeview.selection()[0]
         row_behaviour_name = self.table_treeview.item(item)['values'][2]
         self.add_transparent_boxes(ax, selected_data_to_plot[selected_column], [
                                    row_behaviour_name], start_times_min, end_times_min, start_point, end_point)
@@ -3338,14 +3165,12 @@ class DataProcessingSingleInstance(ttk.Frame):
         """
         behaviour_occurrences, column_used, pre_behaviour_times, post_behaviour_times = self.fetch_behaviour_data()
 
-        # Get start and end times for use in the add_duration_box function
         start_times = [occurrence[0] for occurrence in behaviour_occurrences]
         end_times = [occurrence[1] for occurrence in behaviour_occurrences]
 
         start_time_adjusted = -pre_behaviour_times[0]
         end_time_adjusted = post_behaviour_times[0]
 
-        # Set these as instance variables
         self.current_start_times = start_times
         self.current_end_times = end_times
 
@@ -3386,7 +3211,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         else:
             self.add_duration_box(ax, mean_sem_df)
 
-        # Adjust the layout to ensure that everything fits well
         plt.tight_layout()
 
     def initialize_or_check_time_attributes(self, start_times_min, end_times_min):
@@ -3420,14 +3244,12 @@ class DataProcessingSingleInstance(ttk.Frame):
         if hasattr(self, 'figure_display_dropdown'):
             selected_option = self.figure_display_dropdown.get()
 
-        if self.graph_settings_container_instance.limit_axis_range_var.get():  # Check if the checkbox is ticked
-            # Check for empty strings and set axis limits accordingly
+        if self.graph_settings_container_instance.limit_axis_range_var.get():
             if x_min and x_max and selected_option != "Behaviour Mean and SEM":
                 self.ax.set_xlim(float(x_min), float(x_max))
             if y_min and y_max:
                 self.ax.set_ylim(float(y_min), float(y_max))
         else:
-            # Revert back to the default limits
             if selected_option != "Behaviour Mean and SEM":
                 self.ax.set_xlim(self.xlim_min, self.xlim_max)
 
@@ -3440,8 +3262,8 @@ class DataProcessingSingleInstance(ttk.Frame):
 
         self.figure_canvas.draw()
 
-        self.settings_manager.save_variables()  # Save the values
-
+        self.settings_manager.save_variables()
+        
         # Only close the popup if close=True
         if close and popup:
             popup.destroy()
@@ -3531,7 +3353,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                 ]
             behaviour_data = selected_data_to_plot[column_used].tolist()
 
-            # Adjust to reference length
             if reference_length is None:
                 reference_length = len(behaviour_data)
             else:
@@ -3542,7 +3363,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                 start_point * time_factor, end_point * time_factor, len(behaviour_data))
             behaviour_data_by_instance[instance_id] = behaviour_data
 
-            # Calculate the start time and end time
             start_time_adjusted = -pre_behaviour_time * time_factor
             end_time_adjusted = post_behaviour_time * time_factor
 
@@ -3563,7 +3383,6 @@ class DataProcessingSingleInstance(ttk.Frame):
         - mean_sem_df: DataFrame containing the mean and SEM of the behaviour data.
         """
 
-        # Calculate mean and SEM
         mean_sem_df = self.generate_mean_sem_df(
             behaviour_data_by_instance, time_points, start_time_adjusted, end_time_adjusted)
 
@@ -3581,7 +3400,6 @@ class DataProcessingSingleInstance(ttk.Frame):
                             color=self.settings_manager.selected_sem_color,
                             alpha=0.5, label='SEM')
 
-        # Only return mean_sem_df if it is needed in other parts of your code
         return mean_sem_df
 
     def add_duration_box(self, ax, mean_sem_df):
@@ -3597,21 +3415,16 @@ class DataProcessingSingleInstance(ttk.Frame):
 
         graphed_behaviour = self.behaviour_choice_graph.get()
 
-        # Attempt to find the correct cache key
-        # Simplified key, assuming it's just the behavior name
         cache_duration_key = graphed_behaviour
 
         if cache_duration_key in self.duration_data_cache:
-            # Use cached values
             cached_data = self.duration_data_cache[cache_duration_key]
             mean_duration = cached_data["mean_duration"]
             sem_duration = cached_data["sem_duration"]
         else:
-            # Handle the case where the data is not in the cache
             print(f"Duration data for {graphed_behaviour} not found in cache.")
             return
 
-        # Convert the mean and SEM durations based on the time unit
         mean_duration = self.convert_and_retrieve_time(mean_duration)
         sem_duration = self.convert_and_retrieve_time(sem_duration)
 
@@ -3621,7 +3434,6 @@ class DataProcessingSingleInstance(ttk.Frame):
             size_factor = float(
                 self.graph_settings_container_instance.bar_graph_size_entry.get())
 
-            # Calculate the y position of the duration box relative to the line graph
             max_mean = max(mean_sem_df['Mean'])
             min_mean = min(mean_sem_df['Mean'])
             mean_mean = mean_sem_df['Mean'].mean()
@@ -3631,11 +3443,9 @@ class DataProcessingSingleInstance(ttk.Frame):
                 bar_y = mean_mean - (abs(height_modifier)
                                      * (mean_mean - min_mean))
 
-            # Calculate the height of the bar relative to the range of mean
             mean_range = max_mean - min_mean
             bar_height = size_factor * mean_range
 
-            # Draw the bar
             bars_container = ax.barh(bar_y, mean_duration, xerr=sem_duration, height=bar_height,
                                      color=self.graph_settings_container_instance.selected_bar_fill_color,
                                      edgecolor=self.graph_settings_container_instance.selected_bar_border_color,
@@ -3665,18 +3475,15 @@ class DataProcessingSingleInstance(ttk.Frame):
 
         ax = self.fig.gca()
 
-        # Remove existing bar items
         if hasattr(self, 'bar_items'):
             for item in self.bar_items:
                 try:
                     item.remove()
                 except (AttributeError, ValueError):
-                    pass  # Handle items that might not have a 'remove' method or are already gone
+                    pass
 
-        # Identify the current behavior being processed
         current_behavior = self.behaviour_choice_graph.get()
 
-        # Use the simplified cache key (just the behavior name)
         self.current_cache_key = current_behavior
 
         try:
@@ -3688,11 +3495,9 @@ class DataProcessingSingleInstance(ttk.Frame):
             self.add_duration_box(ax, mean_sem_df)
             return
 
-        # Convert the mean and SEM durations based on the time unit
         mean_duration = self.convert_and_retrieve_time(mean_duration)
         sem_duration = self.convert_and_retrieve_time(sem_duration)
 
-        # Calculate position and size of bar
         max_mean = max(mean_sem_df['Mean'])
         min_mean = min(mean_sem_df['Mean'])
         mean_mean = mean_sem_df['Mean'].mean()
@@ -3710,42 +3515,33 @@ class DataProcessingSingleInstance(ttk.Frame):
         mean_range = max_mean - min_mean
         bar_height = size_factor * mean_range
 
-        # Store the items on the axes before adding the bar
         old_items = set(ax.get_children())
 
-        # Draw the bar
         bar = ax.barh(bar_y, mean_duration, xerr=sem_duration, height=bar_height, color=self.graph_settings_container_instance.selected_bar_fill_color,
                       edgecolor=self.graph_settings_container_instance.selected_bar_border_color, alpha=0.5,
                       error_kw={'ecolor': self.graph_settings_container_instance.selected_bar_sem_color, 'capsize': 5})
 
-        # Store the items on the axes after adding the bar
         new_items = set(ax.get_children())
 
         # The new items (the bar and its error bars) are those that are in new_items but not in old_items
         self.bar_items = list(new_items - old_items)
 
-        # Redraw the axes
         self.figure_canvas.draw_idle()
 
     def refresh_graph(self):
         """Redraw the graph based on current settings."""
-        # Clear existing graph
         self.ax.clear()
 
-        # Redraw the graph
         self.plot_full_trace(self.ax)
 
-        # Refresh the canvas
         self.figure_canvas.draw()
 
     def handle_behaviour_change(self, *args, **kwargs):
         """Handle the behaviour change event."""
         selected_behaviour = self.graph_settings_container_instance.selected_behaviour_to_zero.get()
-        # Check if the zero_x_axis_checkbox is checked
         if self.graph_settings_container_instance.zero_x_axis_checkbox_var.get() == 1 and (not selected_behaviour or selected_behaviour.strip() == ""):
             return
 
-        # Redraw the plot or refresh the app display
         self.handle_figure_display_selection(None)
 
     def handle_zeroing(self, behaviours, start_times_min, end_times_min, converted_time_data):
@@ -3768,10 +3564,8 @@ class DataProcessingSingleInstance(ttk.Frame):
         time_unit = self.graph_settings_container_instance.time_unit_menu.get()
         time_factor = self.get_time_scale(time_unit)
 
-        # Make a copy of the converted_time_data to work with
         adjusted_time = converted_time_data.copy()
 
-        # Adjust behavior times based on the selected behaviour
         adjusted_df = self.adjust_behavior_times(
             behaviours, start_times_min, end_times_min, selected_behaviour)
 
@@ -3782,27 +3576,24 @@ class DataProcessingSingleInstance(ttk.Frame):
         adjusted_start_times_min = adjusted_df['Adjusted Start Time'].tolist()
         adjusted_end_times_min = adjusted_df['Adjusted End Time'].tolist()
 
-        # Calculate zero time based on the selected behaviour
         selected_behaviour_index = behaviours.index(selected_behaviour)
         zero_time = self.original_start_times_min[selected_behaviour_index] * time_factor
 
-        # Adjust the converted time data based on the zeroing, ensuring correct units
         adjusted_time -= zero_time
 
-        # Apply any additional offset based on the data being already adjusted or z-scoring
         if self.data_already_adjusted:
             if self.first_offset_time is None:
                 self.first_offset_time = float(self.data_selection_frame.baseline_start_entry.get(
-                )) / 60.0  # Convert seconds to minutes
+                )) / 60.0
             current_offset_time = float(self.data_selection_frame.baseline_start_entry.get(
-            )) / 60.0  # Convert seconds to minutes
+            )) / 60.0
             offset_time = (current_offset_time -
                            self.first_offset_time) * time_factor
             adjusted_time += offset_time
 
         elif self.checkbox_state and self.figure_display_dropdown.get() == "Z-scored data":
             offset_time = (float(self.data_selection_frame.baseline_start_entry.get(
-            )) / 60.0) * time_factor  # Convert seconds to minutes
+            )) / 60.0) * time_factor
             adjusted_time += offset_time
 
         return adjusted_start_times_min, adjusted_end_times_min, adjusted_time
@@ -3828,13 +3619,11 @@ class DataProcessingSingleInstance(ttk.Frame):
                 f"Selected behaviour {selected_behaviour} not found or checkbox not active.")
             return  # Return if behavior not found or checkbox is not active
 
-        # Adjust the start and end times
         adjusted_start_times_min = [time_val -
                                     onset_time for time_val in start_times_min]
         adjusted_end_times_min = [
             time_val - onset_time if time_val is not None else None for time_val in end_times_min]
 
-        # Create a DataFrame with the adjusted times
         adjusted_df = pd.DataFrame({
             'Behaviour Name': behaviours,
             'Adjusted Start Time': adjusted_start_times_min,
@@ -3848,7 +3637,6 @@ class DataProcessingSingleInstance(ttk.Frame):
 
     def save_image(self):
         """Saves the current figure to a file, applying user-defined font and label settings."""
-        # Get current labels from the figure
         current_xlabel = self.fig.axes[0].get_xlabel()
         current_ylabel = self.fig.axes[0].get_ylabel()
 
@@ -3861,25 +3649,21 @@ class DataProcessingSingleInstance(ttk.Frame):
             'xtick_fontsize')
         ytick_fontsize = self.export_options_container.font_settings.get(
             'ytick_fontsize')
-        # Assuming self.graph_settings exists and is properly initialized
         y_axis_name = self.export_options_container.font_settings.get(
             'y_axis_name', '')
         y_label_to_use = y_axis_name if y_axis_name else current_ylabel
 
-        # Retrieve height and width from entries
         height_str = self.export_options_container.height_entry.get().strip()
         width_str = self.export_options_container.width_entry.get().strip()
         fig_copy = copy.deepcopy(self.fig)
 
-        # Only set figure size if both height and width are provided
         if height_str and width_str:
             try:
                 height = float(height_str)
                 width = float(width_str)
-                # Set figure size based on the user input
                 fig_copy.set_size_inches(width, height)
             except ValueError:
-                # If conversion fails, possibly log or alert the user, but proceed to save with default size
+                # If conversion fails, proceed to save with default size
                 print("Invalid height or width. Using default figure size.")
 
         fig_width, fig_height = fig_copy.get_size_inches()
@@ -3898,11 +3682,9 @@ class DataProcessingSingleInstance(ttk.Frame):
             'xtick_fontsize')
         ytick_fontsize = self.export_options_container.font_settings.get(
             'ytick_fontsize')
-        # Assuming self.graph_settings exists and is properly initialized
         y_axis_name = self.export_options_container.font_settings.get(
             'y_axis_name', '')
 
-        # Apply the calculated font size
         fig_copy.axes[0].set_xlabel(current_xlabel, fontsize=int(
             xlabel_fontsize) if xlabel_fontsize else default_font_size)
         fig_copy.axes[0].set_ylabel(y_label_to_use, fontsize=int(
@@ -3915,12 +3697,10 @@ class DataProcessingSingleInstance(ttk.Frame):
         fig_copy.tight_layout()
 
         selected_format = self.export_options_container.image_format_combobox.get().lower()
-        # Get the DPI value from the entry box
         dpi = int(self.export_options_container.dpi_entry.get())
-        file_path = self.file_path_var.get()  # Get the file path
+        file_path = self.file_path_var.get() 
         figure_display = self.figure_display_dropdown.get()
 
-        # If figure display type is "Behaviour Mean and SEM", add the behaviour choice to the base name
         if figure_display == "Behaviour Mean and SEM":
             behaviour_choice = self.behaviour_choice_graph.get()
             base_name = f'''{self.mouse_name}_{
@@ -3932,18 +3712,15 @@ class DataProcessingSingleInstance(ttk.Frame):
             base_name, _ = os.path.splitext(os.path.basename(
                 file_path))  # Extract base name from file path
 
-        # Create "exported images" folder within the directory the data file came from
         dir_name = os.path.dirname(file_path)
         exported_images_dir = os.path.join(
             dir_name, f"exported_images_{self.mouse_name}")
-        # Creates the directory if it doesn't exist
         os.makedirs(exported_images_dir, exist_ok=True)
 
         # Add a simpler timestamp to the base name (just date)
         timestamp = datetime.datetime.now().strftime("%b%d_%H%M")  # Oct23_1530 format
         base_name = f"{base_name}_{timestamp}"
 
-        # Check if file already exists. If it does, add a suffix
         counter = 1
         original_base_name = base_name
 

@@ -143,7 +143,6 @@ class AppSettingsManager:
 
     def save_values_from_gui(self):
         """Save the values from the GUI to the settings."""
-        # Save values from GUI to settings
         self.selected_photometry_line_width = self.graph_settings_container_instance.selected_photometry_line_width.get()
         self.box_height_factor = self.graph_settings_container_instance.box_height_entry.get()
         self.alpha = self.graph_settings_container_instance.alpha_entry.get()
@@ -204,7 +203,7 @@ class AppSettingsManager:
             'duration_box_placement': self.duration_box_placement,
             'display_duration_box_var': self.display_duration_box_var.get(),
             'num_instances_box_var': self.num_instances_box_var.get(),
-            'behaviour_colors': {}  # Initialize this key to avoid KeyError
+            'behaviour_colors': {}
         }
         behaviour_colors = getattr(self, 'behaviour_colors', {})
 
@@ -308,7 +307,6 @@ class AppSettingsManager:
             if hasattr(self, key):
                 current_attribute = getattr(self, key)
                 if isinstance(current_attribute, tk.BooleanVar):
-                    # Update the BooleanVar with the value from settings
                     current_attribute.set(value)
                 elif key == 'behaviour_colors':
                     # Special handling for 'behaviour_colors'

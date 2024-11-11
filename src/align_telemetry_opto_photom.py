@@ -37,7 +37,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - parent: The parent widget.
         - **kwargs: Additional keyword arguments.
         """
-        # Define custom styles for ttk widgets
         style = ttk.Style()
         style.configure('Custom.TFrame', background='snow')
         style.configure('Bordered.TFrame', background='snow',
@@ -48,7 +47,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                         troughcolor="lightgray", gripcount=0)
         style.configure("NoBorder.TFrame", background="snow",
                         borderwidth=0, padding=0)
-        # Set the background color here
         style.configure("CustomNotebook.TNotebook", background="snow")
         style.configure("Custom.TMenubutton", background='snow', width=10, font=('Helvetica', 8), bd=1, relief="solid",
                         indicatoron=True)
@@ -57,7 +55,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         self.parent = parent
 
-        # Data storage for table
         self.table_data = []
         self.table_treeview = None
         self.tables = {}
@@ -243,18 +240,15 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.export_options_tab.grid_rowconfigure(0, weight=1)
         self.export_options_tab.grid_columnconfigure(0, weight=1)
 
-        # Create tabs
         self.graph_tab = ttk.Frame(self.notebook_graphs)
         self.table_tab = ttk.Frame(self.notebook_graphs)
 
-        # Add tabs to notebook
         self.notebook_graphs.add(self.graph_tab, text="Graph")
         self.notebook_graphs.add(self.table_tab, text="Table")
 
         self.create_graphs_container(self.graph_tab)
         self.create_table_container(self.table_tab)
 
-        # Configure row and column weights for the frames
         self.graph_tab.grid_rowconfigure(0, weight=1)
         self.graph_tab.grid_columnconfigure(0, weight=1)
         self.table_tab.grid_rowconfigure(0, weight=1)
@@ -276,17 +270,14 @@ class MenopauseDataProcessingApp(ttk.Frame):
         style.configure("Treeview.Heading", relief="flat", borderwidth=0)
         style.map('Treeview.Heading', background=[('', 'grey')])
 
-        # Create the table container frame
         table_container_frame = ttk.Frame(frame, style='NoBorder.TFrame')
         table_container_frame.grid(
             row=0, column=0, columnspan=3, padx=10, pady=10, sticky=tk.NSEW)
 
-        # Create a horizontal scrollbar for the table, linked to the canvas
         table_hscrollbar = ttk.Scrollbar(
             table_container_frame, orient=tk.HORIZONTAL)
         table_hscrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # Add a vertical scrollbar for the canvas
         self.table_vscrollbar = ttk.Scrollbar(
             table_container_frame, orient="vertical")
         self.table_vscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -295,7 +286,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                                       yscrollcommand=self.table_vscrollbar.set, height=430)
         self.table_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Create a frame inside the canvas to hold the Treeview
         table_scroll_frame = ttk.Frame(self.table_canvas)
         self.table_canvas.create_window(
             (0, 0), window=table_scroll_frame, anchor='nw')
@@ -312,7 +302,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         table_scroll_frame.bind("<Configure>", configure_scroll_region)
 
-        # Setup the Treeview widget
         columns = ['file_name', 'number_of_peaks', 'pre_cluster_time',
                    'post_cluster_time', 'bin_size', 'start_time', 'end_time']
         column_headings = {
@@ -325,21 +314,17 @@ class MenopauseDataProcessingApp(ttk.Frame):
             'end_time': 'End time'
         }
 
-        # Create the Treeview inside the scrollable frame
         self.table_treeview = ttk.Treeview(table_scroll_frame,
                                            columns=columns,
                                            show='headings', name='treeview')
 
-        # Set the height of the table
         table_height = 30
         self.table_treeview.configure(height=table_height)
         self.table_treeview.pack(fill=tk.BOTH, expand=True)
 
-        # Create a new style derived from the original Treeview for even rows
         self.table_treeview.tag_configure('Even', background='white')
         self.table_treeview.tag_configure('Odd', background='lightgray')
 
-        # Define table columns
         for column in columns:
             heading_text = column_headings.get(
                 column, column.capitalize().replace('_', ' '))
@@ -353,7 +338,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         table_hscrollbar.configure(command=self.table_canvas.xview)
         self.table_vscrollbar.configure(command=self.table_treeview.yview)
 
-        # Configure row and column weights to make the frame expand
         table_container_frame.grid_rowconfigure(0, weight=1)
         table_container_frame.grid_columnconfigure(0, weight=1)
 
@@ -412,7 +396,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
         - None
         """
-        # Graphs container frame
         graphs_container_frame = ttk.Frame(
             frame, style='NoBorder.TFrame', borderwidth=2, relief='solid')
         graphs_container_frame.grid(
@@ -420,7 +403,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         graphs_container_frame.columnconfigure(0, weight=1)
         graphs_container_frame.rowconfigure(0, weight=1)
 
-        # Initialize the First Dropdown
         self.display_choices = ["Full Trace Display",
                                 "Single Cluster Display", "Mean Cluster Display"]
         self.selected_display = tk.StringVar(value=self.display_choices[0])
@@ -432,7 +414,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             row=0, column=1, padx=5, pady=5, sticky=tk.W)
         self.display_dropdown.configure(state=tk.DISABLED)
 
-        # Dropdown for Day Period
         self.selected_period = tk.StringVar(value="Full")
         self.period_dropdown = ttk.Combobox(graphs_container_frame, state="readonly", values=[
                                             "Full", "Day", "Night"], textvariable=self.selected_period, width=10)
@@ -441,7 +422,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.period_dropdown.grid(row=0, column=2, padx=5, pady=5, sticky=tk.W)
         self.period_dropdown.configure(state=tk.DISABLED)
 
-        # Initialize the Cluster Dropdown
         self.selected_cluster = tk.StringVar(value="")
         self.cluster_dropdown = ttk.Combobox(
             graphs_container_frame, state="readonly", textvariable=self.selected_cluster, width=30)
@@ -449,16 +429,13 @@ class MenopauseDataProcessingApp(ttk.Frame):
             "<<ComboboxSelected>>", self.on_cluster_selection_changed)
         self.cluster_dropdown.grid(
             row=0, column=3, padx=5, pady=5, sticky=tk.W)
-        # Disable the dropdown initially
         self.cluster_dropdown.configure(state=tk.DISABLED)
 
-        # Create button for label settings
         self.label_settings_button = tk.Button(graphs_container_frame, text="Peak & Cluster Settings",
                                                command=self.open_label_settings_popup, bg='lightblue')
         self.label_settings_button.grid(
             row=0, column=0, padx=5, pady=5, sticky=tk.W)
 
-        # Create a canvas to display the graphs
         self.graph_canvas = tk.Canvas(
             graphs_container_frame, bg='snow', highlightthickness=1)
         self.graph_canvas.grid(row=1, column=0, columnspan=4, sticky=tk.NSEW)
@@ -567,7 +544,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         processed_data, raw_data = self.extract_and_prepare_temp_and_act_data(
             longest_pre_peak, longest_post_peak, cluster_number)
 
-        # Store the processed data for each period (full, day, night) in the mean_cluster_data
         self.mean_cluster_data[cluster_number] = {
             "full": {
                 "mean_temp_data": processed_data['full']['temp'],
@@ -633,17 +609,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - cluster_number: The number of the cluster to export data for.
         - output_filepath: The file path where the Excel file will be saved.
         """
-        # Retrieve data from the class attribute
         mean_temp_data = self.mean_cluster_data[cluster_number]["mean_temp_data"]
         mean_act_data = self.mean_cluster_data[cluster_number]["mean_act_data"]
-
-        # Add an empty column to the temp data for the gap
         mean_temp_data['gap'] = ''
 
-        # Concatenate temp and act data side by side with a gap column in between
         combined_data = pd.concat([mean_temp_data, mean_act_data], axis=1)
 
-        # Write combined data to Excel
         with pd.ExcelWriter(output_filepath, engine='openpyxl') as writer:
             combined_data.to_excel(
                 writer, sheet_name=f"Cluster_{cluster_number}_Raw", index=False)
@@ -657,7 +628,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """
         unique_peak_counts = set()
         for cluster_key in self.cluster_dict.keys():
-            # Assuming the third element is the peak count
             peak_count = cluster_key[2]
             unique_peak_counts.add(peak_count)
 
@@ -687,11 +657,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Parameters:
         - updated_clusters: List of clusters that have been updated (default is None).
         """
-        # Extract unique peak counts and stim counts using the methods provided
         unique_peak_counts = self.get_peak_counts()
         unique_stim_counts = self.get_stim_counts()
 
-        # If updated_clusters is not None, filter unique_peak_counts and unique_stim_counts to only contain updated clusters
         if updated_clusters is not None:
             updated_peak_counts = set()
             updated_stim_counts = set()
@@ -711,11 +679,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
             unique_stim_counts = [
                 stim_count for stim_count in unique_stim_counts if stim_count in updated_stim_counts]
 
-        # Sort the counts for orderly processing (optional)
         unique_peak_counts = sorted(unique_peak_counts)
         unique_stim_counts = sorted(unique_stim_counts)
 
-        # Compute data for peak clusters
         for peak_count in unique_peak_counts:
             if updated_clusters is not None:
                 self.compute_data_for_cluster(
@@ -723,7 +689,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             else:
                 self.compute_data_for_cluster(peak_count)
 
-        # Compute data for stim clusters
         for stim_count in unique_stim_counts:
             if updated_clusters is not None:
                 self.compute_data_for_stim_cluster(
@@ -741,14 +706,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """
         cluster_number = selected_stim_count
 
-        # Process temp and act data for stims
         processed_data, raw_data = self.extract_and_prepare_temp_and_act_data_for_stim(
             cluster_number)
 
         def convert_seconds_to_minutes(seconds):
             return [s / 60 for s in seconds]
 
-        # Store the processed data for each period (full, day, night) in the mean_cluster_data
         self.mean_cluster_data[cluster_number] = {
             "full": {
                 "mean_temp_data": processed_data['full']['temp'],
@@ -800,7 +763,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """
         pre_stim_time, post_stim_time = 0, 0
 
-        # Search for the first instance of the specified stim_number
         for _, stim_dict in self.data_dict.items():
             for cluster_key, cluster_vals in stim_dict.items():
                 if f"{stim_number}_stim" in cluster_key:
@@ -831,19 +793,16 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         all_clusters = []
 
-        # Filter the clusters based on the stim_number and also check if they have the 'time_period' key
         for file_path, clusters in self.data_dict.items():
             for cluster_key, cluster_data in clusters.items():
                 if 'stim' in cluster_key and int(re.search(r'(\d+)_stim', cluster_key).group(1)) == stim_number and 'time_period' in cluster_data:
                     all_clusters.append(cluster_data)
 
-        # Separate into daytime and nighttime clusters
         daytime_clusters = [
             cluster for cluster in all_clusters if cluster['time_period'] == 'Day']
         nighttime_clusters = [
             cluster for cluster in all_clusters if cluster['time_period'] == 'Night']
 
-        # Initialize dictionaries to hold the processed data
         processed_data = {
             'full': {'temp': None, 'act': None},
             'day': {'temp': None, 'act': None},
@@ -856,22 +815,18 @@ class MenopauseDataProcessingApp(ttk.Frame):
             'night': {'temp': None, 'act': None}
         }
 
-        # Call find_stim_times to get start and end times for stim
         stim_times = self.find_stim_times(stim_number)
         if stim_times is None:
-            return processed_data, raw_data  # No stim times found, return empty data
+            return processed_data, raw_data
 
-        # Process each dataset
         for period, clusters in [('full', all_clusters), ('day', daytime_clusters), ('night', nighttime_clusters)]:
 
-            # Check if there are clusters to process
             if not clusters:
                 continue  # Skip to the next period if there are no clusters
 
             all_temp_data, all_act_data = self.process_data_for_clusters(
                 clusters, stim_times[0], stim_times[1], is_stim=True)
 
-            # Create universal time axes
             axis_time_start = -stim_times[0] * 60
             axis_time_end = stim_times[1] * 60
             universal_time_axis_temp = self.create_universal_time_axis(
@@ -879,34 +834,27 @@ class MenopauseDataProcessingApp(ttk.Frame):
             universal_time_axis_act = self.create_universal_time_axis(
                 axis_time_start, axis_time_end, self.act_sample_rate)
 
-            # Trim data to the minimum length
             all_temp_data = self.trim_data_to_minimum_length(all_temp_data)
             all_act_data = self.trim_data_to_minimum_length(all_act_data)
 
-            # Align and concatenate data
             concatenated_temp_data = self.align_and_concatenate_data(
                 all_temp_data, universal_time_axis_temp)
             concatenated_act_data = self.align_and_concatenate_data(
                 all_act_data, universal_time_axis_act)
 
-            # For concatenated_temp_data
             concatenated_temp_data = concatenated_temp_data.iloc[::-1].dropna(
                 how='all').iloc[::-1]
 
-            # For concatenated_act_data
             concatenated_act_data = concatenated_act_data.iloc[::-1].dropna(
                 how='all').iloc[::-1]
 
-            # Calculate mean and SEM
             final_temp_data = self.calculate_mean_and_sem(
                 concatenated_temp_data)
             final_act_data = self.calculate_mean_and_sem(concatenated_act_data)
 
-            # Store the processed data
             processed_data[period]['temp'] = final_temp_data
             processed_data[period]['act'] = final_act_data
 
-            # Store the raw data
             raw_data[period]['temp'] = concatenated_temp_data
             raw_data[period]['act'] = concatenated_act_data
 
@@ -923,7 +871,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - bool: True if any of the specified fields in cluster_data are empty, False otherwise.
         """
         if cluster_data is None:
-            return True  # Treat None as having empty inputs
+            return True
 
         fields_to_check = ['pre_cluster_time', 'post_cluster_time', 'bin_size']
         return any(not cluster_data[field] for field in fields_to_check)
@@ -942,19 +890,15 @@ class MenopauseDataProcessingApp(ttk.Frame):
             re.search(r'(\d+)', selected_cluster_string).group(1))
         is_peak = 'peak' in selected_cluster_string.lower()
 
-        # Access the relevant cluster data based on extracted count and period
         cluster_data = self.mean_cluster_data[cluster_count][period]
 
-        # Get photometry data
         photometry_data = cluster_data.get("photometry_cluster_data")
 
-        # Check if photometry data is present, only display no data figure if it's a peak data request
         if is_peak and photometry_data is None:
             self.display_no_data_figure()
             return
 
         else:
-            # Call the plot function based on the type of data (peak or stim)
             if is_peak:
                 self.plot_mean_cluster(
                     cluster_data["mean_temp_data"],
@@ -966,28 +910,24 @@ class MenopauseDataProcessingApp(ttk.Frame):
                     cluster_data["mean_temp_data"],
                     cluster_data["mean_act_data"],
                     photometry_data,
-                    cluster_count  # Assuming cluster_count is equivalent to selected_stim_count
+                    cluster_count
                 )
 
     def display_no_data_figure(self):
         """Display a figure indicating that no clusters are present in the selected time period."""
         self.delete_current_figure()
 
-        # Create a blank figure
         fig, ax = plt.subplots(figsize=(6, 4))
 
-        # Add text in the middle of the figure
         ax.text(0.5, 0.5, 'No clusters in time period',
                 horizontalalignment='center',
                 verticalalignment='center',
                 transform=ax.transAxes,
                 fontsize=12)
 
-        # Remove axes for a clean look
         ax.set_xticks([])
         ax.set_yticks([])
 
-        # Embed the figure in the canvas
         self.embed_figure_in_canvas(fig, self.graph_canvas)
 
     def find_longest_times(self, cluster_number):
@@ -1005,7 +945,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         for _, cluster_dict in self.data_dict.items():
             for cluster_name, cluster_data in cluster_dict.items():
-                # Validate cluster based on the number of peaks
                 if f"{cluster_number} Peak" in cluster_name or f"{cluster_number} Peaks" in cluster_name:
 
                     peak_time = cluster_data['peaks'][cluster_data['alignment_index']]
@@ -1044,9 +983,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
             float: The calculated sample rate.
         """
-        # Check the type of the first timestamp
         if isinstance(timestamps[0], datetime):
-            # Extract just the time part from the datetime
             times = [timestamp.time() for timestamp in timestamps]
 
             # Calculate differences in seconds between successive timestamps
@@ -1056,13 +993,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 for i in range(len(times) - 1)
             ]
         else:
-            # Assume timestamps are float and calculate differences directly
             time_diffs = [
                 timestamps[i + 1] - timestamps[i]
                 for i in range(len(timestamps) - 1)
             ]
 
-        # Average the differences to get the sample rate
         return sum(time_diffs) / len(time_diffs)
 
     def separate_clusters_by_time_period(self):
@@ -1079,7 +1014,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         nighttime_clusters = []
         all_clusters = []
 
-        # Assuming self.data_dict has the necessary 'time_period' annotation
         for _, cluster_dict in self.data_dict.items():
             for _, cluster_data in cluster_dict.items():
                 all_clusters.append(cluster_data)
@@ -1112,7 +1046,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
             universal_start_time = stim_start - longest_pre_peak
             universal_end_time = stim_end + longest_post_peak
             cluster_name = f"{cluster_data['cluster_size']}_stim_cluster_{time_period}"
-            peak_time = stim_start  # Use stim start as the reference time for trimming
+            peak_time = stim_start
 
         else:
             peak_time = cluster_data['peaks'][cluster_data['alignment_index']]
@@ -1178,13 +1112,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
             pd.DataFrame: The original DataFrame with added columns for the calculated mean and SEM.
         """
-        # Select columns to include in the calculation, excluding the first column
         data_for_calculation = concatenated_data.iloc[:, 1:]
 
         mean_data = data_for_calculation.mean(axis=1)
         sem_data = data_for_calculation.sem(axis=1).fillna(0)
 
-        # Add the calculated mean and SEM back to the original DataFrame
         concatenated_data['Mean'] = mean_data
         concatenated_data['SEM'] = sem_data
 
@@ -1231,17 +1163,14 @@ class MenopauseDataProcessingApp(ttk.Frame):
             two tuples: Processed data and raw data dictionaries for 'full', 'day', and 'night' periods.
                 Each dictionary contains 'temp' and 'act' keys with corresponding data.
         """
-        # Filter the clusters based on the cluster_number and also check if they have the 'time_period' key
         all_clusters = [cluster_data for cluster_key, cluster_data in self.cluster_dict.items()
                         if cluster_key[2] == cluster_number and 'time_period' in cluster_data]
 
-        # Separate into daytime and nighttime clusters
         daytime_clusters = [
             cluster for cluster in all_clusters if cluster['time_period'] == 'Day']
         nighttime_clusters = [
             cluster for cluster in all_clusters if cluster['time_period'] == 'Night']
 
-        # Initialize dictionaries to hold the processed data
         processed_data = {
             'full': {'temp': None, 'act': None},
             'day': {'temp': None, 'act': None},
@@ -1254,16 +1183,13 @@ class MenopauseDataProcessingApp(ttk.Frame):
             'night': {'temp': None, 'act': None}
         }
 
-        # Process each dataset
         for period, clusters in [('full', all_clusters), ('day', daytime_clusters), ('night', nighttime_clusters)]:
-            # Check if there are clusters to process
             if not clusters:
-                continue  # Skip to the next period if there are no clusters
+                continue
 
             all_temp_data, all_act_data = self.process_data_for_clusters(
                 clusters, longest_pre_peak, longest_post_peak)
 
-            # Ensure there are data objects to concatenate
             if not all_temp_data or all(all_temp.empty for all_temp in all_temp_data):
                 print(
                     f"No temperature data to concatenate for period: {period}")
@@ -1272,7 +1198,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 print(f"No activity data to concatenate for period: {period}")
                 continue
 
-            # Create universal time axes
             axis_time_start = -longest_pre_peak * 60
             axis_time_end = longest_post_peak * 60
 
@@ -1281,17 +1206,14 @@ class MenopauseDataProcessingApp(ttk.Frame):
             universal_time_axis_act = self.create_universal_time_axis(
                 axis_time_start, axis_time_end, self.act_sample_rate)
 
-            # Trim data to the minimum length
             all_temp_data = self.trim_data_to_minimum_length(all_temp_data)
             all_act_data = self.trim_data_to_minimum_length(all_act_data)
 
-            # Align and concatenate data
             concatenated_temp_data = self.align_and_concatenate_data(
                 all_temp_data, universal_time_axis_temp)
             concatenated_act_data = self.align_and_concatenate_data(
                 all_act_data, universal_time_axis_act)
 
-            # Ensure concatenated data is not empty
             if concatenated_temp_data.empty:
                 print(
                     f"Concatenated temperature data is empty for period: {period}")
@@ -1301,24 +1223,19 @@ class MenopauseDataProcessingApp(ttk.Frame):
                     f"Concatenated activity data is empty for period: {period}")
                 continue
 
-            # For concatenated_temp_data
             concatenated_temp_data = concatenated_temp_data.iloc[::-1].dropna(
                 how='all').iloc[::-1]
 
-            # For concatenated_act_data
             concatenated_act_data = concatenated_act_data.iloc[::-1].dropna(
                 how='all').iloc[::-1]
 
-            # Calculate mean and SEM
             final_temp_data = self.calculate_mean_and_sem(
                 concatenated_temp_data)
             final_act_data = self.calculate_mean_and_sem(concatenated_act_data)
 
-            # Store the processed data
             processed_data[period]['temp'] = final_temp_data
             processed_data[period]['act'] = final_act_data
 
-            # Store the raw data
             raw_data[period]['temp'] = concatenated_temp_data
             raw_data[period]['act'] = concatenated_act_data
 
@@ -1369,7 +1286,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         min_length_after_alignment = float('inf')
 
         for df in all_data:
-            # Check if 'Time (min)' column exists and if df is not empty
             if 'Time (min)' in df.columns and not df.empty:
                 aligned_df = pd.DataFrame({'Time (s)': universal_time_axis})
 
@@ -1380,7 +1296,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 num_points_to_insert = min(
                     len(df) - start_idx, len(aligned_df))
 
-                # Extract source data
                 source_data = df.iloc[start_idx:start_idx +
                                       num_points_to_insert, df.columns.get_loc('Data')].values
 
@@ -1395,7 +1310,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 aligned_df = aligned_df.rename(
                     columns={'Data': df['Cluster Name'].iloc[0]})
 
-                # Update min_length_after_alignment
                 num_points_after_start = len(df) - start_idx
                 min_length_after_alignment = min(
                     min_length_after_alignment, num_points_after_start)
@@ -1404,13 +1318,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
             else:
                 print("DataFrame is empty or 'Time (min)' column is missing.")
-                continue  # Skip this DataFrame
+                continue
 
-            # Trim the universal_time_axis to the length of the shortest DataFrame after alignment
         min_length = min(min_length_after_alignment, len(universal_time_axis))
         trimmed_time_axis = universal_time_axis[:min_length]
 
-        # Realign DataFrames with the trimmed time axis
         time_column = pd.DataFrame(trimmed_time_axis, columns=['Time (s)'])
         data_columns = pd.concat(
             [df.loc[:min_length - 1, df.columns[1]] for df in aligned_data], axis=1)
@@ -1476,20 +1388,16 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 processed_data = self.process_photometry_data(
                     extended_truncated_data)
 
-                # Normalize time by subtracting the peak time
                 processed_data.iloc[:, 0] -= peak_time
                 processed_data.set_index(
                     processed_data.columns[0], inplace=True)
 
-                # Reindex to the common time axis
                 aligned_data = processed_data.reindex(
                     common_time_axis, method='nearest', tolerance=0.002).interpolate()
 
-                # Rename the column to the cluster name
                 aligned_data.columns = [cluster_data['name']]
                 cluster_data_frames.append(aligned_data)
 
-            # Concatenate all cluster data frames
             if cluster_data_frames:
                 combined_data = pd.concat(cluster_data_frames, axis=1)
                 combined_data.reset_index(inplace=True)
@@ -1549,7 +1457,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         time_factor = self.get_time_scale(time_unit)
         show_time_of_day = (time_unit == 'time of day')
 
-        # Check and adjust for 'time of day' when not in 'Full Trace Display'
         if self.selected_display.get() != 'Full Trace Display' and show_time_of_day:
             time_factor = self.get_time_scale("minutes")
 
@@ -1570,18 +1477,14 @@ class MenopauseDataProcessingApp(ttk.Frame):
         'testing for calls3'
         self.delete_current_figure()
 
-        # Create a simple figure for the cluster
         fig, ax = plt.subplots(figsize=(6, 4))
 
-        # Get a predefined color palette
         color_palette = cm.get_cmap('Set1')
 
         if self.data_type == 'photometry':
-            # Scale the time column
             scaled_time_column = self.scale_time_column(
                 photometry_cluster_data_df['Time (min)'])
 
-            # Skip the first column (Time)
             for i, cluster_name in enumerate(photometry_cluster_data_df.columns[1:]):
                 color = color_palette(i % 10)
                 ax.plot(scaled_time_column, photometry_cluster_data_df[cluster_name], label=cluster_name, color=color,
@@ -1620,10 +1523,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
                                        0], ax.get_ylim()[1], sem_act_data)
 
         if self.data_type == 'optogenetics':
-            # add the stims to the plot
             self.add_stims_to_plot(ax, cluster_count)
 
-        # 4. Embed the final figure in the canvas
         self.embed_figure_in_canvas(fig, self.graph_canvas)
 
     def add_stims_to_plot(self, ax, cluster_count):
@@ -1637,33 +1538,27 @@ class MenopauseDataProcessingApp(ttk.Frame):
         if self.stim_timings is None:
             return
 
-        # Get the current y-axis limits to use them as bounds for the shaded regions
         ymin, ymax = ax.get_ylim()
 
-        # Find the stimulations for the given cluster count
         stim_cluster = next(
             (timings for size, timings in self.stim_timings if size == cluster_count), None)
         if not stim_cluster:
-            return  # No stimulations found for the given cluster count
+            return
 
-        # Determine the start time of the first stimulation in the cluster
         cluster_start_time = stim_cluster[0][0]
 
         for stim_start, stim_end in stim_cluster:
             time_unit = self.graph_settings_container_instance.time_unit_menu.get()
             time_factor = self.get_time_scale(time_unit)
 
-            # Adjust start and end times relative to the cluster start time
             adjusted_stim_start = (
                 stim_start - cluster_start_time) * time_factor
             adjusted_stim_end = (stim_end - cluster_start_time) * time_factor
 
-            # Add a rectangle to represent the stimulation period
             rect = plt.Rectangle(
                 (adjusted_stim_start, ymin), adjusted_stim_end - adjusted_stim_start, ymax - ymin, color='blue', alpha=0.3)
             ax.add_patch(rect)
 
-        # Ensure the y-axis limits remain the same
         ax.set_ylim(ymin, ymax)
 
     def populate_static_input_dropdown(self):
@@ -1686,7 +1581,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         if options:
             self.static_inputs_frame.selected_behaviour.set(
-                options[0])  # Set to the first item in the list
+                options[0])
 
         self.static_inputs_frame.behaviour_dropdown.configure(
             state=tk.NORMAL if options else tk.DISABLED)
@@ -1697,7 +1592,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             self.top_frame,
             settings_manager=self.settings_manager,
             figure_display_callback=self.reset_clusters_based_on_user_input,
-            # Pass the method from this class
             new_data_file_callback=self.handle_new_data_file
         )
         self.data_selection_frame.grid(
@@ -1706,7 +1600,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.behaviour_input_frame = BehaviourInputFrame(
             self.top_frame,
             select_column_names_callback=self.select_column_names,
-            # Make sure this is provided correctly
             select_event_file_callback=self.select_behaviour_file,
         )
         self.behaviour_input_frame.grid(
@@ -1752,7 +1645,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.temp_and_act_start_time_entry.grid(
             row=2, column=1, padx=5, pady=(10, 5))
 
-        # Add label and entry for minimum time between peaks for a cluster
         self.adjust_clustering_label = tk.Label(self.behaviour_input_frame, text="Adjust clustering minimum time between clusters (s):", bg='snow',
                                                 font=('Helvetica', 10),
                                                 wraplength=120)
@@ -1818,7 +1710,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """
         value = self.adjust_clustering_var.get().strip()
         if value and not self.adjusted:
-            # Show a reminder to the user
             messagebox.showinfo(
                 "Reminder", "After typing into the clustering adjustment please click back into the box and press Enter to apply changes.")
 
@@ -1831,43 +1722,35 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """
         if self.cluster_options_created:
             return
-        # Destroy the existing cluster frame if it already exists
         if destroy_frame:
             if hasattr(self, "cluster_frame"):
                 self.cluster_frame.destroy()
 
-        # Call the canvas setup function
         self.graph_settings_container_instance.setup_canvas()
 
-        # Extract unique cluster sizes and their counts directly from the cluster_dict
         cluster_sizes = [len(cluster_data['peaks'])
                          for cluster_data in self.cluster_dict.values()]
         cluster_size_counts = {size: cluster_sizes.count(
             size) for size in set(cluster_sizes)}
 
-        # Sort by cluster size
         sorted_cluster_sizes = sorted(cluster_size_counts.keys())
 
         self.cluster_checkboxes = {}
         self.cluster_buttons = {}
 
-        # Assuming these dictionaries are not defined yet
-        self.peak_alignment_vars = {}  # To store the peak alignment variables
-        self.cluster_colors = {}  # To store the cluster colors
+        self.peak_alignment_vars = {}
+        self.cluster_colors = {}
 
-        # Create a 'Select All' button
         select_all_button = tk.Button(
             self.graph_settings_container_instance.behaviour_frame, text='Select All', command=self.select_all_clusters)
         select_all_button.grid(row=0, column=1, padx=10,
                                pady=(5, 2), sticky=tk.W)
 
-        # Create a 'Deselect All' button
         deselect_all_button = tk.Button(self.graph_settings_container_instance.behaviour_frame,
                                         text='Deselect All', command=self.deselect_all_clusters)
         deselect_all_button.grid(
             row=0, column=2, padx=10, pady=(5, 2), sticky=tk.W)
 
-        # Create a 'Save peak alignment' button
         save_peak_alignment_button = tk.Button(
             self.graph_settings_container_instance.behaviour_frame, text='Save peak alignment', command=self.save_peak_alignment)
         save_peak_alignment_button.grid(
@@ -1878,13 +1761,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
         cluster_list_label.grid(row=0, column=0, padx=10,
                                 pady=(5, 2), sticky=tk.W)
 
-        # Extract unique cluster sizes directly from cluster_dict
         cluster_sizes = [len(cluster_data['peaks'])
                          for cluster_data in self.cluster_dict.values()]
         self.cluster_display_status = {self.format_cluster_string(
             size): tk.BooleanVar(value=True) for size in set(cluster_sizes)}
 
-        # starting at 1 due to new buttons
         for i, cluster_size in enumerate(sorted_cluster_sizes, start=1):
             cluster_button = tk.Button(
                 self.graph_settings_container_instance.behaviour_frame,
@@ -1894,13 +1775,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
             cluster_button.grid(row=i, column=0, padx=10, pady=5, sticky=tk.W)
             self.cluster_buttons[cluster_size] = cluster_button
 
-            # Create label showing the number of instances of this cluster size
             cluster_count_label = tk.Label(self.graph_settings_container_instance.behaviour_frame, text=str(
                 cluster_size_counts[cluster_size]), bg='snow')
             cluster_count_label.grid(
                 row=i, column=1, padx=10, pady=5, sticky=tk.W)
 
-            # Create checkbox for each cluster size
             cluster_var = self.cluster_display_status[self.format_cluster_string(
                 cluster_size)]
             cluster_checkbox = tk.Checkbutton(self.graph_settings_container_instance.behaviour_frame, variable=cluster_var, command=self.refresh_cluster_options,
@@ -1909,7 +1788,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 row=i, column=2, padx=10, pady=5, sticky=tk.W)
             self.cluster_checkboxes[cluster_size] = cluster_checkbox
 
-            # Add Entry for Peak Alignment
             peak_alignment_var = tk.StringVar(value='1')  # Default value is 1
             peak_alignment_var.trace(
                 'w', lambda *args: self.validate_peak_alignment(cluster_size))
@@ -1928,25 +1806,22 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Raises:
             ValueError: If the alignment peak index specified is not a valid integer.
         """
-        # Iterate through each cluster in cluster_dict
         for (start, end), cluster_data in self.cluster_dict.items():
             peaks = cluster_data['peaks']
-            # Get the index for the alignment peak
             try:
                 # -1 because GUI is 1-indexed, but Python is 0-indexed
                 alignment_peak_index = int(
                     self.peak_alignment_vars[len(peaks)].get()) - 1
             except ValueError:
-                # Handle the case where the entry is not a valid integer
                 print(
                     f"Invalid alignment index for cluster of size {len(peaks)}. Defaulting to the last peak.")
-                alignment_peak_index = -1  # Default to the last peak
+                alignment_peak_index = -1
 
             # Check if the index is in the valid range
             if alignment_peak_index < 0 or alignment_peak_index >= len(peaks):
                 print(
                     f"Invalid alignment index for cluster of size {len(peaks)}. Defaulting to the last peak.")
-                alignment_peak_index = -1  # Default to the last peak
+                alignment_peak_index = -1
 
             # Save the alignment peak index
             self.cluster_dict[(start, end)
@@ -1960,16 +1835,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
         If the specified index exceeds the number of peaks, defaults to the index of the last peak.
         """
         try:
-            # Get the current value
             value = int(self.peak_alignment_vars[cluster_size].get())
-            # Get the maximum possible value
             max_value = cluster_size
 
-            # If the value is out of range, set it to max_value
             if value > max_value:
                 self.peak_alignment_vars[cluster_size].set(str(max_value))
         except ValueError:
-            # If the entry is not a valid integer, set it to 1
             self.peak_alignment_vars[cluster_size].set('1')
 
     def choose_cluster_color(self, cluster_size):
@@ -1988,7 +1859,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """Function to select all clusters."""
         for cluster_size, checkbox in self.cluster_checkboxes.items():
             checkbox.select()
-            # Assuming you have a dictionary like behaviour_display_status for clusters
             self.cluster_display_status[self.format_cluster_string(
                 cluster_size)].set(1)
         self.refresh_cluster_options()
@@ -1997,7 +1867,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """Function to deselect all clusters."""
         for cluster_size, checkbox in self.cluster_checkboxes.items():
             checkbox.deselect()
-            # Assuming you have a dictionary like behaviour_display_status for clusters
             self.cluster_display_status[self.format_cluster_string(
                 cluster_size)].set(0)
         self.refresh_cluster_options()
@@ -2006,11 +1875,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """Refresh the cluster options"""
         for cluster_size in self.cluster_boxes:
             if not self.cluster_display_status[cluster_size].get():
-                # Hide all the boxes associated with the cluster size
                 for box in self.cluster_boxes[cluster_size]:
                     box.set_visible(False)
             else:
-                # Show all the boxes associated with the cluster size
                 for box in self.cluster_boxes[cluster_size]:
                     box.set_visible(True)
 
@@ -2030,14 +1897,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
             np.ndarray: An array containing the indices of the detected peaks.
         """
 
-        # Ensure data_column is a numpy array
         if isinstance(data_column, pd.Series):
             data_column = data_column.values
 
-        # Determine the threshold as 0.3 of the maximum value in the data column
-        threshold = 0.3 * data_column.max()
+        threshold = 0.3 * data_column.max()  # This my need work?
 
-        # Find peaks using the calculated threshold
         peaks, _ = find_peaks(
             data_column, height=threshold, distance=min_distance)
 
@@ -2057,20 +1921,16 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         # TODO add this to the photometry output?
 
-        # Ensure data_column is a numpy array
         if isinstance(data_column, pd.Series):
             data_column = data_column.values
 
-        # Determine the thresholds
         max_value = data_column.max()
         lower_threshold = 0.2 * max_value
         upper_threshold = 0.3 * max_value
 
-        # Find all peaks in the data
         peaks, properties = find_peaks(
             data_column, height=lower_threshold, distance=min_distance)
 
-        # Filter out peaks that are above the upper threshold
         sub_threshold_peaks = peaks[(properties['peak_heights'] >= lower_threshold) & (
             properties['peak_heights'] < upper_threshold)]
 
@@ -2091,42 +1951,36 @@ class MenopauseDataProcessingApp(ttk.Frame):
         median_value = data_column.median()
         mean_value = data_column.mean()
 
-        # Use the mean if the median is zero; otherwise, use the median
         baseline_value = mean_value if median_value == 0 else median_value
 
         baseline_multiplier = float(
             self.baseline_multiplier.get().strip() or 1) - 1
 
-        # Apply the baseline_multiplier to the baseline_value
         end_baseline = baseline_value + \
             (baseline_multiplier * abs(baseline_value))
 
         clusters = []
         start = None
-        # Tracker to ensure that we only start a new cluster after dipping below the median
         was_below_median = True
 
         for i in range(len(data_column)):
             if was_below_median and data_column.iloc[i] > median_value:
-                start = i  # Start a new cluster
-                was_below_median = False  # Reset the flag as we are now in a cluster
+                start = i
+                was_below_median = False
             elif not was_below_median and data_column.iloc[i] <= end_baseline:
                 if start is not None:
-                    clusters.append((start, i))  # End the current cluster
+                    clusters.append((start, i))
                     start = None
-                was_below_median = True  # Ensure we dip below the median before starting a new cluster
+                was_below_median = True
             elif data_column.iloc[i] < median_value:
-                was_below_median = True  # Update the flag if we are below the median
+                was_below_median = True
 
-        # If we end still in a cluster, close it at the end of the data
         if start is not None:
             clusters.append((start, len(data_column) - 1))
 
-        # Filter clusters to ensure they contain at least one peak
         valid_clusters = [cluster for cluster in clusters if any(
             peak in range(cluster[0], cluster[1]) for peak in peak_indices)]
 
-        # Check for user-specified time between clusters
         adjust_clustering_value = self.adjust_clustering_var.get().strip()
         if adjust_clustering_value:
             adjust_clustering_value = float(adjust_clustering_value) / 60
@@ -2137,26 +1991,21 @@ class MenopauseDataProcessingApp(ttk.Frame):
                     time_between_clusters = time_column.iloc[cluster[0]
                                                              ] - time_column.iloc[prev_cluster[1]]
 
-                    # Check if the time between clusters is less than the adjust value
                     if time_between_clusters < adjust_clustering_value:
-                        # If so, merge the current cluster with the previous one
                         merged_cluster = (prev_cluster[0], cluster[1])
-                        # Replace the last cluster with the merged one
                         merged_clusters[-1] = merged_cluster
-                        prev_cluster = merged_cluster  # Update the prev_cluster for the next iteration
+                        prev_cluster = merged_cluster
                     else:
-                        # Otherwise, keep the cluster as it is
                         merged_clusters.append(cluster)
                         prev_cluster = cluster
                 else:
-                    # For the first cluster, simply append it
                     merged_clusters.append(cluster)
                     prev_cluster = cluster
 
             valid_clusters = merged_clusters
 
         cluster_dict = {}
-        cluster_id = 1  # Initialize the cluster ID
+        cluster_id = 1
 
         for cluster in valid_clusters:
             peak_times_within_cluster = [time_column.iloc[peak]
@@ -2174,7 +2023,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                                                 ] - time_column.iloc[cluster[0]]
             peak_count = len(peak_times_within_cluster)
 
-            # Generate a name based on the number of peaks
             if peak_count == 1:
                 cluster_name = f"1 Peak in Cluster_{cluster_id}"
             else:
@@ -2184,7 +2032,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
             key = (cluster[0], cluster[1], peak_count)
 
             cluster_dict[key] = {
-                'name': cluster_name,  # Include the generated name
+                'name': cluster_name,
                 'start_time': time_column.iloc[cluster[0]],
                 'end_time': time_column.iloc[cluster[1]],
                 'peaks': peak_times_within_cluster,
@@ -2194,7 +2042,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 'cluster_duration': cluster_duration,
             }
 
-            cluster_id += 1  # Increment the cluster ID for the next cluster
+            cluster_id += 1
 
         return valid_clusters, cluster_dict
 
@@ -2207,22 +2055,18 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
     def reset_photometry_data(self):
         """Reset and visualize photometry data based on user input."""
-        # Get updated photometry data
         time_column, data_column, detected_peaks, clusters_final, grouped_clusters = self.get_current_photometry_data()
 
-        # Update the object's attributes with the new values
         self.time_column = time_column
         self.data_column = data_column
         self.detected_peaks = detected_peaks
         self.clusters_final = clusters_final
         self.grouped_clusters = grouped_clusters
 
-        # Visualize photometry data with overlays
         self.visualize_photometry_data_with_overlays(self.time_column, self.data_column, self.detected_peaks, self.clusters_final, self.graph_canvas, self.temp_data,
                                                      self.act_data, show_nighttime=True) if self.act_data is not None and self.temp_data is not None else self.visualize_photometry_data_with_overlays(
             self.time_column, self.data_column, self.detected_peaks, self.clusters_final, self.graph_canvas)
 
-        # Populate data dictionary, table, and cluster dropdown
         self.populate_data_dict()
         self.populate_table()
         self.populate_static_input_dropdown()
@@ -2234,13 +2078,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
     def reset_opto_data(self):
         """Reset and visualize optogenetic data based on user input."""
-        # Assuming you have a method to get the current optogenetic data
         self.handle_opto_data_file()
 
-        # Visualize optogenetic data with overlays
         self.visualize_opto_data_with_overlays(show_nighttime=True)
 
-        # Populate data dictionary, table, and cluster dropdown
         self.populate_data_dict()
         self.populate_table()
         self.populate_static_input_dropdown()
@@ -2346,7 +2187,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             night_end_datetime = datetime.combine(
                 recording_date, night_end_time)
 
-            # Adjust night_end_datetime to the next day if it crosses midnight
             if night_end_time < start_time:
                 night_end_datetime += timedelta(days=1)
 
@@ -2357,7 +2197,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
             night_end_minutes = min(night_end_minutes, time_column.iloc[-1])
 
-            # Add the nighttime gray box to the plot
             if night_start_minutes <= time_column.iloc[-1]:
                 ax.axvspan(night_start_minutes, night_end_minutes,
                            color='gray', alpha=0.3, label='Nighttime')
@@ -2372,7 +2211,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         self.display_dropdown.configure(state=tk.NORMAL)
 
-        # Parse the input date
         parsed_date = self.custom_date_parser(target_date)
         formatted_date = parsed_date.strftime('%m/%d/%Y')
 
@@ -2386,7 +2224,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
         else:
             target_time = self.temp_and_act_start_time_var.get().strip()
         print(target_time)
-        # Extract data for the target date
+
         act_data, act_offset, act_previous_time = self.extract_data_for_date_and_offset(
             act_file_path, self.mouse_name, formatted_date, target_time)
         temp_data, temp_offset, temp_previous_time = self.extract_data_for_date_and_offset(
@@ -2395,7 +2233,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         act_timestamps_5_to_10 = act_data["Date Time"].iloc[4:10].tolist()
         temp_timestamps_5_to_10 = temp_data["Date Time"].iloc[4:10].tolist()
 
-        # Calculate the sample rate
         temp_sample_rate = self.calculate_sample_rate(temp_timestamps_5_to_10)
         act_sample_rate = self.calculate_sample_rate(act_timestamps_5_to_10)
 
@@ -2407,15 +2244,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         self.temp_sample_rate = temp_sample_rate
 
-        # Extract and trim temp data for the main duration
         trimmed_temp_df = self.extract_and_trim_data(
             temp_data, temp_previous_time, temp_offset, duration_main_data, temp_sample_rate, 'temp')
 
-        # Extract and trim act data for the main duration
         trimmed_act_df = self.extract_and_trim_data(
             act_data, act_previous_time, act_offset, duration_main_data, act_sample_rate, 'act')
 
-        # Extract extended data using the extended_duration
         self.extended_temp_data = self.extract_data_with_buffer(
             temp_data, temp_previous_time, temp_offset, extended_duration, temp_sample_rate)
 
@@ -2424,14 +2258,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         # TODO FIX THIS
 
-        # Make global variables for the temp and act data have trimmed data
         self.act_data = trimmed_act_df
         self.temp_data = trimmed_temp_df
 
         self.calculate_nighttime_period()
 
         if self.data_type == "photometry":
-            # Annotate each cluster with the time period it occurs in
             self.annotate_clusters_with_time_period()
 
             self.precompute_all_clusters()
@@ -2478,10 +2310,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Redraw the graph with updated photometry data and overlays.
         """
         if self.data_type == "photometry":
-            # Retrieve the updated data
             time_column, data_column, detected_peaks, clusters_final, _ = self.get_current_photometry_data()
 
-            # Call visualize_data_with_overlays with the updated dataset
             if self.act_data is not None and self.temp_data is not None:
                 self.visualize_photometry_data_with_overlays(time_column, data_column, detected_peaks, clusters_final, self.graph_canvas, self.temp_data, self.act_data,
                                                              show_nighttime=True)
@@ -2522,11 +2352,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.embed_figure_in_canvas(fig, graph_canvas)
 
     def find_time_column(self, dataframe):
-        # Search for a column name that starts with "Time "
         for col in dataframe.columns:
             if re.match(r"^Time\s", col):
                 return col
-        return None  # Return None if no matching column is found
+        return None
 
     def overlay_temp_on_figure(self, ax, trimmed_temp_df, sem_temp_data=None, left_axis=True):
         """
@@ -2541,13 +2370,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         time_column_name = self.find_time_column(trimmed_temp_df)
 
-        # Create a copy of the time data for manipulation
         time_data = trimmed_temp_df[time_column_name].copy()
         if "s" in time_column_name.lower():
-            # Convert seconds to minutes without altering the original DataFrame
             time_data = time_data / 60
 
-        # Scale the time column
         time_column = self.scale_time_column(time_data)
 
         if sem_temp_data is not None:
@@ -2569,14 +2395,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
                      linewidth=self.settings_manager.selected_temp_mean_line_width, alpha=float(self.settings_manager.selected_temp_mean_line_alpha))
 
         if sem_temp_data is not None:
-            # If sem_temp_data is provided, create a shaded error region around the mean line.
             if isinstance(sem_temp_data, pd.DataFrame):
-                # assuming it is the first column if it is a DataFrame
                 sem_values = sem_temp_data.iloc[:, 0].values
             else:
-                sem_values = sem_temp_data.values  # if it is a Series
+                sem_values = sem_temp_data.values
 
-            # Ensure that both are numpy arrays before subtraction
             temp_values = np.array(temp_values, dtype=float)
             sem_values = np.array(sem_values, dtype=float)
 
@@ -2590,7 +2413,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         ax_temp.tick_params(
             axis='y', labelcolor=self.settings_manager.selected_temp_sem_color)
 
-        # Check if SEM data is available and if the 'SEM' column exists in the DataFrame
         if sem_temp_data is not None and 'SEM' in trimmed_temp_df.columns:
             sem_min = trimmed_temp_df['SEM'].min()
             sem_max = trimmed_temp_df['SEM'].max()
@@ -2640,8 +2462,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
         # Ensure there are enough values to get the top five
         if len(numeric_column) >= 5:
             top_five_values = numeric_column.nlargest(
-                5)  # Get the top five values
-            return top_five_values.mean()  # Calculate the mean of these values
+                5)
+            return top_five_values.mean()
         else:
             # Handle cases with fewer than 5 values (e.g., return the mean of available values)
             return numeric_column.mean()
@@ -2659,13 +2481,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """
         time_column_name = self.find_time_column(act_data)
 
-        # Create a copy of the time data for manipulation
         time_data = act_data[time_column_name].copy()
         if "s" in time_column_name.lower():
-            # Convert seconds to minutes without altering the original DataFrame
             time_data = time_data / 60
 
-        # Scale the time column
         time_column = self.scale_time_column(time_data)
 
         if sem_act_data is not None:
@@ -2673,18 +2492,14 @@ class MenopauseDataProcessingApp(ttk.Frame):
         else:
             act_values = act_data['Data']
 
-        # Create a new axis on the right for the activity data
         ax_act = ax.twinx()
 
         max_act_modifier = float(
             self.settings_manager.selected_activity_desired_scale)
         baseline_modifier = max_act_modifier * 0
 
-        # The desired baseline for the histogram
-        # Adjusting using baseline_modifier
         desired_baseline = ymin_photometry - baseline_modifier
 
-        # Calculate the total height of the histogram based on the max value and the modifier
         if sem_act_data is not None:
             histogram_height = self.mean_of_top_five(
                 act_data['Mean']) / max_act_modifier
@@ -2692,15 +2507,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
             histogram_height = self.mean_of_top_five(
                 act_data['Data']) / max_act_modifier
 
-        # Set the y-limits for the histogram
         act_ymax_with_offset = desired_baseline + histogram_height
         ax.set_ylim((ymin_photometry - baseline_modifier),
                     ymax_photometry + (0.05 * ymax_photometry))
 
-        # Adjust the position of the right axis
         ax_act.spines["right"].set_position(("outward", 0))
 
-        # Ensure the right spine is visible
         ax_act.spines["right"].set_visible(True)
 
         num_bins = self.settings_manager.selected_activity_num_bins
@@ -2718,13 +2530,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
         ax_act.hist(time_column, weights=act_values, bins=num_bins, align='mid', color=self.settings_manager.selected_activity_mean_bar_color, label="Activity",
                     alpha=float(self.settings_manager.selected_activity_mean_bar_alpha))
 
-        # Set y-axis label and properties
         ax_act.set_ylabel(
             'Activity (counts)', color=self.settings_manager.selected_activity_mean_bar_color)
         ax_act.tick_params(
             axis='y', labelcolor=self.settings_manager.selected_activity_mean_bar_color, labelright=True)
 
-        # Hide unwanted spines
         ax_act.spines["left"].set_visible(False)
         ax_act.spines["top"].set_visible(False)
 
@@ -2760,19 +2570,15 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - time_column (pd.Series): Time column for the selected cluster.
         - data_column (pd.Series): Data column for the selected cluster.
         """
-        # Extract the cluster number from the dropdown value
         cluster_number = int(cluster_dropdown_value.split()
-                             [-1])  # e.g., "Cluster 1" -> 1
+                             [-1])
 
-        # Use the cluster number to get the correct cluster tuple from cluster_dict
         cluster_indices = list(self.cluster_dict.keys())[cluster_number - 1]
         start_index, end_index, _ = cluster_indices
 
-        # Get the original cluster data
         original_start_time = self.time_column[start_index]
         original_end_time = self.time_column[end_index]
 
-        # Adjust the start and end times
         adjusted_start_time = max(0, original_start_time - pre_time)
         adjusted_end_time = min(
             self.time_column.iloc[-1], original_end_time + post_time)
@@ -2782,7 +2588,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         adjusted_end_index = (
             self.time_column - adjusted_end_time).abs().idxmin()
 
-        # Retrieve and return the adjusted data
         time_column = self.time_column.iloc[adjusted_start_index:adjusted_end_index]
         data_column = self.data_column.iloc[adjusted_start_index:adjusted_end_index]
 
@@ -2797,14 +2602,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """
         self.delete_current_figure()
 
-        # Extract the filename to access relevant data from data_dict
         file_path_str = os.path.basename(self.file_path.get())
 
-        # Extracting the cluster number from the dropdown value
-        # Assuming the number is always last
         cluster_number = cluster_dropdown_value.split()[-1]
 
-        # Finding the corresponding key in the data_dict
         matching_key = next((key for key in self.data_dict[file_path_str].keys(
         ) if f"Cluster_{cluster_number}" in key), None)
 
@@ -2814,13 +2615,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         cluster_data = self.data_dict[file_path_str][matching_key]
 
-        # Calculate adjusted times based on pre and post cluster times
         original_start_time = float(cluster_data['start_time'])
         original_end_time = float(cluster_data['end_time'])
         pre_time = float(cluster_data['pre_cluster_time']) / 60
         post_time = float(cluster_data['post_cluster_time']) / 60
 
-        # Ensure times are within valid bounds
         adjusted_start_time = max(0, original_start_time - pre_time)
         adjusted_end_time = min(
             self.temp_data['Time (min)'].max(), original_end_time + post_time)
@@ -2828,7 +2627,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         time_column, data_column = self.get_single_cluster_data(
             cluster_dropdown_value, pre_time, post_time)
 
-        # Extract relevant portions of self.act_data and self.temp_data based on adjusted times
         truncated_temp_data = self.temp_data[(self.temp_data['Time (min)'] >= adjusted_start_time) &
                                              (self.temp_data['Time (min)'] <= adjusted_end_time)] if self.temp_data is not None else None
         truncated_act_data = self.act_data[(self.act_data['Time (min)'] >= adjusted_start_time) &
@@ -2837,18 +2635,15 @@ class MenopauseDataProcessingApp(ttk.Frame):
         fig, ax, scaled_time_column = self.prepare_figure(
             time_column, show_nighttime=True)
 
-        # Create a simple figure for the cluster
         self.create_photometry_figure(ax,
                                       scaled_time_column, data_column, [], [], [])
 
-        # Set x-axis limits based on the first and last values of time_column
         ax.set_xlim((adjusted_start_time), adjusted_end_time)
 
         # ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(self.settings_manager.number_of_minor_ticks))
 
         ymin_photometry, ymax_photometry = ax.get_ylim()
 
-        # Apply the temperature and activity overlays if necessary
         temp_present = truncated_temp_data is not None and self.graph_settings_container_instance.temperature_data_var.get()
         act_present = truncated_act_data is not None and self.graph_settings_container_instance.activity_data_var.get()
 
@@ -2866,7 +2661,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             self.overlay_act_on_figure(
                 ax, truncated_act_data, ymin_photometry, ymax_photometry)
 
-        # Embed the final figure in the canvas
         self.embed_figure_in_canvas(fig, self.graph_canvas)
 
     def extract_and_trim_data(self, dataframe, previous_time, offset, duration, sample_rate, data_type):
@@ -2884,24 +2678,19 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
         - trimmed_df (pd.DataFrame): The trimmed dataframe with time reset.
         """
-        # Find start index
         start_index = dataframe[dataframe["Date Time"].astype(
             str).str.contains(previous_time)].index[0]
 
-        # Calculate number of data points to extract
         num_data_points = int(((duration + offset) * 60) / sample_rate)
 
-        # Extract data
         extracted_data = dataframe.loc[start_index:start_index +
                                        num_data_points - 1]
 
-        # Calculate rows to trim
         sample_interval_seconds = sample_rate
         rows_to_trim = math.ceil((offset * 60) / sample_interval_seconds)
 
         trimmed_df = extracted_data.iloc[rows_to_trim:].copy()
 
-        # Create a new time column
         trimmed_df['Time (min)'] = [(i * (sample_rate / 60))
                                     for i in range(len(trimmed_df))]
 
@@ -2937,14 +2726,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 return sheet_names[sheet_names_upper.index(target_name_upper)]
             return None
 
-        # Load the Excel file and retrieve all sheet names
         excel_file = pd.ExcelFile(file_path)
         sheet_names = excel_file.sheet_names
 
-        # Try to find the sheet name as provided
         correct_sheet_name = find_sheet_name(sheet_names, sheet_name)
 
-        # If not found, try to find the sheet name in uppercase
         if not correct_sheet_name:
             correct_sheet_name = find_sheet_name_case_insensitive(
                 sheet_names, sheet_name)
@@ -2952,10 +2738,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 raise ValueError(
                     f"Sheet name '{sheet_name}' not found in the Excel file.")
 
-        # Step 1: Open the Excel file and select the sheet
         data = pd.read_excel(file_path, sheet_name=correct_sheet_name)
 
-        # Step 2: Search for the "Time" label to find where the actual data starts
         if 'Time' not in data.columns:
             print(
                 "Time column not found in the data. Searching for 'Time' label in the data.")
@@ -2969,26 +2753,21 @@ class MenopauseDataProcessingApp(ttk.Frame):
         else:
             start_data_index = data[data['Time'] == 'Time'].index[0] + 1
 
-        # Slice the data
         data = data.iloc[start_data_index:]
 
         data.columns = [col.upper() for col in data.columns]
         sheet_name_upper = sheet_name.upper()
 
-        # Rename columns using the normalized sheet_name
         if sheet_name_upper in data.columns:
-            # Rename columns using the sheet_name
             data = data.rename(
                 columns={"NAME": "Date Time", sheet_name_upper: "Data"})
 
-        # Convert "Date Time" column to datetime format
         data["Date Time"] = pd.to_datetime(data["Date Time"], errors='coerce')
 
         # Date Filtering: Get data from the target date and all subsequent dates
         date_data = data[data["Date Time"].dt.date >=
                          pd.to_datetime(target_date).date()]
 
-        # Find the offset and starting time
         offset, previous_time = self.find_offset_for_previous_time(
             date_data, target_time)
 
@@ -3009,32 +2788,25 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - extracted_extended_data (pd.DataFrame): Extracted data for the specified duration and buffer, with time reset to start from -15 minutes.
         """
         try:
-            # Find start index
             start_index = dataframe[dataframe["DateTime"].astype(
                 str).str.contains(previous_time)].index[0]
         except IndexError:
             raise ValueError(
                 "The previous_time provided is not found in the dataframe.")
 
-        # Adjust start index to go 15 minutes back
         fifteen_minutes_data_points = int((15 * 60) / sample_rate)
         start_index = (max(0, start_index - fifteen_minutes_data_points)) + 10
 
-        # Calculate number of data points to extract with an additional 60 minutes
         num_data_points = int(((duration + 60 + offset) * 60) / sample_rate)
 
         largest_index = dataframe.index.max()
 
-        # Ensure not to exceed dataframe length
         end_index = min(largest_index, start_index + num_data_points)
 
         extracted_extended_data = dataframe
 
-        # Correct the time based on the 'Offset' at the new start index
-        # convert to minutes
         start_offset = extracted_extended_data.iloc[0]['Offset'].total_seconds(
         ) / 60
-        # Resetting the time to start from -15 minutes
         extracted_extended_data['Time (min)'] = [
             (i * (sample_rate / 60) - start_offset) for i in range(len(extracted_extended_data))
         ]
@@ -3051,19 +2823,16 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
         - upsampled_df (pd.DataFrame): Upsampled dataframe with interpolated values and original structure.
         """
-        # Convert the 'DateTime' column to a datetime data type and set it as index
         dataframe['DateTime'] = pd.to_datetime(dataframe['DateTime'])
         dataframe = dataframe.set_index('DateTime')
 
-        # Convert the 'Data' column to a numeric data type
         dataframe['Data'] = pd.to_numeric(dataframe['Data'], errors='coerce')
 
         # Upsample the dataframe to a frequency of 100 ms
         upsampled_df = dataframe.resample('100ms').interpolate()
 
-        # Reset index to get 'DateTime' back as a column
         upsampled_df = upsampled_df.reset_index()
-        # Reformat to original structure
+
         upsampled_df['Date Time'] = upsampled_df['DateTime'].dt.strftime(
             '%Y-%m-%d %H:%M:%S.%f').str[:-3]
         upsampled_df = upsampled_df[[
@@ -3073,30 +2842,22 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
     def change_associated_temp_file(self):
         """Change the associated temperature file."""
-        # Get the file path
         file_path = filedialog.askopenfilename(initialdir=self.file_path, title="Select file",
                                                filetypes=(("csv and Excel files", ("*.csv", "*.xlsx")),))
 
-        if file_path:  # Check if a file was selected
-            # Extract the base name of the file
+        if file_path:
             file_name = os.path.basename(file_path)
-            # Set the file name to the entry widget
             self.associated_temp_data_entry.set(file_name)
-            # Update the class attribute with the new path
             self.temp_file_path = file_path
 
     def change_associated_act_file(self):
         """Change the associated activity file."""
-        # Get the file path
         file_path = filedialog.askopenfilename(initialdir=self.file_path, title="Select file",
                                                filetypes=(("csv and Excel files", ("*.csv", "*.xlsx")),))
 
-        if file_path:  # Check if a file was selected
-            # Extract the base name of the file
+        if file_path:
             file_name = os.path.basename(file_path)
-            # Set the file name to the entry widget
             self.associated_act_data_entry.set(file_name)
-            # Update the class attribute with the new path
             self.act_file_path = file_path
 
     def select_column_names(self):
@@ -3109,17 +2870,13 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """Save the user input values for pre-cluster time, post-cluster time, and bin size to the relevant clusters."""
         selected_cluster_label = self.static_inputs_frame.selected_behaviour.get().strip()
 
-        # Get the input values
         pre_time = self.static_inputs_frame.pre_behaviour_time_entry.get()
         post_time = self.static_inputs_frame.post_behaviour_time_entry.get()
         bin_size = self.static_inputs_frame.bin_size_entry.get()
 
-        updated_clusters = set()  # Initialize the set to track updated clusters
-
-        # Determine if the update is for peaks or stims
+        updated_clusters = set()
         is_stim_update = 'stim' in selected_cluster_label.lower()
 
-        # If the user selected "All Clusters" or "All Stims", update all relevant clusters
         if selected_cluster_label == "All Clusters" or selected_cluster_label == "All Stims":
             for filename, clusters in self.data_dict.items():
                 for cluster_name, data in clusters.items():
@@ -3136,7 +2893,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                         updated_clusters.add(cluster_name)
 
         elif is_stim_update:
-            # Update specific stim clusters
             match = re.search(r'(\d+) stim', selected_cluster_label)
             if match:
                 stim_count = int(match.group(1))
@@ -3148,7 +2904,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                             data['bin_size'] = bin_size
                             updated_clusters.add(cluster_name)
         else:
-            # Update specific peak clusters
             match = re.search(r'(\d+) Peak', selected_cluster_label)
             if match:
                 num_peaks_in_selected_cluster = int(match.group(1))
@@ -3160,10 +2915,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
                             data['bin_size'] = bin_size
                             updated_clusters.add(cluster_name)
 
-        # Convert data_dict to DataFrame
         df = self.data_dict_to_df(self.data_dict)
         self.update_cluster_inputs()
-        if self.temp_data is not None and self.act_data is not None:  # Pass the updated clusters to this function
+        if self.temp_data is not None and self.act_data is not None:
             self.precompute_all_clusters(updated_clusters)
         self.save_static_inputs(df)
 
@@ -3202,8 +2956,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - temp_file_path (str or None): Path to the temperature file or None if not found.
         """
         root = tk.Tk()
-        root.withdraw()  # Hide the main window
-        # Set a title for the folder picker dialog
+        root.withdraw()
         folder_path = filedialog.askdirectory(
             title=f"Select folder for telemetry data of {date}")
         root.destroy()
@@ -3228,16 +2981,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
             print(
                 f"Could not find the associated Act or Temp files for the date: {date}")
 
-        if temp_file_path:  # Check if a file was selected
-            # Extract the base name of the file
+        if temp_file_path:
             file_name = os.path.basename(temp_file_path)
-            # Set the file name to the entry widget
             self.associated_temp_data_entry.set(file_name)
 
-        if act_file_path:  # Check if a file was selected
-            # Extract the base name of the file
+        if act_file_path:
             file_name = os.path.basename(act_file_path)
-            # Set the file name to the entry widget
             self.associated_act_data_entry.set(file_name)
 
         self.settings_manager.save_variables()
@@ -3262,11 +3011,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.column_dropdown = column_dropdown
 
         if is_time_based_data is not None:
-            # Handle the data file knowing whether it's time-based or not
             if not is_time_based_data:
                 self.data_type = "optogenetics"
                 self.process_opto_data_file()
-                return  # Exit the function after handling the opto data file
+                return
 
         self.data_type = "photometry"
         self.process_photometry_data_file()
@@ -3358,7 +3106,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.clusters_final = clusters_final
         self.grouped_clusters = grouped_clusters
 
-        # Calculate duration of main data
         self.duration_main_data = time_column.iloc[-1] - time_column.iloc[0]
 
         self.visualize_photometry_data_with_overlays(
@@ -3374,7 +3121,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
     def handle_opto_data_file(self):
         """Handle the loading and processing of an optogenetics data file."""
         self.stim_timings = None
-        # Read the opto data file
         file_path = self.file_path.get()
         file_extension = os.path.splitext(file_path)[1].lower()
 
@@ -3405,15 +3151,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.data_selection_frame.selected_column_var.set("Not used")
         self.data_selection_frame.column_dropdown['state'] = 'disabled'
 
-        # Assume 'Start time (hh:mm:ss)' and 'Duration of test (min)' are columns in your DataFrame
         start_time_timedelta = stim_data_df['Start time (hh:mm:ss)'].iloc[0]
         self.start_time_timedelta = str(
             start_time_timedelta).split(" days ")[-1]
 
-        # This line assumes you have this column
         self.duration_main_data = stim_data_df['Duration of test (min)'].iloc[0]
 
-        # input the start time timedelta into the self.temp_and_act_start_time_entry
         self.temp_and_act_start_time_var.set(self.start_time_timedelta)
 
         self.stim_timings = self.calculate_stim_timings(stim_data_df)
@@ -3437,7 +3180,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - stim_timings (dict): Dictionary containing stimulation start and end times for each instance.
         """
         stim_timings = []
-        start_time_str = self.temp_and_act_start_time_var.get()  # Get the start time string
+        start_time_str = self.temp_and_act_start_time_var.get()
         start_time = (datetime.strptime(start_time_str, '%H:%M:%S') -
                       datetime(1900, 1, 1)).total_seconds() / 60
 
@@ -3445,18 +3188,16 @@ class MenopauseDataProcessingApp(ttk.Frame):
             cluster_size = int(row['Cluster size (num)'])
             stim_duration = row['Stim duration (sec)']
             interstim_interval = row['Interstim interval (sec)']
-            # Convert onset time to minutes
             stim_onset = row['Stim onset (hh:mm:ss)'].total_seconds() / 60
 
-            # Calculate the stim_start relative to the start_time
             stim_onset_relative = stim_onset - start_time
 
             stim_periods = []
             for stim_number in range(cluster_size):
                 stim_start = stim_onset_relative + stim_number * \
                     (stim_duration + interstim_interval) / \
-                    60  # Convert total time to minutes
-                stim_end = stim_start + stim_duration / 60  # Convert duration to minutes
+                    60
+                stim_end = stim_start + stim_duration / 60
                 stim_periods.append((stim_start, stim_end))
 
             stim_timings.append((cluster_size, stim_periods))
@@ -3486,7 +3227,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
         show_time_of_day = (time_unit == 'time of day')
 
         if show_time_of_day:
-            ax.set_xlabel('Time of Day')  # Add x-axis title for time of day
+            ax.set_xlabel('Time of Day')
         else:
             if time_unit == 'seconds':
                 ax.set_xlabel('Time (s)')
@@ -3500,7 +3241,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
             if start_time_str:
                 start_time = datetime.strptime(start_time_str, '%H:%M:%S')
 
-                interval_hours = 0.5  # Change this value as needed
+                interval_hours = 0.5
                 interval_minutes = interval_hours * 60
 
                 minutes_since_hour_start = start_time.minute + \
@@ -3570,7 +3311,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         if self.stim_timings is None:
             return
 
-        # Get the current y-axis limits to use them as bounds for the shaded regions
         ymin, ymax = ax.get_ylim()
 
         for cluster_size, timings in self.stim_timings:
@@ -3578,16 +3318,13 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 time_unit = self.graph_settings_container_instance.time_unit_menu.get()
                 time_factor = self.get_time_scale(time_unit)
 
-                # Scale stim_start and stim_end with the time factor
                 scaled_stim_start = stim_start * time_factor
                 scaled_stim_end = stim_end * time_factor
 
-                # Add a rectangle to represent the stimulation period
                 rect = plt.Rectangle(
                     (scaled_stim_start, ymin), scaled_stim_end - scaled_stim_start, ymax - ymin, color='blue', alpha=0.3)
                 ax.add_patch(rect)
 
-        # Ensure the y-axis limits remain the same
         ax.set_ylim(ymin, ymax)
 
     def save_static_inputs(self, df):
@@ -3605,7 +3342,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
         for _, row in df.iterrows():
             cluster_name = row['Cluster Name']
             base_cluster_name = cluster_name.rsplit(
-                '_', 1)[0]  # Remove the trailing count
+                '_', 1)[0]
 
             pre_time = row['pre_stim_time'] if 'stim' in cluster_name else row['pre_cluster_time']
             post_time = row['post_stim_time'] if 'stim' in cluster_name else row['post_cluster_time']
@@ -3618,11 +3355,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 data['clusters'][base_cluster_name] = (
                     pre_time, post_time, bin_size)
 
-        # Save cluster settings
         with open('cluster_static_settings.json', 'w') as f:
             json.dump(data['clusters'], f)
 
-        # Save stimulation settings
         with open('stim_static_settings.json', 'w') as f:
             json.dump(data['stimulations'], f)
 
@@ -3638,7 +3373,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             'stimulations': {}
         }
 
-        # Function to load data from JSON
         def load_data_from_json(file_path, data_key):
             if os.path.exists(file_path):
                 try:
@@ -3653,11 +3387,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 except Exception as e:
                     print(f"Error reading JSON file {file_path}: {e}")
             else:
-                # Create the file if it doesn't exist
                 with open(file_path, 'w') as f:
                     json.dump({}, f)
 
-        # Load settings for clusters and stimulations
         load_data_from_json('cluster_static_settings.json', 'clusters')
         load_data_from_json('stim_static_settings.json', 'stimulations')
 
@@ -3675,12 +3407,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 # Assumed keys for stim data
                 start_time = format(cluster_data.get('stim_start', 0), '.1f')
                 end_time = format(cluster_data.get('stim_end', 0), '.1f')
-            else:  # Handle cluster data, potentially with different key names
+            else:
                 pre_time = cluster_data.get('pre_cluster_time', 'N/A')
                 post_time = cluster_data.get('post_cluster_time', 'N/A')
-                # Use correct key for cluster start
                 start_time = format(cluster_data.get('start_time', 0), '.1f')
-                # Use correct key for cluster end
                 end_time = format(cluster_data.get('end_time', 0), '.1f')
 
             bin_size = cluster_data.get('bin_size', 'N/A')
@@ -3688,7 +3418,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             # Determine the tag based on the index
             tag = "Even" if index % 2 == 0 else "Odd"
 
-            # Insert data into table with the appropriate tag
             self.table_treeview.insert('', 'end', values=(
                 file_path_str, cluster_name, pre_time, post_time, bin_size, start_time, end_time), tags=(tag,))
 
@@ -3696,10 +3425,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
     def populate_data_dict(self):
         """Populate the data dictionary with cluster data and settings."""
-        # Extracting the actual file path from the StringVar
         file_path_str = os.path.basename(self.file_path.get())
 
-        # Initialize the dictionary structure if not present
         if file_path_str not in self.data_dict:
             self.data_dict[file_path_str] = {}
 
@@ -3709,41 +3436,32 @@ class MenopauseDataProcessingApp(ttk.Frame):
             self.populate_opto_data_dict(file_path_str)
 
         if self.data_type == 'photometry' or self.data_type == 'optogenetics':
-            if self.used_default_values:  # Use a class-level variable for this flag
+            if self.used_default_values:
                 print('Using default values for cluster/stim settings.')
                 df = self.data_dict_to_df(self.data_dict)
                 self.save_static_inputs(df)
 
     def populate_photometry_data_dict(self, file_path_str):
         """Populate the data dictionary with photometry cluster data and settings."""
-        # Initialize cluster ID
         cluster_id = 1
 
-        # Load the stored inputs from the JSON file, if it exists
         cluster_settings = self.load_static_inputs()
 
-        # Check if any cluster names have non-empty stored inputs
         clusters_with_inputs = [name for name, settings in cluster_settings.items(
         ) if any(str(value) != "" for value in settings.values())]
 
-        # Use stored inputs if they exist, otherwise use default values
         use_stored_inputs = bool(clusters_with_inputs)
 
-        self.used_default_values = False  # Flag to check if default values were used
+        self.used_default_values = False
 
-        # Iterate through the clusters
         for (start_index, end_index, peak_count), cluster_data in self.cluster_dict.items():
             peak_times = cluster_data['peaks']
-            # Get alignment_index from cluster_data, default to -1 if not present
             alignment_index = cluster_data.get('alignment_index', -1)
-            # Directly use the name from cluster_data
             cluster_name = cluster_data['name']
 
-            # Extract start and end times from the time_column using start and end indices
             start_time = self.time_column.iloc[start_index]
             end_time = self.time_column.iloc[end_index]
 
-            # If the user wants to use stored inputs and this cluster's base name is in the stored settings:
             cluster_base_name = cluster_name.rsplit('_', 1)[0]
             if use_stored_inputs and cluster_base_name in cluster_settings:
                 pre_cluster_time = cluster_settings[cluster_base_name]['pre_cluster_time']
@@ -3753,9 +3471,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 pre_cluster_time = "60"
                 post_cluster_time = "60"
                 bin_size = "10"
-                self.used_default_values = True  # Set the flag to True if default values were used
+                self.used_default_values = True
 
-            # Add data to the dictionary
             self.data_dict[file_path_str][cluster_name] = {
                 'pre_cluster_time': pre_cluster_time,
                 'post_cluster_time': post_cluster_time,
@@ -3773,29 +3490,24 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Parameters:
         - file_path_str (str): The file path string to use as the key in the data dictionary.
         """
-        cluster_count = {}  # Track the count of clusters of each size to handle naming
+        cluster_count = {}
 
-        # Load stored inputs
         stim_settings = self.load_static_inputs()
         # Simplified check for stored inputs
         use_stored_inputs = any(stim_settings)
 
-        self.used_default_values = False  # Flag for default usage
+        self.used_default_values = False
 
-        # Iterate through stim timings
         for cluster_size, timings in self.stim_timings:
-            # Determine unique name for the cluster
             if cluster_size not in cluster_count:
                 cluster_count[cluster_size] = 0
             cluster_count[cluster_size] += 1
+
             # Numbering suffix for clusters of the same size
             cluster_suffix = f"_cluster_{cluster_count[cluster_size]}"
             cluster_name = f"{cluster_size}_stim{cluster_suffix}"
 
-            # Initialize values for the whole cluster
-            # Start time of the first stim in the cluster
             stim_start = timings[0][0]
-            # End time of the last stim in the cluster
             stim_end = timings[-1][1]
 
             # Use stored inputs if they exist for this cluster
@@ -3809,7 +3521,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 bin_size = "10"
                 self.used_default_values = True
 
-            # Add data to the dictionary for this cluster
             self.data_dict[file_path_str][cluster_name] = {
                 'pre_stim_time': pre_stim_time,
                 'post_stim_time': post_stim_time,
@@ -3828,7 +3539,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         selected_cluster_label = self.static_inputs_frame.selected_behaviour.get().strip()
 
-        # Determine if the update is for peaks or stims
         is_stim_update = 'stim' in selected_cluster_label.lower()
 
         if is_stim_update:
@@ -3837,24 +3547,19 @@ class MenopauseDataProcessingApp(ttk.Frame):
         else:
             selected_peak_label = selected_cluster_label.split()[0]
 
-        # Print the column names of the Treeview for debugging
         treeview_columns = self.table_treeview.cget("columns")
 
-        # Check if file path exists in data_dict
         if file_path_str in self.data_dict:
             for cluster_name, cluster_data in self.data_dict[file_path_str].items():
                 if is_stim_update:
-                    # Update stim clusters
                     if selected_cluster_label == "All Stims" or \
                             (selected_stim_label == "All" and "stim" in cluster_name) or \
                             (f"{selected_stim_label}_stim" in cluster_name):
 
-                        # Update the data dictionary
                         cluster_data['pre_stim_time'] = pre_time
                         cluster_data['post_stim_time'] = post_time
                         cluster_data['bin_size'] = bin_size
 
-                        # Update the treeview (table)
                         for item in self.table_treeview.get_children():
                             if self.table_treeview.set(item, 'number_of_peaks') == cluster_name:
                                 self.table_treeview.set(
@@ -3864,17 +3569,14 @@ class MenopauseDataProcessingApp(ttk.Frame):
                                 self.table_treeview.set(
                                     item, 'bin_size', bin_size)
                 else:
-                    # Update peak clusters
                     if selected_cluster_label == "All Clusters" or \
                             (selected_peak_label == "All" and "Peak" in cluster_name) or \
                             (f"{selected_peak_label} Peak" in cluster_name):
 
-                        # Update the data dictionary
                         cluster_data['pre_cluster_time'] = pre_time
                         cluster_data['post_cluster_time'] = post_time
                         cluster_data['bin_size'] = bin_size
 
-                        # Update the treeview (table)
                         for item in self.table_treeview.get_children():
                             if self.table_treeview.set(item, 'number_of_peaks') == cluster_name:
                                 self.table_treeview.set(
@@ -3885,7 +3587,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                                     item, 'bin_size', bin_size)
 
         self.table_treeview.update_idletasks()
-        # Annotate each cluster with the time period it occurs in
         self.annotate_clusters_with_time_period()
 
     def time_to_seconds(self, time_input):
@@ -3921,12 +3622,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - offset_seconds (float or None): Offset in seconds to the target time, or None if not found.
         - prev_time_from_data (str or None): Previous time from the data closest to the target time, or None if not found.
         """
-        # Ensure 'Date Time' is a datetime
         dataframe['DateTime'] = pd.to_datetime(dataframe['Date Time'])
 
-        # Parse target_time_str to a Python datetime.time object
         target_time = pd.to_datetime(target_time_str).time()
-        # Create a timedelta column for times before target_time on the same day
+
         # This assumes 'Date Time' is the start of the event
         dataframe['Offset'] = dataframe['DateTime'].apply(
             lambda x: (datetime.combine(x.date(), target_time) - x)
@@ -3951,10 +3650,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         baseline = self.dataframe[data_column_name].median()
 
-        # Store the full dataset
         self.full_dataframe = self.dataframe.copy()
 
-        # Calculate and store the trimmed dataset
         sixty_minute_indices = self.dataframe[self.dataframe.iloc[:, 0] >= 60].index
 
         if sixty_minute_indices.any():
@@ -3975,9 +3672,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
             first_idx_below_baseline_after_60_min = None
             first_idx_to_use = 0  # default to the start if no sixty minute index found
 
-        # Calculate the amount of time removed in seconds
         if first_idx_to_use is not None and first_idx_to_use > 0:
-            # Assuming time is in minutes
             self.seconds_removed = self.dataframe.iloc[first_idx_to_use, 0] * 60
             self.trimmed_dataframe = self.dataframe.iloc[first_idx_to_use:].reset_index(
                 drop=True)
@@ -4000,21 +3695,17 @@ class MenopauseDataProcessingApp(ttk.Frame):
         """
         data_column_name = self.data_selection_frame.selected_column_var.get()
 
-        # Choose the appropriate dataframe based on the checkbox state
         if self.graph_settings_container_instance.remove_first_60_minutes_var.get():
             self.dataframe = self.trimmed_dataframe.copy()
         else:
             self.dataframe = self.full_dataframe.copy()
 
-        # Detect peaks
         detected_peaks = self.detect_peaks_with_optimal_prominence(
             self.dataframe[data_column_name])
 
-        # Identify clusters
         clusters_final, self.cluster_dict = self.identify_clusters(self.dataframe.iloc[:, 0],
                                                                    self.dataframe[data_column_name], detected_peaks)
 
-        # Group clusters by peak count
         grouped_clusters = self.group_clusters_by_peak_count(self.cluster_dict)
 
         return self.dataframe.iloc[:, 0], self.dataframe[data_column_name], detected_peaks, clusters_final, grouped_clusters
@@ -4053,7 +3744,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
         scaled_time_column = self.scale_time_column(time_column)
 
-        # Plot the data
         ax.plot(scaled_time_column, data_column, label="Data",
                 color=self.settings_manager.selected_photometry_line_color,
                 linewidth=self.settings_manager.selected_photometry_line_width)
@@ -4061,24 +3751,20 @@ class MenopauseDataProcessingApp(ttk.Frame):
         median_value = data_column.median()
         mean_value = data_column.mean()
 
-        # Use the mean if the median is zero; otherwise, use the median
         baseline_value = mean_value if median_value == 0 else median_value
 
         baseline_multiplier = float(
             self.baseline_multiplier.get().strip() or 1) - 1
 
-        # Apply the baseline_multiplier to the baseline_value
         baseline = baseline_value + (baseline_multiplier * abs(baseline_value))
 
         if self.baseline_thickness.get() != '0':
-            # Plot baseline
             ax.plot([scaled_time_column.iloc[0], scaled_time_column.iloc[-1]], [baseline, baseline], color=self.baseline_color.get(),
                     linestyle=self.baseline_style.get(), linewidth=int(self.baseline_thickness.get()), label="Baseline")
 
         if show_nighttime:
             self.add_nighttime_shading_to_plot(ax, scaled_time_column)
 
-        # Mark the peaks
         ax.plot(scaled_time_column.iloc[peak_indices], data_column.iloc[peak_indices] + int(self.y_offset_peak_symbol.get()),
                 color=self.label_color_var.get(),
                 marker=self.label_symbol_var.get(),
@@ -4086,7 +3772,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 label="Peaks",
                 markersize=int(self.label_size_var.get()))
 
-        # Highlight clusters
         for cluster in clusters:
             start = scaled_time_column.iloc[cluster[0]]
             end = scaled_time_column.iloc[min(
@@ -4135,12 +3820,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
             self.temp_and_act_start_time_var.get(), format='%H:%M:%S').time()
 
         for night_start_time, night_end_time in self.nighttime_periods:
-            # Calculate night start and end in minutes since the start of the data collection
             night_start_datetime = datetime.combine(
                 base_date, night_start_time)
             night_end_datetime = datetime.combine(base_date, night_end_time)
 
-            # Adjust night_end_datetime to the next day if it crosses midnight
             if night_end_time < night_start_time:
                 night_end_datetime += timedelta(days=1)
 
@@ -4179,37 +3862,29 @@ class MenopauseDataProcessingApp(ttk.Frame):
         if hasattr(self, "current_fig"):
             plt.close(self.current_fig)
 
-        # Convert the matplotlib figure to a Tkinter-compatible object
         self.figure_canvas = FigureCanvasTkAgg(fig, master=graph_canvas)
 
         self.current_fig = fig
 
         self.figure_canvas.draw()
 
-        # Place the figure canvas in the graph_canvas
         self.figure_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Create the toolbar
         self.toolbar = NavigationToolbar2Tk(self.figure_canvas, graph_canvas)
         self.toolbar.update()
 
-        # Customize the toolbar background
         self.toolbar.config(background="snow")
         self.toolbar._message_label.config(background="snow")
 
-        # Customize the x and y coordinate labels
         self.toolbar._message_label.config(
             foreground="black", font=("Arial", 10))
 
-        # Remove the canvas border
         self.figure_canvas.get_tk_widget().configure(
             borderwidth=0, highlightthickness=0)
 
-        # Remove the toolbar border
         self.toolbar.configure(background="snow", bd=0)
         self.toolbar._message_label.configure(background="snow", bd=0)
 
-        # Place the toolbar in the graph_canvas
         self.toolbar.pack(side="top", fill="x")
 
     def delete_current_figure(self):
@@ -4232,13 +3907,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.peak_label_frame.grid(
             row=0, column=0, padx=10, pady=10, sticky='nsew')
 
-        # Color Chooser
         self.label_color_var = tk.StringVar(
             value=self.settings_manager.selected_label_color)
         tk.Button(self.peak_label_frame, text="Peak Symbol Colour", command=self.choose_label_color).grid(
             row=0, column=0, columnspan=2, padx=10, pady=5)
 
-        # Symbol Dropdown
         self.symbol_options = ["o", "*", "s", "D", "^", "v", "<", ">"]
         self.label_symbol_var = tk.StringVar(
             value=self.settings_manager.selected_label_symbol)
@@ -4248,7 +3921,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                                        values=self.symbol_options, state='readonly', width=4)
         symbol_dropdown.grid(row=1, column=1, padx=10, pady=5)
 
-        # Label Size Entry
         self.label_size_var = tk.StringVar(
             value=str(self.settings_manager.selected_label_size))
         tk.Label(self.peak_label_frame, text="Peak Symbol Size:", bg='snow').grid(
@@ -4268,7 +3940,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.peak_count_label_frame.grid(
             row=1, column=0, padx=10, pady=10, sticky='nsew')
 
-        # Color Chooser
         self.peak_count_color_var = tk.StringVar(
             value=self.settings_manager.selected_peak_count_color)
         tk.Button(self.peak_count_label_frame, text="Peak Number Colour",
@@ -4305,7 +3976,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         tk.Entry(self.baseline_label_frame, textvariable=self.baseline_multiplier,
                  width=7).grid(row=1, column=1, padx=10, pady=5)
 
-        # Baseline Style Dropdown
         self.baseline_style_options = ['-', '--', '-.', ':']
         self.baseline_style = tk.StringVar(
             value=self.settings_manager.selected_baseline_style)
@@ -4351,13 +4021,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.baseline_label_frame.grid_columnconfigure(0, weight=1)
         self.cluster_box_frame.grid_columnconfigure(0, weight=1)
 
-        # Save and Close button
         save_and_close_button = tk.Button(self.popup, text="Save & Close",
                                           command=lambda: self.save_and_close_label_settings(self.popup))
         save_and_close_button.grid(row=4, column=0, columnspan=2, pady=10)
 
-        self.popup.update_idletasks()  # Update "idle" tasks to get updated dimensions
-        center_window_on_screen(self.popup)  # Center the popup window
+        self.popup.update_idletasks()
+        center_window_on_screen(self.popup)
 
     def choose_baseline_color(self):
         """Open a color chooser dialog to select the baseline colour."""
@@ -4394,10 +4063,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Parameters:
         - popup (tk.Toplevel): The popup window to close.
         """
-        # Store the current value of baseline_multiplier to compare later
         current_baseline_multiplier = self.settings_manager.selected_baseline_multiplier
 
-        # Update settings with new values from the UI
         self.settings_manager.selected_label_color = self.label_color_var.get()
         self.settings_manager.selected_label_symbol = self.label_symbol_var.get()
         self.settings_manager.selected_label_size = int(
@@ -4417,16 +4084,13 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.settings_manager.selected_cluster_box_alpha = self.cluster_box_alpha.get()
         self.settings_manager.selected_cluster_box_height_modifier = self.cluster_box_height_modifier.get()
 
-        # Save the updated settings
         self.settings_manager.save_variables()
 
-        # Check if baseline_multiplier has changed
         if current_baseline_multiplier != self.settings_manager.selected_baseline_multiplier:
             # If it has changed, recalculate the clusters and related data
             self.reset_clusters_based_on_user_input()
             return
 
-        # Redraw the graph with updated settings
         if hasattr(self, 'figure_canvas'):
             if self.act_data is not None and self.temp_data is not None:
                 self.visualize_photometry_data_with_overlays(self.time_column, self.data_column, self.detected_peaks, self.clusters_final, self.graph_canvas, self.temp_data,
@@ -4435,7 +4099,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 self.visualize_photometry_data_with_overlays(
                     self.time_column, self.data_column, self.detected_peaks, self.clusters_final, self.graph_canvas)
 
-        # Close the popup
         popup.destroy()
 
     def extract_date_and_mouse_number(self, file_path_var, mouse_name):
@@ -4487,7 +4150,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         act_file_path = os.path.join(
             main_file_directory, act_files[0]) if act_files else None
 
-        # If files are not found in the main directory, check the telemetry folder path
         if (not temp_file_path or not act_file_path) and self.settings_manager.telemetry_folder_path:
             telemetry_directory = self.settings_manager.telemetry_folder_path
             if os.path.exists(telemetry_directory):
@@ -4532,19 +4194,14 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Parameters:
         - writer (pd.ExcelWriter): The Excel writer object to create sheets in.
         """
-        # Extract unique cluster numbers
         unique_cluster_numbers = self.mean_cluster_data.keys()
-
-        # Sort cluster numbers to maintain order in the Excel file
         sorted_cluster_numbers = sorted(unique_cluster_numbers)
 
-        # Create and populate a sheet for each cluster number
         for cluster_number in sorted_cluster_numbers:
             if cluster_number == 1:
                 sheet_name = 'Clusters with 1 Peak'
             else:
                 sheet_name = f'Clusters with {cluster_number} peaks'
-            # Initialize the sheet with the template data
             self.populate_cluster_sheet(writer, sheet_name, cluster_number)
 
             self.set_variable_column_widths(writer.sheets[sheet_name])
@@ -4554,7 +4211,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 sheet_name = 'Raw, Clusters with 1 Peak'
             else:
                 sheet_name = f'Raw, Clusters with {cluster_number} Peaks'
-            # Initialize the sheet with the template data
             self.populate_raw_data_sheet(writer, sheet_name, cluster_number)
 
     def calculate_column_widths(self, headers):
@@ -4567,8 +4223,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
         - list: List of optimal column widths.
         """
-        # This is a placeholder function. It will be updated to calculate the optimal column widths based on the data.
-        # For now, it just returns a list of default widths.
         return [max(len(str(header)), 10) for header in headers]
 
     def populate_raw_data_sheet(self, writer, sheet_name, cluster_number):
@@ -4580,7 +4234,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - sheet_name (str): Name of the sheet to create.
         - cluster_number (int): The cluster number to get data for.
         """
-        # Extract the filename to access relevant data from data_dict
         file_path_str = os.path.basename(self.file_path.get())
         cluster_data = self.mean_cluster_data.get(cluster_number)
         worksheet = writer.book.add_worksheet(sheet_name)
@@ -4593,7 +4246,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         self.night_cell_format = writer.book.add_format(
             {'bold': True, 'bg_color': '#8f9ed9'})
 
-        # Write Full data
         full_temp_data = cluster_data["full"]["raw_temp_data"]
         full_act_data = cluster_data["full"]["raw_act_data"]
         if self.data_type == 'photometry':
@@ -4609,11 +4261,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
             next_col_idx, full_row_idx_after_photometry = self.write_raw_data_to_sheet(worksheet, writer, row_idx, next_col_idx, 'Full', 'Photometry',
                                                                                        full_photometry_data)
 
-        # Reset column index for Day data and update row index
         col_idx = 0
         row_idx = full_row_idx_after_temp
 
-        # Write Day data, if available
         if cluster_data["day"].get("mean_temp_data") is not None:
             day_temp_data = cluster_data["day"]["raw_temp_data"]
             day_act_data = cluster_data["day"]["raw_act_data"]
@@ -4631,7 +4281,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             row_idx = day_row_idx_after_temp
             col_idx = 0
 
-        # Write Night data, if available
         if cluster_data["night"].get("mean_temp_data") is not None:
             night_temp_data = cluster_data["night"]["raw_temp_data"]
             night_act_data = cluster_data["night"]["raw_act_data"]
@@ -4677,7 +4326,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - col_idx (int): The column index where the hyperlink should be placed.
         - row_idx (int): The row index where the hyperlink should be placed.
         """
-        # Create a hyperlink format object
         hyperlink_format = writer.book.add_format({
             'align': 'center',
             'valign': 'vcenter',
@@ -4685,7 +4333,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             'font_color': 'blue'
         })
 
-        # Write the hyperlink to cell A1
         worksheet.write_url(row_idx, col_idx, "internal:'{}'!A1".format(
             worksheet.name), string='Go to Full Data', cell_format=hyperlink_format)
 
@@ -4706,20 +4353,17 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - next_col_idx (int): The next column index after writing the data.
         - next_row_idx (int): The next row index after writing the data.
         """
-        # Write main heading
         worksheet.write(row_idx, col_idx,
                         f'Raw data: {period} - {data_type}', self.bold)
 
         if (period == 'Day' or period == 'Night') and data_type == 'Temp':
             self.add_home_hyperlink(worksheet, writer, col_idx + 1, row_idx)
 
-        # Increment row index to write data below the header
         row_idx += 1
 
         next_col_idx = col_idx
 
         if isinstance(data, pd.DataFrame):
-            # Handling a single DataFrame
             if not data.empty:
                 for col_num, header in enumerate(data.columns):
                     worksheet.write(row_idx, col_idx +
@@ -4736,7 +4380,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             else:
                 next_row_idx = row_idx
         elif isinstance(data, list):
-            # Handling a list
             for row_num, row_data in enumerate(data):
                 for col_num, value in enumerate(row_data):
                     worksheet.write(row_idx + row_num,
@@ -4761,7 +4404,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - row_idx (int): The row index where the period data starts.
         - col_idx (int): The column index where the period data starts.
         """
-        # Create a hyperlink format object
         hyperlink_format = writer.book.add_format({
             'align': 'center',
             'valign': 'vcenter',
@@ -4773,7 +4415,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         # Adding 1 to row_idx because Excel is 1-based
         target_cell = f"A{row_idx + 1}"
 
-        # Write the hyperlink to the target cell
         worksheet.write_url(
             0, col_idx, f"internal:'{worksheet.name}'!{target_cell}", string=f'Go to {period} Data', cell_format=hyperlink_format)
 
@@ -4786,10 +4427,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - sheet_name (str): Name of the sheet to create.
         - cluster_number (int): The cluster number to get data for.
         """
-        # Extract the filename to access relevant data from data_dict
         file_path_str = os.path.basename(self.file_path.get())
 
-        # Create a sheet in the writer
         worksheet = writer.book.add_worksheet(sheet_name)
 
         self.bold = writer.book.add_format({'bold': True})
@@ -4803,17 +4442,14 @@ class MenopauseDataProcessingApp(ttk.Frame):
         temp_act_headers = ['Time (s)', 'Mean Temp',
                             'SEM Temp', 'Mean Act', 'SEM Act']
 
-        # Initialize row index for data entries
-        row_idx = 0  # Start from the second row since headers are on the first row
+        row_idx = 0
 
         if self.data_type == 'photometry':
-            # Count 'day' and 'night' clusters from self.cluster_dict
             day_clusters = sum(1 for key, info in self.cluster_dict.items(
             ) if info['time_period'] == 'Day' and key[2] == cluster_number)
             night_clusters = sum(1 for key, info in self.cluster_dict.items(
             ) if info['time_period'] == 'Night' and key[2] == cluster_number)
         else:
-            # Count 'day' and 'night' clusters from self.data_dict
             file_path_str = os.path.basename(self.file_path.get())
             file_data = self.data_dict[file_path_str]
 
@@ -4822,7 +4458,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             night_clusters = sum(1 for key, info in file_data.items(
             ) if info['time_period'] == 'Night' and info['cluster_size'] == cluster_number)
 
-        # 'full' is the sum of 'day' and 'night'
         full_clusters = day_clusters + night_clusters
 
         cluster_counts = {
@@ -4831,21 +4466,16 @@ class MenopauseDataProcessingApp(ttk.Frame):
             'night': night_clusters
         }
 
-        # Iterate over each period and write data to the sheet
         for period in ['full', 'day', 'night']:
-            # Fetch period data for the current cluster number
             period_data = self.mean_cluster_data.get(
                 cluster_number, {}).get(period)
             if period_data and 'binned_mean_temp_data' in period_data:
                 if period == 'full':
                     row_idx = 0
-                    # Choose the correct singular or plural form based on cluster_number
                     peak_or_peaks = "Peak" if cluster_number == 1 else "Peaks"
 
-                    # Add a hyperlink to the cell next to the period title
                     hyperlink_label = f'Go to Clusters with {cluster_number} {peak_or_peaks}: raw data'
                     hyperlink_target = f"internal: 'Raw, Clusters with {cluster_number} {peak_or_peaks}'!A1"
-                    # Create a hyperlink format object
                     hyperlink_format = writer.book.add_format({
                         'align': 'center',
                         'valign': 'vcenter',
@@ -4853,7 +4483,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                         'font_color': 'blue'
                     })
 
-                    # Write the hyperlink and merge the cells with the format
                     worksheet.write_url(
                         row_idx, 1, hyperlink_target, hyperlink_format, string=hyperlink_label)
                     worksheet.merge_range(
@@ -4861,12 +4490,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 else:
                     row_idx += 1  # Skip a row for spacing
 
-                # Write the period name with the number of clusters
                 period_title = f"{period.capitalize()} Clusters({cluster_counts[period]})"
                 worksheet.write(row_idx, 0, period_title, self.bold)
 
                 row_idx += 1  # Skip a row for spacing
-                # If data is present, write it
+
                 for col_num, header in enumerate(temp_act_headers):
                     worksheet.write(row_idx, col_num, header, self.bold)
                 row_idx += 1
@@ -4874,10 +4502,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
                     if bin_idx not in period_data['binned_mean_act_data'].index:
                         continue  # Skip this iteration if bin_range is not found
 
-                    # Extract the bin label from the binned data
                     bin_label = row_temp['Bin Range']
 
-                    # Write the bin label and the temperature data
                     worksheet.write(row_idx, 0, bin_label)
                     worksheet.write(row_idx, 1, row_temp['Mean'])
                     worksheet.write(row_idx, 2, row_temp['SEM'])
@@ -4886,7 +4512,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                     worksheet.write(row_idx, 4, row_act['SEM'])
                     row_idx += 1
             else:
-                # If no data is present for the period, skip to the next period
                 row_idx += 1  # Leave a blank row for spacing
 
         file_data = self.data_dict[file_path_str]
@@ -4905,7 +4530,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
         - cluster_headings (list): List of cluster headings.
         """
-        # Initialize the cluster headings with 'Cluster ID'
         cluster_headings = ['Cluster ID']
 
         if self.data_type == 'photometry':
@@ -4918,10 +4542,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
             def format_key(
                 key): return f"{cluster_number} cluster in {key.split('_', 1)[1]}"
 
-        # Iterate through the cluster information to find matching cluster names
         for cluster_key in file_data:
             if pattern.match(cluster_key):
-                # Appending the reformatted key as the heading
                 cluster_headings.append(format_key(cluster_key))
 
         return cluster_headings
@@ -4936,7 +4558,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
         - cluster_headings (list): List of cluster headings.
         """
-        # Extract the 'name' key from each cluster dictionary to use as headings
         cluster_headings = ['Cluster ID'] + [cluster['name']
                                              for cluster in cluster_list]
         return cluster_headings
@@ -4951,11 +4572,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - file_data (dict): Dictionary containing the file data.
         - cluster_dict (dict): Dictionary containing cluster information.
         """
-        # Write the main heading
         if self.data_type == 'photometry':
-            # write the column title
             data_column_name = self.data_selection_frame.selected_column_var.get()
-            delta_symbol = '\u0394'  # Unicode representation for the capital delta symbol
+            delta_symbol = '\u0394'
             data_column_name = {'dFoF_465': f' ({delta_symbol}F/F)', '490DF/F': f' ({delta_symbol}F/F)',
                                 'Z_465': ' (Z-score)'}.get(data_column_name, '')
 
@@ -4966,11 +4585,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
             worksheet.write(0, 6, 'Stim Parameters', self.bold)
 
         row_idx, col_idx = 3, 6
-        # Write static inputs
         self.write_cluster_static_inputs(
             worksheet, 1, 7, cluster_number, file_data)
 
-        # Construct headings
         all_cluster_headings = self.generate_cluster_headings(
             file_data, cluster_number)
         rows_to_skip_all = len(all_cluster_headings)
@@ -4989,7 +4606,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             peak_isi_headings = [
                 f'Interpeak Interval(min)[{i + 1}] - [{i + 2}]' for i in range(cluster_number - 1)]
 
-            # Decide on the unit for peak amplitude based on selected data column
             peak_amp_unit = {'dFoF_465': f' ({delta_symbol}F/F)', '490DF/F': f' ({delta_symbol}F/F)',
                              'Z_465': ' (Z-score)'}.get(data_column_name, '')
             peak_amp_headings = [
@@ -5006,7 +4622,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                     worksheet, row_idx, all_cluster_headings, peak_isi_headings, rows_to_skip_all
                 )
         if self.data_type == 'photometry':
-            # Create lists for full, day, and night clusters
             full_clusters = [
                 details for key, details in cluster_dict.items() if key[2] == cluster_number]
             day_clusters = [details for key, details in cluster_dict.items(
@@ -5015,7 +4630,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             ) if key[2] == cluster_number and details['time_period'] == 'Night']
 
         else:
-            # Create lists for full, day, and night clusters from file_data
             pattern = re.compile(rf'^{cluster_number}_stim_cluster_\d+$')
             def format_key(
                 key): return f"{cluster_number} cluster in {key.split('_', 1)[1]}"
@@ -5041,10 +4655,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
         rows_to_skip_day = len(day_cluster_headings)
         rows_to_skip_night = len(night_cluster_headings)
 
-        # Initialize the starting row index for writing basic data
         row_idx_for_basic_data = 5
         initial_row_idx_for_peak_data = None
-        # if self.data_type == 'photometry':
         row_idx_for_basic_data, row_idx_for_peak_data = self.write_cluster_data_to_worksheet(
             worksheet,
             full_clusters,
@@ -5054,16 +4666,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
             initial_row_idx_for_peak_data,
             cluster_number
         )
-        # else:
-        #     row_idx_for_peak_data = row_idx_for_basic_data + 3
 
         initial_row_idx_for_peak_data = row_idx_for_peak_data - \
             (rows_to_skip_all - 1)
 
-        # Initialize the starting row indices for 'Day' data
         row_idx_for_day = row_idx_for_night = row_idx_for_basic_data + 3
 
-        # Day clusters section
         if day_clusters:
             worksheet.write(initial_row_idx_for_peak_data, 6,
                             'Day Clusters', self.day_cell_format)
@@ -5091,7 +4699,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
             row_idx_for_day, initial_row_idx_for_peak_data = self.write_cluster_data_to_worksheet(
                 worksheet,
-                day_clusters,  # Pass the cluster as a single-element list
+                day_clusters,
                 row_idx_for_day,
                 col_idx,
                 rows_to_skip_day,
@@ -5102,7 +4710,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             row_idx_for_night = row_idx_for_day + 3
             initial_row_idx_for_peak_data -= rows_to_skip_day - 1
 
-        # Night clusters section
         if night_clusters:
             worksheet.write(initial_row_idx_for_peak_data, 6,
                             'Night Clusters', self.night_cell_format)
@@ -5154,7 +4761,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - row_idx_for_peak_data (int): Row index for peak data.
         """
         for cluster_details in clusters:
-            # Write basic cluster data
             if self.data_type == 'photometry':
                 basic_data = [
                     cluster_details['start_time'],
@@ -5176,7 +4782,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             row_idx_for_peak_data = row_idx_for_basic_data + rows_to_skip
 
             if self.data_type == 'photometry':
-                # Write peak data
                 row_idx_for_peak_data, next_row_idx_for_basic_data = self.write_peak_data_in_columns(worksheet, row_idx_for_peak_data, col_idx, cluster_details['peaks'],
                                                                                                      row_idx_for_basic_data,
                                                                                                      rows_to_skip)
@@ -5184,7 +4789,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 row_idx_for_peak_data, next_row_idx_for_basic_data = self.write_peak_data_in_columns(worksheet, row_idx_for_peak_data, col_idx, cluster_details.get('peak_amplitudes', []),
                                                                                                      next_row_idx_for_basic_data, rows_to_skip)
 
-                # Write interpeak intervals if there is more than one peak
                 if cluster_number > 1:
                     row_idx_for_peak_data, next_row_idx_for_basic_data = self.write_peak_data_in_columns(worksheet, row_idx_for_peak_data, col_idx, cluster_details.get('interpeak_intervals', []),
                                                                                                          next_row_idx_for_basic_data, rows_to_skip)
@@ -5226,7 +4830,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - row_idx (int): Next row index after writing the headings.
         - col_idx (int): Column index reset to 7.
         """
-        # Write the main cluster headings once, outside the loop
         col_idx = self.write_vertical_headings(
             worksheet, row_idx, cluster_headings)
         for heading in headings:
@@ -5297,7 +4900,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
             static_values_name = 'stim'
 
         worksheet.write(row_idx, col_idx - 1, 'Static Inputs', self.bold)
-        # Write the static headings
         cluster_static_headings = [
             f'Pre {static_values_name} time (s)',
             f'Post {static_values_name} time (s)',
@@ -5309,26 +4911,20 @@ class MenopauseDataProcessingApp(ttk.Frame):
         # Move to the next row to start writing data
         row_idx += 1
 
-        # Reset col_idx to start writing data in the same column as the first heading
         col_idx -= len(cluster_static_headings)
-        # Define the pattern for the cluster data keys
         cluster_pattern_peaks = f"{cluster_number} Peak{'s' if cluster_number > 1 else ''} in Cluster_"
         cluster_pattern_stim = f"{cluster_number}_stim_cluster_"
 
-        # Find the cluster with the matching cluster_number of peaks or stim and write its static data
         for key, value in file_data.items():
             if key.startswith(cluster_pattern_peaks) or key.startswith(cluster_pattern_stim):
-                # Write the static data
                 data_keys = [f'pre_{static_values_name}_time',
                              f'post_{static_values_name}_time',
                              'bin_size']
                 for data_key in data_keys:
                     # Ensure the value is written as a number, not a string
                     try:
-                        # Convert to float or int before writing
                         static_value = float(value.get(data_key, 0))
                         if static_value.is_integer():
-                            # Convert to int if no decimal places
                             static_value = int(static_value)
                     except ValueError:
                         # In case the value is not a number, write it as is (fallback to string)
@@ -5336,7 +4932,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
                     worksheet.write(row_idx, col_idx, static_value)
                     col_idx += 1  # Move to the next column for the next piece of data
-                break  # Only write static data for the first matching cluster
+                break
 
         # Move to the next row after writing static data
         row_idx += 1
@@ -5365,30 +4961,23 @@ class MenopauseDataProcessingApp(ttk.Frame):
         - file_path_var (tk.StringVar): StringVar containing the file path.
         """
         if self.export_options_container.use_binned_data_var.get() == 1:
-            # Perform binning of all cluster data
             self.bin_all_cluster_data()
             file_path = self.file_path.get()
-            # Get the original filename without the extension
             original_file_name = os.path.splitext(
                 os.path.basename(file_path))[0]
             folder_path = os.path.join(os.path.dirname(file_path), os.path.splitext(
                 os.path.basename(file_path))[0] + "_MRP_Script")
             os.makedirs(folder_path, exist_ok=True)
 
-            # Add the selected column name to the original filename
             selected_column_name = self.data_selection_frame.selected_column_var.get()
             original_file_name += f"_{selected_column_name}"
 
             output_file_path = os.path.join(
                 folder_path, f"{original_file_name}.xlsx")
 
-            # Create a Pandas Excel writer using XlsxWriter as the engine
             with pd.ExcelWriter(output_file_path, engine='xlsxwriter') as writer:
-                # Now call the function to create and populate sheets for each cluster
                 self.create_sheets_for_clusters(writer)
-                # If there are other sheets to create, add those functions here as well
 
-                # The Excel file will be saved when the with block is exited
                 print(f"Excel file has been created at: {output_file_path}")
 
     def set_variable_column_widths(self, worksheet):
@@ -5405,7 +4994,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
     def bin_all_cluster_data(self):
         """Bin all the data contained in self.mean_cluster_data based on their respective sample rates."""
-        # Access the only file data in data_dict
         file_data = list(self.data_dict.values())[0]
 
         # Build a dictionary mapping number of peaks/stim to bin size
@@ -5422,15 +5010,12 @@ class MenopauseDataProcessingApp(ttk.Frame):
         for cluster_number, cluster_periods in self.mean_cluster_data.items():
             bin_size_sec = peak_to_bin_size.get(cluster_number)
             if not bin_size_sec:
-                continue  # Skip this cluster number if bin size is not found
+                continue
 
-            # Iterate through each period: 'full', 'day', 'night'
             for period in ['full', 'day', 'night']:
                 period_data = cluster_periods.get(period)
 
-                # Check if mean_temp_data and mean_act_data exist and are not None
                 if period_data.get("mean_temp_data") is not None and period_data.get("mean_act_data") is not None:
-                    # Proceed with binning since the data is present
                     binned_temp_data = self.bin_data_dynamic(
                         period_data["mean_temp_data"], bin_size_sec)
                     period_data["binned_mean_temp_data"] = binned_temp_data
@@ -5449,21 +5034,16 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
         - all_photometry_data (pandas DataFrame): A DataFrame containing the merged photometry data with the mean and SEM calculated for the non-time columns.
         """
-        # Start with the first DataFrame, assuming it is sorted by the time column.
         all_photometry_data = photometry_data_list[0].copy()
 
-        # Define the time column (assuming it's the first column)
         time_col = all_photometry_data.columns[0]
 
-        # Make sure the time column is sorted
         all_photometry_data = all_photometry_data.sort_values(by=time_col)
 
-        # Rename the data column of the first DataFrame to avoid duplicate column names
         all_photometry_data.rename(
             columns={all_photometry_data.columns[1]: 'dFoF_465_0'}, inplace=True)
 
         for i, df in enumerate(photometry_data_list[1:], start=1):
-            # Sort the DataFrame by the time column
             df = df.sort_values(by=time_col)
 
             # Use merge_asof to merge with a tolerance
@@ -5475,17 +5055,13 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 direction='nearest'
             )
 
-        # Compute the mean and SEM for the non-time columns
-        # Exclude the time column
         data_columns = all_photometry_data.columns[1:]
         all_photometry_data['Mean'] = all_photometry_data[data_columns].mean(
             axis=1, skipna=True)
 
         if len(data_columns) == 1:
-            # If there's only one data column, set SEM to 0
             all_photometry_data['SEM'] = 0
         else:
-            # Otherwise, compute the SEM
             all_photometry_data['SEM'] = all_photometry_data[data_columns].sem(
                 axis=1, skipna=True)
 
@@ -5502,10 +5078,8 @@ class MenopauseDataProcessingApp(ttk.Frame):
         Returns:
         - binned_data (DataFrame): The binned data with the mean values for each bin.
         """
-        # The time column is assumed to be the first column
         time_col = data.columns[0]
 
-        # Determine the bin edges based on the bin_size_sec
         bin_edges = list(self.float_range(
             data[time_col].iloc[0], data[time_col].iloc[-1] + bin_size_sec, bin_size_sec))
 
@@ -5513,22 +5087,17 @@ class MenopauseDataProcessingApp(ttk.Frame):
         if (bin_edges[-1] - bin_edges[-2]) < bin_size_sec:
             bin_edges.pop(-1)
 
-        # Use pandas cut to determine which bin each data point belongs to
         bins = pd.cut(data[time_col], bins=bin_edges,
                       right=False, include_lowest=True, labels=False)
 
-        # Group by the bins and take the mean of the 'Mean' and 'SEM' columns
         binned_data = data.groupby(bins)[['Mean', 'SEM']].mean()
 
-        # Reset index to get a clean DataFrame
         binned_data.reset_index(inplace=True)
 
-        # Create a new column for the bin range as a string for labeling
         bin_ranges = [
             f"{int(bin_edges[i])} - {int(bin_edges[i + 1])}" for i in range(len(bin_edges) - 1)]
         binned_data['Bin Range'] = bin_ranges
 
-        # Reorder the columns to set 'Bin Range' as the first column
         binned_data = binned_data[['Bin Range', 'Mean', 'SEM']]
 
         return binned_data
@@ -5569,14 +5138,13 @@ class MenopauseDataProcessingApp(ttk.Frame):
     def save_image(self):
         """Save the current figure as an image file based on the selected format and the DPI value entered by the user."""
         selected_format = self.export_options_container.image_format_combobox.get().lower()
-        # Get the DPI value from the entry box
         dpi = int(self.export_options_container.dpi_entry.get())
-        file_path = self.file_path.get()  # Get the file path
+        file_path = self.file_path.get()
         recording_date = datetime.strptime(self.date, '%y-%m-%d').date()
 
         base_name, _ = os.path.splitext(os.path.basename(
-            file_path))  # Extract base name from file path
-        figure_display = self.display_dropdown.get()  # Get the figure display type
+            file_path))
+        figure_display = self.display_dropdown.get()
 
         if figure_display == "Mean Cluster Display":
             period = self.period_dropdown.get()
@@ -5597,56 +5165,43 @@ class MenopauseDataProcessingApp(ttk.Frame):
             counter += 1
 
         fig = self.current_fig
-        # Retrieve height and width from entries
         height_str = self.export_options_container.height_entry.get().strip()
         width_str = self.export_options_container.width_entry.get().strip()
         fig_copy = copy.deepcopy(fig)
 
-        # Only set figure size if both height and width are provided
         if height_str and width_str:
             try:
                 height = float(height_str)
                 width = float(width_str)
-                # Set figure size based on the user input
                 fig_copy.set_size_inches(width, height)
             except ValueError:
-                # If conversion fails, possibly log or alert the user, but proceed to save with default size
                 print("Invalid height or width. Using default figure size.")
 
-        else:  # Increase width based on duration, up to a maximum of 30 inches
-            # Calculate figure width based on duration
+        else:
             duration_hours = self.duration_main_data / 60
-            width = 12  # Default width for all durations
+            width = 12
 
-            # New maximum width is 80 inches
             new_max_width = 96
 
-            # Calculate the maximum additional width
             max_additional_width = new_max_width - width
 
             if duration_hours > 5:
-                # Calculate additional width
                 additional_width = min(
                     (duration_hours - 5) // 1, max_additional_width)
                 width += additional_width
 
-            height = 7  # Fixed height in inches
-            # Set the size of the figure
+            height = 7
             fig.set_size_inches(width, height)
 
         fig_width, fig_height = fig_copy.get_size_inches()
 
-        # Calculate the diagonal length of the figure
         diagonal_length = math.sqrt(fig_width**2 + fig_height**2)
 
-        # Set the default font size relative to the diagonal length of the figure
         default_font_size = 1.2 * diagonal_length
 
-        # Get current labels from the figure
         current_xlabel = fig.axes[0].get_xlabel()
         current_ylabel = fig.axes[0].get_ylabel()
 
-        # Apply user-defined font sizes, preserving existing labels if no new label is specified
         xlabel_fontsize = self.export_options_container.font_settings.get(
             'xlabel_fontsize')
         ylabel_fontsize = self.export_options_container.font_settings.get(
@@ -5655,18 +5210,15 @@ class MenopauseDataProcessingApp(ttk.Frame):
             'xtick_fontsize')
         ytick_fontsize = self.export_options_container.font_settings.get(
             'ytick_fontsize')
-        # Assuming self.graph_settings exists and is properly initialized
         y_axis_name = self.export_options_container.font_settings.get(
             'y_axis_name', '')
         y_label_to_use = y_axis_name if y_axis_name else current_ylabel
 
-        # Apply the calculated font size
         fig.axes[0].set_xlabel(current_xlabel, fontsize=int(default_font_size))
         fig.axes[0].set_ylabel(y_label_to_use, fontsize=int(default_font_size))
         fig.axes[0].xaxis.set_tick_params(labelsize=int(default_font_size))
         fig.axes[0].yaxis.set_tick_params(labelsize=int(default_font_size))
 
-        # Save the figure
         filename = os.path.join(exported_images_dir,
                                 f"{base_name}.{selected_format}")
         fig.tight_layout()

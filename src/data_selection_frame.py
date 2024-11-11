@@ -38,14 +38,12 @@ class DataSelectionFrame(ttk.Frame):
 
         self.handle_figure_display_selection = figure_display_callback
         self.new_data_file_callback = new_data_file_callback
-        # This is the dropdown from the main app
         self.figure_display_dropdown = figure_display_dropdown
         self.figure_display_choices = figure_display_choices
         self.baseline_button_pressed = baseline_button_pressed
         self.update_table_from_frame = update_table_from_frame_callback
         self.settings_manager = settings_manager
 
-        # Set the default state for some variables
         self.file_path_var = tk.StringVar()
         self.selected_column_var = tk.StringVar()
         self.use_baseline_var = tk.BooleanVar(value=False)
@@ -57,7 +55,6 @@ class DataSelectionFrame(ttk.Frame):
         self.mouse_name = None
         self.width = width
 
-        # Create widgets
         self.create_frame_widgets()
 
     def create_frame_widgets(self):
@@ -91,7 +88,6 @@ class DataSelectionFrame(ttk.Frame):
                                   command=lambda: self.select_main_data_file(self.file_path_var, self.selected_column_var, self.column_dropdown, self.dataframe))
         select_button.grid(row=0, column=1, padx=10, sticky=tk.W)
 
-        # File Name Entry and Column Title
         self._create_file_name_entry(file_row_frame)
         self._create_column_title_selector(file_row_frame)
 
@@ -135,14 +131,12 @@ class DataSelectionFrame(ttk.Frame):
             'Helvetica', 10), fg='black', bg='snow')
         column_label.grid(row=0, column=3, sticky=tk.W)
 
-        # Create a ttk.Frame to hold the OptionMenu
         self.column_dropdown_frame = ttk.Frame(
             parent_frame, borderwidth=2, relief="solid")
         self.column_dropdown_frame.configure(style='Bordered.TFrame')
         self.column_dropdown_frame.grid(
             row=0, column=4, pady=(0, 5), sticky=tk.E)
 
-        # Create the OptionMenu
         self.column_dropdown = ttk.OptionMenu(
             self.column_dropdown_frame, self.selected_column_var, '', "")
         self.column_dropdown.configure(style="Custom.TMenubutton")
@@ -208,10 +202,8 @@ class DataSelectionFrame(ttk.Frame):
         Returns:
         - pd.DataFrame: The possibly modified DataFrame.
         """
-        # Get the title of the first column
         first_column_title = dataframe.columns[0].lower()
 
-        # Define the units and their conversion to minutes
         time_units = {
             'seconds': 1 / 60,
             'sec': 1 / 60,  # This will handle 'sec' and 'secs'
@@ -219,10 +211,8 @@ class DataSelectionFrame(ttk.Frame):
             'min': 1
         }
 
-        # Initialize a flag to indicate whether a conversion was performed
         conversion_performed = False
 
-        # Check for the occurrence of each time unit in the column title
         for unit, factor in time_units.items():
             # Use regular expression to find the unit surrounded by non-alphanumeric characters
             # or at the start/end of the string, including inside parentheses
@@ -236,13 +226,11 @@ class DataSelectionFrame(ttk.Frame):
                 conversion_performed = True
                 break
 
-        # Check if conversion was performed
         if conversion_performed:
             print("Time unit found and converted.")
         else:
             print("No time unit found. Assuming values are in minutes.")
 
-        # Return the possibly modified dataframe
         return dataframe
 
     def populate_dropdown(self, choices):
@@ -283,11 +271,9 @@ class DataSelectionFrame(ttk.Frame):
         if file_path:
             self.file_path_var.set(file_path)
 
-            # Load the data into a pandas DataFrame based on the file extension
             if file_path.endswith('.csv'):
                 dataframe = pd.read_csv(file_path)
             elif file_path.endswith('.xlsx'):
-                # Directly specify which columns to read
                 try:
                     dataframe = pd.read_excel(file_path)
                 except:
@@ -313,7 +299,6 @@ class DataSelectionFrame(ttk.Frame):
 
             is_time_based_data = self.is_time_data(dataframe)
 
-            # Robust check for time data
             if not self.is_time_data(dataframe):
                 print("Proceeding despite suspected non-time data.")
 
@@ -333,7 +318,6 @@ class DataSelectionFrame(ttk.Frame):
         root.destroy()
 
         if folder_path:
-            # Save the selected folder path in settings
             self.settings_manager.default_data_folder_path = folder_path
             self.settings_manager.save_variables()
 
@@ -348,7 +332,7 @@ class DataSelectionFrame(ttk.Frame):
         - mouse_name (str): The extracted mouse name.
         """
         base_name, _ = os.path.splitext(os.path.basename(
-            file_path))  # Extract base name from file path
+            file_path))
 
         # Regex pattern for letters followed by numbers
         pattern = r"[A-Za-z]+\d+"
@@ -358,10 +342,7 @@ class DataSelectionFrame(ttk.Frame):
             # If exactly one match is found, it's assumed to be the mouse name
             mouse_name = matches[0]
         elif len(matches) > 1:
-            # Attempt to parse and compare numbers from the first two matches
-            # Extract number from first match
             num1 = int(re.search(r"\d+", matches[0]).group())
-            # Extract number from second match
             num2 = int(re.search(r"\d+", matches[1]).group())
 
             # Select the match with the lower number, but default to the first if it's lower or equal
@@ -392,13 +373,10 @@ class DataSelectionFrame(ttk.Frame):
         """
         first_column = dataframe.iloc[:, 0]
         if pd.api.types.is_numeric_dtype(first_column):
-            # If it's numeric, lets assume it's already suitable for difference calculation
             diffs = first_column.diff().dropna()
 
-            # Adjust the subset size if the dataframe is shorter
             actual_subset_size = min(subset_size, len(diffs))
 
-            # Calculate the mode of these differences
             mode_diff = pd.Series(diffs).mode()[0]
 
             # Count how many differences are close to the mode (within a small tolerance)
@@ -409,7 +387,6 @@ class DataSelectionFrame(ttk.Frame):
             return consistent_diffs_count / actual_subset_size >= tolerance_ratio
 
         else:
-            # If the first column is not numerical
             return False
 
     def toggle_baseline_entries(self):
@@ -437,12 +414,9 @@ class DataSelectionFrame(ttk.Frame):
         Parameters:
         - figure_display_dropdown (tk.OptionMenu): The figure display dropdown from the main app.
         """
-        # Update the figure display dropdown
         figure_display_dropdown.set("Z-scored data")
         self.baseline_button_pressed = True
 
-        # Explicitly call the handle_figure_display_selection method
-        # Assuming the method takes an event argument, pass None since this is a programmatic call
         self.handle_figure_display_selection(None)
 
         self.update_table_from_frame()

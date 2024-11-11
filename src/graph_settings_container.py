@@ -52,7 +52,6 @@ class GraphSettingsContainer(ttk.Frame):
             "Activity": {}
         }
 
-        # Store the callback functions
         self.refresh_graph_display_callback = refresh_graph_display_callback
         self.update_duration_box_callback = update_duration_box_callback
         self.handle_behaviour_change_callback = handle_behaviour_change_callback
@@ -63,7 +62,6 @@ class GraphSettingsContainer(ttk.Frame):
         self.save_and_close_axis_callback = save_and_close_axis_callback
         self.redraw_graph_callback = redraw_graph_callback
 
-        # Initialize variables
         self.file_path_var = tk.StringVar()
         self.pre_behaviour_time_var = tk.StringVar()
         self.post_behaviour_time_var = tk.StringVar()
@@ -124,16 +122,15 @@ class GraphSettingsContainer(ttk.Frame):
                                      'End Time': ''}
         self.display_duration_box_var = tk.BooleanVar(value=True)
         self.num_instances_box_var = tk.BooleanVar(value=True)
-        self.time_unit_var = tk.StringVar(value="minutes")  # default value
+        self.time_unit_var = tk.StringVar(value="minutes")
         self.time_input_unit_var = tk.StringVar(
-            value="seconds")  # default value
-        self.x_gridlines_var = tk.StringVar()  # no default value
-        self.y_gridlines_var = tk.StringVar()  # no default value
+            value="seconds")
+        self.x_gridlines_var = tk.StringVar()
+        self.y_gridlines_var = tk.StringVar()
         self.current_table_key = None
-        # Variable to keep track of the baseline button state
         self.baseline_button_pressed = False
         self.mouse_name = None
-        self.column_dropdown = None  # or some default value
+        self.column_dropdown = None
         self.dataframe = None
         self.figure_display_dropdown = None
         self.figure_display_choices = None
@@ -232,10 +229,8 @@ class GraphSettingsContainer(ttk.Frame):
         self.settings_container_frame.columnconfigure(0, weight=1)
         self.settings_container_frame.rowconfigure(0, weight=1)
 
-        # Call the canvas setup function
         self.setup_canvas()
 
-        # Settings frame for changing graph
         self.graph_settings_frame = ttk.Frame(
             self.settings_container_frame, style='Bordered.TFrame')
         self.graph_settings_frame.grid(
@@ -337,7 +332,7 @@ class GraphSettingsContainer(ttk.Frame):
     def create_remove_first_60_minutes_widget(self):
         """Create the remove first 60 minutes widget."""
         self.remove_first_60_minutes_var = tk.BooleanVar(
-            value=True)  # Defaulted to True (checked)
+            value=True)
 
         remove_first_60_minutes_label = tk.Label(self.graph_settings_frame, text="Remove First 60 Minutes:", font=('Helvetica', 8),
                                                  fg='black', bg='snow', wraplength=120)
@@ -422,7 +417,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # List of available line styles
         onset_line_styles = ['-', '--', '-.', ':']
         self.onset_line_style_combobox = ttk.Combobox(self.graph_settings_frame, width=7, values=onset_line_styles,
                                                       state='readonly')
@@ -477,7 +471,6 @@ class GraphSettingsContainer(ttk.Frame):
 
     def create_color_buttons_widget(self):
         """Create the color buttons widget."""
-        # Bar Graph Fill color
         self.bar_fill_color_button = tk.Button(self.graph_settings_frame, text="Bar Fill colour", font=('Helvetica', 8),
                                                command=self.select_bar_fill_color)
         self.bar_fill_color_button.grid(
@@ -485,7 +478,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # Bar Graph Border color
         self.bar_border_color_button = tk.Button(self.graph_settings_frame, text="Bar Border colour", font=('Helvetica', 8),
                                                  command=self.select_bar_border_color)
         self.bar_border_color_button.grid(
@@ -493,7 +485,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # SEM color
         self.sem_color_button = tk.Button(self.graph_settings_frame, text="Bar SEM colour", font=('Helvetica', 8),
                                           command=self.select_bar_sem_color)
         self.sem_color_button.grid(
@@ -501,7 +492,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # Line color
         self.line_color_button = tk.Button(self.graph_settings_frame, text="Onset Line colour", font=('Helvetica', 8),
                                            command=self.select_line_color)
         self.line_color_button.grid(
@@ -581,7 +571,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # Create the label and entry widgets for the height modifier
         box_placement_label = tk.Label(self.graph_settings_frame, text='Duration Box Placement Modifier (+/-):',
                                        font=('Helvetica', 8),
                                        bg='snow', wraplength=120)
@@ -607,7 +596,6 @@ class GraphSettingsContainer(ttk.Frame):
             self.column = 0
             self.row += 1
 
-        # Create the variable to hold the state
         self.limit_axis_range_var = tk.BooleanVar()
         self.limit_axis_range_checkbox = tk.Checkbutton(self.graph_settings_frame, text='Limit Axis Range', bg='snow',
                                                         variable=self.limit_axis_range_var)
@@ -618,7 +606,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # Button to open the axis range setting pop-up
         self.axis_range_button = tk.Button(self.graph_settings_frame, text="Set Axis Range",
                                            command=self.open_axis_range_popup, bg='lightblue')
         self.axis_range_button.grid(
@@ -631,7 +618,7 @@ class GraphSettingsContainer(ttk.Frame):
 
     def create_acivity_data_checkbox(self):
         """Create the activity data checkbox."""
-        self.activity_data_var = tk.BooleanVar()  # Variable to hold the state
+        self.activity_data_var = tk.BooleanVar()
         self.activity_data_checkbox = tk.Checkbutton(self.graph_settings_frame, text='Activity Data', bg='snow',
                                                      variable=self.activity_data_var)
         self.activity_data_checkbox.config(
@@ -646,7 +633,7 @@ class GraphSettingsContainer(ttk.Frame):
 
     def create_temperature_data_checkbox(self):
         """Create the temperature data checkbox."""
-        self.temperature_data_var = tk.BooleanVar()  # Variable to hold the state
+        self.temperature_data_var = tk.BooleanVar()
         self.temperature_data_checkbox = tk.Checkbutton(self.graph_settings_frame, text='Temperature Data', bg='snow',
                                                         variable=self.temperature_data_var)
         self.temperature_data_checkbox.config(
@@ -661,7 +648,7 @@ class GraphSettingsContainer(ttk.Frame):
 
     def create_zero_x_axis_widget(self):
         """Create the zero x-axis widget."""
-        self.zero_x_axis_checkbox_var = tk.IntVar()  # Create the variable to hold the state
+        self.zero_x_axis_checkbox_var = tk.IntVar()
         self.zero_x_axis_checkbox = tk.Checkbutton(self.graph_settings_frame, text='Zero X-axis with behavior', bg='snow',
                                                    wraplength=120,
                                                    variable=self.zero_x_axis_checkbox_var,
@@ -673,7 +660,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # Create a ttk.Frame to hold the OptionMenu
         self.behaviour_dropdown_frame = ttk.Frame(
             self.graph_settings_frame, borderwidth=2, relief="solid")
         self.behaviour_dropdown_frame.configure(style='Bordered.TFrame')
@@ -687,7 +673,6 @@ class GraphSettingsContainer(ttk.Frame):
         self.behaviour_to_zero_dropdown.config(
             width=7, style="Custom.TMenubutton")
 
-        # Set the state of the dropdown to disabled initially
         self.behaviour_to_zero_dropdown['state'] = 'disabled'
         self.behaviour_to_zero_dropdown.grid(
             row=self.row, column=self.column, sticky=tk.NSEW)
@@ -703,7 +688,7 @@ class GraphSettingsContainer(ttk.Frame):
         self.column = 0
         self.row += 1
 
-        self.time_unit_var = tk.StringVar(value="minutes")  # default value
+        self.time_unit_var = tk.StringVar(value="minutes")
         self.time_unit_menu = ttk.Combobox(self.graph_settings_frame, textvariable=self.time_unit_var,
                                            values=["seconds", "minutes", "hours", "time of day"], state='readonly')
         self.time_unit_menu.grid(
@@ -713,14 +698,12 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # Add label and Entry for x ticks
         label_text = "X Ticks:" if self.app_name == "Menopause_app" else "X Ticks:"
         self.x_gridlines_label = tk.Label(
             self.graph_settings_frame, text=label_text, bg='snow')
-        # adjust the row and column as needed
         self.x_gridlines_label.grid(
             row=self.row, column=self.column, sticky=tk.W)
-        self.x_gridlines_var = tk.StringVar()  # user can enter a value here
+        self.x_gridlines_var = tk.StringVar()
         self.x_gridlines_entry = tk.Entry(
             self.graph_settings_frame, width=7, textvariable=self.x_gridlines_var)
         self.x_gridlines_entry.grid(
@@ -728,10 +711,8 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # Add label and Entry for y ticks
         self.y_gridlines_label = tk.Label(
             self.graph_settings_frame, text="Y Ticks:", bg='snow')
-        # adjust the row and column as needed
         self.y_gridlines_label.grid(
             row=self.row, column=self.column, sticky=tk.W)
         self.y_gridlines_var = tk.StringVar()  # user can enter a value here
@@ -742,7 +723,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         self.column += 1
 
-        # Update Button
         self.update_button = tk.Button(self.graph_settings_frame, text='Update Settings', font=('Helvetica', 8),
                                        command=self.refresh_graph_display, bg='lightblue')
         self.update_button.grid(row=self.row, column=self.column, padx=(
@@ -773,10 +753,8 @@ class GraphSettingsContainer(ttk.Frame):
         self.popup = tk.Toplevel(self.graph_settings_frame, bg='snow')
         self.popup.title("Set Axis Range")
 
-        # You can adjust the width (300) and height (200) as needed
         self.popup.geometry('260x120')
 
-        # Initialize the variables if they don't already exist
         if not hasattr(self, 'x_axis_min_var'):
             self.x_axis_min_var = tk.StringVar()
         if not hasattr(self, 'x_axis_max_var'):
@@ -786,7 +764,6 @@ class GraphSettingsContainer(ttk.Frame):
         if not hasattr(self, 'y_axis_max_var'):
             self.y_axis_max_var = tk.StringVar()
 
-        # Add label and Entries for limiting x axis min and max
         tk.Label(self.popup, text="X Axis Min:", bg='snow').grid(
             row=0, column=0, sticky=tk.NSEW)
         tk.Entry(self.popup, width=7, textvariable=self.x_axis_min_var).grid(row=0, column=1, padx=(5, 10), pady=(10, 5),
@@ -797,7 +774,6 @@ class GraphSettingsContainer(ttk.Frame):
         tk.Entry(self.popup, width=7, textvariable=self.x_axis_max_var).grid(row=0, column=3, padx=(5, 10), pady=(10, 5),
                                                                              sticky=tk.NSEW)
 
-        # Add label and Entries for limiting y axis min and max
         tk.Label(self.popup, text="Y Axis Min:", bg='snow').grid(
             row=2, column=0, sticky=tk.NSEW)
         tk.Entry(self.popup, width=7, textvariable=self.y_axis_min_var).grid(row=2, column=1, padx=(5, 10), pady=(10, 5),
@@ -808,13 +784,12 @@ class GraphSettingsContainer(ttk.Frame):
         tk.Entry(self.popup, width=7, textvariable=self.y_axis_max_var).grid(row=2, column=3, padx=(5, 10), pady=(10, 5),
                                                                              sticky=tk.NSEW)
 
-        # Save and Close button
         save_and_close_axis_button = tk.Button(
             self.popup, text="Save & Close", command=lambda: self.save_and_close_axis(self.popup))
         save_and_close_axis_button.grid(row=3, column=0, columnspan=4, pady=10)
 
-        self.popup.update_idletasks()  # Update "idle" tasks to get updated dimensions
-        center_window_on_screen(self.popup)  # Center the popup window
+        self.popup.update_idletasks()
+        center_window_on_screen(self.popup)
 
     def setup_canvas(self):
         """Create and initialize canvas for behaviour names."""
@@ -822,7 +797,6 @@ class GraphSettingsContainer(ttk.Frame):
         self.canvas.grid(row=0, column=0, padx=10,
                          pady=(10, 5), sticky=tk.NSEW)
 
-        # Add behaviour options inside the scrollable frame
         self.behaviour_frame = Frame(self.canvas, bg='snow')
         self.behaviour_frame.grid(row=0, column=1, pady=(5, 2), sticky=tk.NW)
 
@@ -843,7 +817,6 @@ class GraphSettingsContainer(ttk.Frame):
         self.behaviour_frame.bind("<Configure>", lambda event: self.canvas.configure(
             scrollregion=self.canvas.bbox("all")))
 
-        # Allow behaviour_frame to expand horizontally
         self.behaviour_frame.grid_columnconfigure(0, weight=1)
         scrollbar.grid_columnconfigure(0, weight=0)
 
@@ -918,7 +891,7 @@ class GraphSettingsContainer(ttk.Frame):
             color_value = getattr(self, color_attr, None)
             button = getattr(self, button_attr, None)
 
-            if button and color_value:  # Check if both the button and color attributes exist
+            if button and color_value:
                 button.config(bg=color_value)
                 color_object = self.string_to_color(color_value)
                 button.config(fg='white' if self.brightness(
@@ -963,17 +936,14 @@ class GraphSettingsContainer(ttk.Frame):
         """
         color_code = colorchooser.askcolor()[1]
         if color_code is not None:
-            # Convert the color code from a hex string to a tuple of RGB values
             color_rgb = tuple(
                 int(color_code[i:i + 2], 16) / 255 for i in (1, 3, 5))
 
-            # Update the behaviour color in the dictionary
             self.behaviour_colors[behaviour] = color_rgb
 
             if self.update_box_colors_callback:
                 self.update_box_colors_callback(behaviour, color_rgb)
 
-            # Save the new color selection
             self.save_variables()
 
     def refresh_graph_display(self):
@@ -1007,7 +977,6 @@ class GraphSettingsContainer(ttk.Frame):
         """
         if self.save_and_close_axis_callback:
 
-            # Pass the popup instance to the callback
             self.save_and_close_axis_callback(popup=self.popup, close=close)
 
     def create_behaviour_options(self, destroy_frame=True):
@@ -1031,7 +1000,6 @@ class GraphSettingsContainer(ttk.Frame):
         Returns:
         - str: The value of the setting.
         """
-        # Fetch settings from settings_manager based on setting_type
         if setting_type == "Temperature":
             return getattr(self.settings_manager, f"selected_temp_{setting_name}")
         elif setting_type == "Activity":
@@ -1089,19 +1057,16 @@ class GraphSettingsContainer(ttk.Frame):
         bold_large_font = ('Helvetica', 10, 'bold')
         popup = self.photometry_popup
 
-        # Photometry Frame
         self.photometry_frame = tk.LabelFrame(
             popup, text="Photometry Settings", bg='snow', font=bold_large_font)
         self.photometry_frame.grid(
             row=0, column=0, padx=10, pady=10, sticky='nsew')
 
-        # Line Color Chooser
         self.line_color_var = tk.StringVar(
             value=self.settings_manager.selected_photometry_line_color)
         tk.Button(self.photometry_frame, text="Choose Line Colour", bg='snow',
                   command=lambda: self.choose_photometry_line_color(popup)).grid(row=0, column=0, padx=10, pady=5)
 
-        # Photometry Line Width
         self.selected_photometry_line_width = tk.StringVar(
             value=str(self.settings_manager.selected_photometry_line_width))
         tk.Label(self.photometry_frame, text="Photometry Line Width:",
@@ -1109,7 +1074,6 @@ class GraphSettingsContainer(ttk.Frame):
         tk.Entry(self.photometry_frame, textvariable=self.selected_photometry_line_width,
                  width=7).grid(row=1, column=1, padx=10, pady=5)
 
-        # Photometry Line Alpha (Transparency)
         self.photometry_line_alpha_var = tk.StringVar(
             value=str(self.settings_manager.selected_photometry_line_alpha))
         tk.Label(self.photometry_frame, text="Photometry Line Alpha:",
@@ -1117,13 +1081,12 @@ class GraphSettingsContainer(ttk.Frame):
         tk.Entry(self.photometry_frame, textvariable=self.photometry_line_alpha_var,
                  width=7).grid(row=2, column=1, padx=10, pady=5)
 
-        # Save and Close button
         save_and_close_button = tk.Button(
             popup, text="Save & Close", command=lambda: self.save_and_close_photometry_settings(popup))
         save_and_close_button.grid(row=8, column=0, columnspan=2, pady=10)
 
-        popup.update_idletasks()  # Update "idle" tasks to get updated dimensions
-        center_window_on_screen(popup)  # Center the popup window
+        popup.update_idletasks()
+        center_window_on_screen(popup)
 
     def open_temperature_settings_popup(self):
         """Opens a pop-up window to set the Temperature settings."""
@@ -1183,7 +1146,6 @@ class GraphSettingsContainer(ttk.Frame):
         - setting_type (str): The type of setting to create.
         - popup (tk.Toplevel): The pop-up window to add the settings to.
         """
-        # Only add line width for Temperature
         if setting_type == "Temperature":
             self.settings_vars[setting_type]['mean_line_width'] = tk.StringVar(
                 value=self.get_setting(setting_type, 'mean_line_width'))
@@ -1195,7 +1157,6 @@ class GraphSettingsContainer(ttk.Frame):
         else:
             row_offset = 0
 
-        # Mean Line or Bar Color
         color_label_text = "Mean Line Colour" if setting_type == "Temperature" else "Mean Bar Colour"
         color_setting_name = 'mean_line_color' if setting_type == "Temperature" else 'mean_bar_color'
         self.settings_vars[setting_type][color_setting_name] = tk.StringVar(
@@ -1208,7 +1169,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         row_offset += 1
 
-        # Alpha (Transparency) for both Line and SEM Line (for Temperature) or Bar (for Activity)
         alpha_setting_name = 'mean_line_alpha' if setting_type == "Temperature" else 'mean_bar_alpha'
         self.settings_vars[setting_type][alpha_setting_name] = tk.StringVar(
             value=self.get_setting(setting_type, alpha_setting_name))
@@ -1220,7 +1180,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         row_offset += 1
 
-        # Only add SEM for Temperature
         if setting_type == "Temperature":
             self.settings_vars[setting_type]['sem_color'] = tk.StringVar(
                 value=self.get_setting(setting_type, 'sem_color'))
@@ -1240,7 +1199,6 @@ class GraphSettingsContainer(ttk.Frame):
                 row=row_offset, column=1, padx=10, pady=5)
             row_offset += 1
 
-        # Desired Offset and Scale
         self.settings_vars[setting_type]['desired_offset'] = tk.StringVar(
             value=self.get_setting(setting_type, 'desired_offset'))
         tk.Label(parent_frame, text=f"{setting_type} Desired Offset:", bg='snow').grid(
@@ -1259,7 +1217,6 @@ class GraphSettingsContainer(ttk.Frame):
 
         row_offset += 1
 
-        # Y Axis Color and Number of Ticks
         self.settings_vars[setting_type]['y_axis_color'] = tk.StringVar(
             value=self.get_setting(setting_type, 'y_axis_color'))
         tk.Label(parent_frame, text=f"{setting_type} Y Axis Colour:", bg='snow').grid(
@@ -1288,13 +1245,11 @@ class GraphSettingsContainer(ttk.Frame):
         """
         color = colorchooser.askcolor()
         if color[1]:  # If a color is chosen (color[1] is the hex color code)
-            # Update the StringVar with the selected color
             color_var.set(color[1])
-            # Update the setting in the manager
             self.set_setting(setting_type, setting_name, color[1])
 
-        popup.lift()  # Bring the settings popup to the front
-
+        popup.lift()
+        
     def choose_photometry_line_color(self, popup):
         """
         Open a color picker dialog and set the photometry line color.
@@ -1305,7 +1260,7 @@ class GraphSettingsContainer(ttk.Frame):
         color = colorchooser.askcolor()
         if color[1]:
             self.photometry_line_color_var.set(color[1])
-        popup.lift()  # Bring the settings popup to the front
+        popup.lift()
 
     def choose_scale_bar_color(self, popup):
         """
@@ -1317,7 +1272,7 @@ class GraphSettingsContainer(ttk.Frame):
         color = colorchooser.askcolor()
         if color[1]:
             self.scale_bar_color_var.set(color[1])
-        popup.lift()  # Bring the settings popup to the front
+        popup.lift()
 
     def choose_y_axis_color(self, setting_type, popup):
         """
@@ -1331,7 +1286,7 @@ class GraphSettingsContainer(ttk.Frame):
         if color[1]:
             self.settings_manager.set_selected_y_axis_color(
                 setting_type, color[1])
-        popup.lift()  # Bring the settings popup to the front
+        popup.lift()
 
     def save_and_close_photometry_settings(self, popup):
         """
@@ -1340,7 +1295,6 @@ class GraphSettingsContainer(ttk.Frame):
         Parameters:
         - popup (tk.Toplevel): The pop-up window to close.
         """
-        # Save the Photometry settings
         self.settings_manager.selected_photometry_line_color = self.photometry_line_color_var.get()
         self.settings_manager.selected_photometry_line_width = self.selected_photometry_line_width.get()
         self.settings_manager.selected_photometry_line_alpha = self.photometry_line_alpha_var.get()
@@ -1350,9 +1304,8 @@ class GraphSettingsContainer(ttk.Frame):
         self.settings_manager.selected_scale_bar_width = self.scale_bar_width_var.get()
         self.settings_manager.selected_scale_bar_size = self.scale_bar_size_var.get()
 
-        # Save to file and redraw the graph as needed
         self.settings_manager.save_variables()
-        self.redraw_graph()  # todo add callback to redraw graph
+        self.redraw_graph()
 
         popup.destroy()
 
@@ -1363,7 +1316,6 @@ class GraphSettingsContainer(ttk.Frame):
         Parameters:
         - popup (tk.Toplevel): The pop-up window to close.
         """
-        # Save the Temperature settings using the settings_vars dictionary
         self.settings_manager.selected_temp_line_width = self.settings_vars['Temperature']['mean_line_width'].get(
         )
         self.settings_manager.selected_temp_mean_line_color = self.settings_vars['Temperature']['mean_line_color'].get(
@@ -1383,7 +1335,6 @@ class GraphSettingsContainer(ttk.Frame):
         self.settings_manager.selected_temp_num_ticks = self.settings_vars['Temperature']['num_ticks'].get(
         )
 
-        # Save to file and redraw the graph as needed
         self.settings_manager.save_variables()
         self.redraw_graph()
 
@@ -1396,7 +1347,6 @@ class GraphSettingsContainer(ttk.Frame):
         Parameters:
         - popup (tk.Toplevel): The pop-up window to close.
         """
-        # Save the Activity settings using the settings_vars dictionary
         self.settings_manager.selected_activity_mean_bar_color = self.settings_vars['Activity']['mean_bar_color'].get(
         )
         self.settings_manager.selected_activity_mean_bar_alpha = self.settings_vars['Activity']['mean_bar_alpha'].get(
@@ -1411,7 +1361,6 @@ class GraphSettingsContainer(ttk.Frame):
         self.settings_manager.selected_activity_num_ticks = self.settings_vars['Activity']['num_ticks'].get(
         )
 
-        # Save to file and redraw the graph as needed
         self.settings_manager.save_variables()
         self.redraw_graph()
 

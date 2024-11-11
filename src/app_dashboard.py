@@ -17,14 +17,13 @@ class AppDashboard(tk.Tk):
         self.sidebar_expanded = True
         self.content = tk.Frame(self, bg='#EEEEEE', width=700, height=500)
         self.content.pack_propagate(0)
-        # Occupy the rest of the width
         self.content.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         self.sidebar = tk.Frame(
             self, width=200, bg='#111111', height=500, relief='sunken', borderwidth=2)
         self.sidebar.pack_propagate(0)
         self.sidebar.place(relx=0, rely=0, relwidth=0.15,
-                           relheight=1)  # Using relative positioning
+                           relheight=1)
 
         self.toggle_btn = tk.Button(self, text="≡", command=self.toggle_sidebar, bg='#333333', fg='#FFFFFF',
                                     font=("Arial", 14), relief='raised', borderwidth=2, padx=5, pady=2)
@@ -56,7 +55,12 @@ class AppDashboard(tk.Tk):
             self.show_single_animal_analysis_app()
 
     def save_state(self, app_name):
-        """Save the current state of the application."""
+        """
+        Save the current state of the application.
+        
+        Parameters:
+        - app_name (str): The name of the application that is currently running.
+        """
         with open("app_state.pkl", "wb") as f:
             pickle.dump(app_name, f)
 
@@ -91,21 +95,18 @@ class AppDashboard(tk.Tk):
         self.save_state("single_animal")
         self.clear_content()
 
-        # Instantiate your DataProcessingApp here
         app_instance = DataProcessingSingleInstance(self.content)
 
         self.toggle_btn = tk.Button(self, text="≡", command=self.toggle_sidebar, bg="#333333", fg="#FFFFFF", font=("Arial", 14), relief="raised", borderwidth=2,
                                     padx=5, pady=2)
         self.toggle_btn.place(x=5, y=0, anchor='nw')
-        self.hide_sidebar()  # Move this to the end
+        self.hide_sidebar()
 
     def show_menopause_app(self):
         """Show the menopause app."""
         self.save_state("menopause_app")
-        # Forcefully hide the sidebar
         self.hide_sidebar()
         self.clear_content()
-        # Create an instance of DataProcessingMenopauseFrame
         menopause_frame = MenopauseDataProcessingApp(self.content)
         menopause_frame.pack(fill='both', expand=True)
         label = tk.Label(
@@ -118,7 +119,6 @@ class AppDashboard(tk.Tk):
     def show_combine_data(self):
         """Show the combine data app."""
         self.save_state("combine_data")
-        # Forcefully hide the sidebar
         self.hide_sidebar()
         self.clear_content()
         label = tk.Label(
@@ -131,11 +131,10 @@ class AppDashboard(tk.Tk):
     def toggle_sidebar(self):
         """Toggle the sidebar visibility."""
         if self.sidebar_expanded:
-            self.sidebar.place(relwidth=0)  # Hide by setting width to 0
+            self.sidebar.place(relwidth=0)
             self.toggle_btn.config(text="≡")
             self.sidebar_expanded = False
         else:
-            # Show with 15% of the total width
             self.sidebar.place(relwidth=0.15)
             self.sidebar.lift()
             self.toggle_btn.lift()
@@ -144,6 +143,6 @@ class AppDashboard(tk.Tk):
 
     def hide_sidebar(self):
         """Hide the sidebar."""
-        self.sidebar.place(relwidth=0)  # Forcefully hide by setting width to 0
+        self.sidebar.place(relwidth=0)
         self.toggle_btn.config(text="≡")
         self.sidebar_expanded = False

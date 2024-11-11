@@ -58,15 +58,12 @@ def centered_input_dialog(parent, title, prompt):
     Returns:
     - result (str): The input from the user.
     """
-    # Create a Toplevel window
     dialog = tk.Toplevel(parent)
     dialog.title(title)
-    dialog.geometry('300x100')  # Adjust as needed
+    dialog.geometry('300x100')
 
-    # Center the window
     center_window_on_screen(dialog)
 
-    # Add label and entry
     label = tk.Label(dialog, text=prompt)
     label.pack(pady=10)
 

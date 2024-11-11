@@ -19,7 +19,6 @@ class BehaviourInputFrame(ttk.Frame):
         super().__init__(parent, style='Bordered.TFrame', *args, **kwargs)
         self.width = width
 
-        # Initialize instance variables
         self.behaviour_name_var = tk.StringVar()
         self.behaviour_type_var = tk.StringVar(value="Point")
         self.start_time_var = tk.StringVar()
