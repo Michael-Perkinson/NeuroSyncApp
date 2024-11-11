@@ -35,8 +35,14 @@ jobs:
           pyinstaller --onefile src/main_app.py --name "NeuroSyncApp_${{ github.ref_name }}" --icon icon/icon.ico --distpath "dist/NeuroSyncApp_${{ github.ref_name }}"
 
       - name: Verify .exe file path
+        shell: powershell
         run: |
-          if [ -f dist/NeuroSyncApp_${{ github.ref_name }}/NeuroSyncApp_${{ github.ref_name }}.exe ]; then echo "File exists."; else echo "File does not exist."; exit 1; fi
+          if (Test-Path "dist/NeuroSyncApp_${{ github.ref_name }}/NeuroSyncApp_${{ github.ref_name }}.exe") {
+            Write-Output "File exists."
+          } else {
+            Write-Output "File does not exist."
+            exit 1
+          }
 
       - name: Upload .exe artifact
         uses: actions/upload-artifact@v4

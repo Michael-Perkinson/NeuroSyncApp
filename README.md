@@ -37,6 +37,7 @@ NeuroSyncApp is a Python tool designed for neuroscientists and researchers to al
 
 - Python 3.8 or higher
 - `pip` or `conda` for dependency management
+- Windows OS
 
 ## Installation
 
