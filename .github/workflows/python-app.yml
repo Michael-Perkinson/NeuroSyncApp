@@ -28,7 +28,7 @@ jobs:
       
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller --onefile src/main_app.py --name "NeuroSyncApp_${{ github.ref_name }}" --icon icon/icon.ico
+          pyinstaller --onefile src/main_app.py --name "NeuroSyncApp_${{ github.ref_name }}" --icon icon/icon.ico --distpath "dist/NeuroSyncApp_${{ github.ref_name }}"
         # ${github.ref_name} dynamically uses the tag name as part of the file name, e.g., NeuroSyncApp_v2.0.15.exe
       
       - name: Upload .exe artifact
