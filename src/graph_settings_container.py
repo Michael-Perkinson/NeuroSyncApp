@@ -3,7 +3,8 @@ import tkinter as tk
 import tkinter.colorchooser as colorchooser
 from tkinter import messagebox, colorchooser, Frame, Canvas
 from tkinter import ttk
-from window_utils import center_window_on_screen
+
+from src.window_utils import center_window_on_screen
 
 
 class GraphSettingsContainer(ttk.Frame):

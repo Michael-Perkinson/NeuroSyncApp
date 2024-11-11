@@ -1,11 +1,8 @@
 import csv
 import pstats
 import cProfile
-import sys
-sys.path.append(
-    'C:\\Users\\permi73p\\OneDrive - University of Otago\\Desktop\\Code\\photometry-behaviour_analysis_app\\src')
 
-from app_dashboard import AppDashboard
+from src.app_dashboard import AppDashboard
 
 
 def on_closing():

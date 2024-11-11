@@ -21,13 +21,13 @@ from openpyxl.styles import Border, Side
 from openpyxl.styles import Font
 from scipy.integrate import simpson
 
-from behaviour_event_input_frame import BehaviourInputFrame
-from data_selection_frame import DataSelectionFrame
-from static_inputs_frame import StaticInputsFrame
-from window_utils import center_window_on_screen
-from app_settings_manager import AppSettingsManager
-from export_options_container import ExportOptionsContainer
-from graph_settings_container import GraphSettingsContainer
+from src.behaviour_event_input_frame import BehaviourInputFrame
+from src.data_selection_frame import DataSelectionFrame
+from src.static_inputs_frame import StaticInputsFrame
+from src.window_utils import center_window_on_screen
+from src.app_settings_manager import AppSettingsManager
+from src.export_options_container import ExportOptionsContainer
+from src.graph_settings_container import GraphSettingsContainer
 
 
 class DataProcessingSingleInstance(ttk.Frame):

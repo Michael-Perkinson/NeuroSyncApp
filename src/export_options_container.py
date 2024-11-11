@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
-from window_utils import center_window_on_screen
+
+from src.window_utils import center_window_on_screen
 
 
 class ExportOptionsContainer(ttk.Frame):
