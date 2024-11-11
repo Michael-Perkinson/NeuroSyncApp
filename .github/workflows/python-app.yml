@@ -49,9 +49,15 @@ jobs:
             --name "NeuroSyncApp_${{ github.ref_name }}" ^
             --icon icon\icon.ico ^
             --distpath "dist\NeuroSyncApp_${{ github.ref_name }}" ^
-            --hidden-import=tkinter ^
-            --hidden-import=_tkinter ^
-            --collect-all tkinter
+            --collect-all tkinter ^
+            --hidden-import=uuid ^
+            --log-level=DEBUG ^
+            --debug=imports
+
+      - name: Test the executable
+        shell: cmd
+        run: |
+          dist\NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe
 
       - name: Verify .exe file path
         shell: powershell
@@ -67,7 +73,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-executable
-          path: dist/NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe
+          path: dist\NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe
 
       - name: Install GitHub CLI
         run: |
