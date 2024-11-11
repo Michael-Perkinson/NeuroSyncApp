@@ -54,11 +54,6 @@ jobs:
             --log-level=DEBUG ^
             --debug=imports
 
-      - name: Test the executable
-        shell: cmd
-        run: |
-          dist\NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe
-
       - name: Verify .exe file path
         shell: powershell
         run: |
