@@ -226,4 +226,4 @@ Please ensure all code follows PEP8 guidelines and includes documentation.
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for more details.
+NeuroSyncApp is licensed under the GNU General Public License v3.0. © 2024 Michael Perkinson.
