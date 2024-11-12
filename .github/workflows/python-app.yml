@@ -51,8 +51,6 @@ jobs:
             --distpath "dist\NeuroSyncApp_${{ github.ref_name }}" ^
             --collect-all tkinter ^
             --hidden-import=uuid ^
-            --log-level=DEBUG ^
-            --debug=imports
 
       - name: Verify .exe file path
         shell: powershell
