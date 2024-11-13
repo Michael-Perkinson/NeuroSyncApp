@@ -51,6 +51,8 @@ jobs:
             --distpath "dist\NeuroSyncApp_${{ github.ref_name }}" ^
             --collect-all tkinter ^
             --hidden-import=uuid ^
+            --hidden-import matplotlib.backends.backend_svg ^
+            --hidden-import matplotlib.backends.backend_ps
 
       - name: Verify .exe file path
         shell: powershell
