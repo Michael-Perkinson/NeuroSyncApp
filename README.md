@@ -1,5 +1,5 @@
 
-# NeuroSyncApp (Version 2.0.15)
+# NeuroSyncApp
 
 **NeuroSyncApp**: A Photometry, Behavior, and Telemetry Alignment Tool
 
@@ -9,7 +9,7 @@ NeuroSyncApp is a Python tool designed for neuroscientists and researchers to al
 
 ## Table of Contents
 
-- [NeuroSyncApp (Version 2.0.15)](#neurosyncapp-version-2015)
+- [NeuroSyncApp](#neurosyncapp)
   - [Table of Contents](#table-of-contents)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
