@@ -1,5 +1,5 @@
 
-# NeuroSyncApp (Version 2.0.15)
+# NeuroSyncApp
 
 **NeuroSyncApp**: A Photometry, Behavior, and Telemetry Alignment Tool
 
