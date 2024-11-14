@@ -3659,8 +3659,9 @@ class DataProcessingSingleInstance(ttk.Frame):
 
         if height_str and width_str:
             try:
-                height = float(height_str)
-                width = float(width_str)
+                # Convert cm to inches (1 inch = 2.54 cm)
+                height = float(height_str) / 2.54
+                width = float(width_str) / 2.54
                 fig_copy.set_size_inches(width, height)
             except ValueError:
                 # If conversion fails, proceed to save with default size
