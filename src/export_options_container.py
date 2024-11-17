@@ -86,8 +86,8 @@ class ExportOptionsContainer(ttk.Frame):
         self.image_format_label.grid(row=0, column=0, padx=5, pady=5)
 
         self.image_format_combobox = ttk.Combobox(export_options_all_frame, values=[
-                                                  "EPS", "SVG", "TIFF", "JPG"], state="readonly", width=5)
-        self.image_format_combobox.set("JPG")
+                                                  "EPS", "SVG", "TIFF", "PNG", "JPG"], state="readonly", width=5)
+        self.image_format_combobox.set("PNG")
         self.image_format_combobox.grid(row=0, column=1, padx=5, pady=5)
 
         dpi_label = tk.Label(export_options_all_frame, text="DPI:", bg='snow')
