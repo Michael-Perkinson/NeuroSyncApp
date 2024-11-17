@@ -5136,73 +5136,11 @@ class MenopauseDataProcessingApp(ttk.Frame):
         return bin_labels
 
     def save_image(self):
-        """Save the current figure as an image file based on the selected format and the DPI value entered by the user."""
-        selected_format = self.export_options_container.image_format_combobox.get().lower()
-        dpi = int(self.export_options_container.dpi_entry.get())
-        file_path = self.file_path.get()
-        recording_date = datetime.strptime(self.date, '%y-%m-%d').date()
+        """Saves the current figure to a file, applying user-defined font and label settings."""
+        current_xlabel = self.fig.axes[0].get_xlabel()
+        current_ylabel = self.fig.axes[0].get_ylabel()
 
-        base_name, _ = os.path.splitext(os.path.basename(
-            file_path))
-        figure_display = self.display_dropdown.get()
-
-        if figure_display == "Mean Cluster Display":
-            period = self.period_dropdown.get()
-            cluster_choice = self.cluster_dropdown.get()
-            base_name = f"{self.mouse_name}_{figure_display}_{period}_{cluster_choice}"
-        else:
-            base_name = f"{self.mouse_name}_{figure_display}"
-
-        dir_name = os.path.dirname(file_path)
-        exported_images_dir = os.path.join(
-            dir_name, f"exported_images_{self.mouse_name}_{recording_date}")
-        os.makedirs(exported_images_dir, exist_ok=True)
-
-        counter = 1
-        original_base_name = base_name
-        while os.path.isfile(os.path.join(exported_images_dir, f"{base_name}.{selected_format}")):
-            base_name = f"{original_base_name}_{counter}"
-            counter += 1
-
-        fig = self.current_fig
-        height_str = self.export_options_container.height_entry.get().strip()
-        width_str = self.export_options_container.width_entry.get().strip()
-        fig_copy = copy.deepcopy(fig)
-
-        if height_str and width_str:
-            try:
-                # Convert cm to inches (1 inch = 2.54 cm)
-                height = float(height_str) / 2.54
-                width = float(width_str) / 2.54
-                fig_copy.set_size_inches(width, height)
-            except ValueError:
-                print("Invalid height or width. Using default figure size.")
-
-        else:
-            duration_hours = self.duration_main_data / 60
-            width = 12
-
-            new_max_width = 96
-
-            max_additional_width = new_max_width - width
-
-            if duration_hours > 5:
-                additional_width = min(
-                    (duration_hours - 5) // 1, max_additional_width)
-                width += additional_width
-
-            height = 7
-            fig.set_size_inches(width, height)
-
-        fig_width, fig_height = fig_copy.get_size_inches()
-
-        diagonal_length = math.sqrt(fig_width**2 + fig_height**2)
-
-        default_font_size = 1.2 * diagonal_length
-
-        current_xlabel = fig.axes[0].get_xlabel()
-        current_ylabel = fig.axes[0].get_ylabel()
-
+        # Apply user-defined font sizes, preserving existing labels if no new label is specified
         xlabel_fontsize = self.export_options_container.font_settings.get(
             'xlabel_fontsize')
         ylabel_fontsize = self.export_options_container.font_settings.get(
@@ -5211,16 +5149,112 @@ class MenopauseDataProcessingApp(ttk.Frame):
             'xtick_fontsize')
         ytick_fontsize = self.export_options_container.font_settings.get(
             'ytick_fontsize')
+        title_fontsize = self.export_options_container.font_settings.get(
+            'title_fontsize')
         y_axis_name = self.export_options_container.font_settings.get(
             'y_axis_name', '')
         y_label_to_use = y_axis_name if y_axis_name else current_ylabel
 
-        fig.axes[0].set_xlabel(current_xlabel, fontsize=int(default_font_size))
-        fig.axes[0].set_ylabel(y_label_to_use, fontsize=int(default_font_size))
-        fig.axes[0].xaxis.set_tick_params(labelsize=int(default_font_size))
-        fig.axes[0].yaxis.set_tick_params(labelsize=int(default_font_size))
+        height_str = self.export_options_container.height_entry.get().strip()
+        width_str = self.export_options_container.width_entry.get().strip()
+        fig_copy = copy.deepcopy(self.fig)
+
+        if height_str and width_str:
+            try:
+                # Desired axis width and height in cm
+                axis_width_in = float(width_str) / 2.54
+                axis_height_in = float(height_str) / 2.54
+                
+                margin_multiplier = math.sqrt(axis_width_in**2 + axis_height_in**2)
+                
+                # Set the default font size relative to the diagonal length of the figure
+                default_font_size = 1.8 * margin_multiplier
+                
+                xlabel_font_size = int(xlabel_fontsize) if xlabel_fontsize else default_font_size
+                ylabel_font_size = int(ylabel_fontsize) if ylabel_fontsize else default_font_size
+                xtick_label_size = int(xtick_fontsize) if xtick_fontsize else default_font_size
+                ytick_label_size = int(ytick_fontsize) if ytick_fontsize else default_font_size            
+                
+                # Determine scaling factors based on the ratio of new font size to the default font size
+                xlabel_scale = xlabel_font_size / default_font_size
+                ylabel_scale = ylabel_font_size / default_font_size
+                xtick_scale = xtick_label_size / default_font_size
+                ytick_scale = ytick_label_size / default_font_size
+
+                # Use the maximum scale factor to adjust margins (to account for the largest text size change)
+                scale_factor = max(xlabel_scale, ylabel_scale, xtick_scale, ytick_scale)
+
+                # Fixed margins in inches, scaled conservatively to accommodate labels and ticks
+                left_margin_in = 0.2 * margin_multiplier * scale_factor
+                right_margin_in = 0.3 * scale_factor
+                top_margin_in = 0.1 * scale_factor
+                bottom_margin_in = 0.15 * margin_multiplier * scale_factor    
+
+                fig_width = left_margin_in + axis_width_in + right_margin_in
+                fig_height = bottom_margin_in + axis_height_in + top_margin_in
+                fig_copy.set_size_inches(fig_width, fig_height)
+
+                # Calculate margins as fractions of the figure size
+                left = left_margin_in / fig_width
+                right = 1 - right_margin_in / fig_width
+                bottom = bottom_margin_in / fig_height
+                top = 1 - top_margin_in / fig_height
+
+                fig_copy.subplots_adjust(
+                    left=left, right=right, top=top, bottom=bottom)
+
+                ax = fig_copy.axes[0]
+
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+
+                ax.set_xlabel(current_xlabel, fontsize=xlabel_font_size)
+                ax.set_ylabel(y_label_to_use, fontsize=ylabel_font_size)
+                ax.tick_params(axis='x', labelsize=xtick_label_size)
+                ax.tick_params(axis='y', labelsize=ytick_label_size)
+
+                ax.set_title(ax.get_title(), fontsize=int(
+                    title_fontsize) if title_fontsize else ax.title.get_fontsize())
+                
+                print(f"font sizes: {xlabel_fontsize}, {ylabel_fontsize}, {xtick_fontsize}, {ytick_fontsize}, {title_fontsize}")
+                print(f"default font size: {default_font_size}")
+
+            except ValueError:
+                print("Invalid height or width. Using default figure size.")
+
+
+        selected_format = self.export_options_container.image_format_combobox.get().lower()
+        dpi = int(self.export_options_container.dpi_entry.get())
+        file_path = self.file_path_var.get()
+        figure_display = self.figure_display_dropdown.get()
+
+        if figure_display == "Behaviour Mean and SEM":
+            behaviour_choice = self.behaviour_choice_graph.get()
+            base_name = f"{self.mouse_name}_{figure_display}_{behaviour_choice}"
+        else:
+            base_name = f"{self.mouse_name}_{figure_display}"
+
+        if not self.mouse_name:
+            base_name, _ = os.path.splitext(os.path.basename(file_path))
+
+        dir_name = os.path.dirname(file_path)
+        exported_images_dir = os.path.join(
+            dir_name, f"exported_images_{self.mouse_name}")
+        os.makedirs(exported_images_dir, exist_ok=True)
+
+        timestamp = datetime.datetime.now().strftime("%b%d_%H%M")
+        base_name = f"{base_name}_{timestamp}"
+
+        counter = 1
+        original_base_name = base_name
+        while os.path.isfile(os.path.join(exported_images_dir, f"{base_name}.{selected_format}")):
+            base_name = f"{original_base_name}_{counter}"
+            counter += 1
 
         filename = os.path.join(exported_images_dir,
                                 f"{base_name}.{selected_format}")
-        fig.tight_layout()
-        fig.savefig(filename, format=selected_format, dpi=dpi)
+
+        fig_copy.savefig(filename, transparent=True,
+                         format=selected_format, dpi=dpi)
+
+        plt.close(fig_copy)
