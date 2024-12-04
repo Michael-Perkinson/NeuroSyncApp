@@ -2671,8 +2671,7 @@ class DataProcessingSingleInstance(ttk.Frame):
         behaviour_time_idx = (time_column - behaviour_time_min).abs().idxmin()
         end_time_idx = (time_column - end_time_min).abs().idxmin()
 
-        start_data = df.loc[start_time_idx:behaviour_time_idx,
-                            column].reset_index(drop=True)
+        start_data = df.loc[start_time_idx:behaviour_time_idx - 1, column].reset_index(drop=True)
         end_data = df.loc[behaviour_time_idx:end_time_idx,
                           column].reset_index(drop=True)
 
