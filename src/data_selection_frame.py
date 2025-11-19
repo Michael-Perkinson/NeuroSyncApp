@@ -324,41 +324,33 @@ class DataSelectionFrame(ttk.Frame):
 
     def extract_mouse_name(self, file_path):
         """
-        Extracts the mouse name from the given file path, specifically looking for patterns of letters followed by numbers.
+        Extracts the mouse name from the given file path, using the first pattern
+        of letters followed by numbers (e.g., ABC123).
 
-        Parameters:
-        - file_path (str): The file path to extract the mouse name from.
-
-        Returns:
-        - mouse_name (str): The extracted mouse name.
+        If none is found, prompts the user for manual entry.
         """
-        base_name, _ = os.path.splitext(os.path.basename(
-            file_path))
+        base_name, _ = os.path.splitext(os.path.basename(file_path))
 
-        # Regex pattern for letters followed by numbers
+        # Regex: letters followed by digits
         pattern = r"[A-Za-z]+\d+"
         matches = re.findall(pattern, base_name)
 
-        if len(matches) == 1:
-            # If exactly one match is found, it's assumed to be the mouse name
-            mouse_name = matches[0]
-        elif len(matches) > 1:
-            num1 = int(re.search(r"\d+", matches[0]).group())
-            num2 = int(re.search(r"\d+", matches[1]).group())
-
-            # Select the match with the lower number, but default to the first if it's lower or equal
-            mouse_name = matches[0] if num1 <= num2 else matches[1]
+        if matches:
+            mouse_name = matches[0]   # Just take the first match
         else:
-            # No matches found, prompt the user for manual input
+            # No matches found → ask user
             mouse_name = simpledialog.askstring(
                 "Input",
                 "No mouse number found in the filename. Please enter the mouse name or identifying code:",
-                parent=self)
+                parent=self
+            )
 
-        if mouse_name is None or mouse_name == '':
+        # If user cancels or enters nothing, fallback
+        if not mouse_name:
             mouse_name = os.path.basename(self.file_path_var.get())[:12]
 
         return mouse_name
+
 
     def is_time_data(self, dataframe, subset_size=20, tolerance_ratio=0.9):
         """

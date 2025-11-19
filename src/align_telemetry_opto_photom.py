@@ -1391,7 +1391,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 processed_data.iloc[:, 0] -= peak_time
                 processed_data.set_index(
                     processed_data.columns[0], inplace=True)
-
+                
                 aligned_data = processed_data.reindex(
                     common_time_axis, method='nearest', tolerance=0.002).interpolate()
 
@@ -1900,12 +1900,38 @@ class MenopauseDataProcessingApp(ttk.Frame):
         if isinstance(data_column, pd.Series):
             data_column = data_column.values
 
-        threshold = 0.3 * data_column.max()  # This my need work?
+        threshold = 0.3 * np.nanmax(data_column)  # This my need work?
+        
+        prominence = 0.35 * np.nanmax(data_column) # Added to help lower signal for now but random number choice?
 
         peaks, _ = find_peaks(
-            data_column, height=threshold, distance=min_distance)
+            data_column, prominence=prominence, height=threshold, distance=min_distance)
 
         return peaks
+    
+    # def detect_peaks_with_optimal_prominence(self, data_column, min_distance=150):
+    #     """
+    #     Improved peak detection for low-sample-rate photometry with smoothing.
+    #     """
+    #     # Potential fix for lower signal but we may want to reindex into the original data to avoid using smoothed data for analysis.
+    #     from scipy.signal import savgol_filter
+        
+    #     if isinstance(data_column, pd.Series):
+    #         data_column = data_column.values
+
+    #     # 1) Smooth to remove interpolation noise
+    #     smoothed = savgol_filter(data_column, window_length=121, polyorder=2)
+
+    #     prominence_threshold = 0.3 * np.nanmax(smoothed)
+    #     print(f"Prominence threshold: {prominence_threshold}")
+
+    #     peaks, _ = find_peaks(
+    #         smoothed,
+    #         prominence=prominence_threshold,
+    #         distance=min_distance
+    #     )
+        
+    #     return peaks
 
     def detect_sub_threshold_peaks(self, data_column, min_distance=150):
         """
@@ -2223,7 +2249,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 return None, None
         else:
             target_time = self.temp_and_act_start_time_var.get().strip()
-        print(target_time)
+        print("target_time:", target_time)
 
         act_data, act_offset, act_previous_time = self.extract_data_for_date_and_offset(
             act_file_path, self.mouse_name, formatted_date, target_time)
@@ -2522,8 +2548,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 (time_data.iloc[-1] - time_data.iloc[0]) / self.act_sample_rate * 60)
         elif num_bins == '':
             num_bins = self.calculate_dynamic_bins(len(time_column))
-            print(len(time_column))
-
         else:
             num_bins = int(num_bins)
 
@@ -2741,12 +2765,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
         data = pd.read_excel(file_path, sheet_name=correct_sheet_name)
 
         if 'Time' not in data.columns:
-            print(
-                "Time column not found in the data. Searching for 'Time' label in the data.")
             time_label_row = data[data.eq('Time').any(axis=1)]
             if not time_label_row.empty:
                 start_data_index = time_label_row.index[0] + 1
-                print("Found the 'Time' label in the data.")
             else:
                 raise ValueError(
                     "Couldn't locate the 'Time' label in the data.")
@@ -2771,7 +2792,31 @@ class MenopauseDataProcessingApp(ttk.Frame):
         offset, previous_time = self.find_offset_for_previous_time(
             date_data, target_time)
 
+        # Drop exact duplicate rows based on Date Time
+        dup_count = date_data["Date Time"].duplicated().sum()
+        date_data = date_data[~date_data["Date Time"].duplicated(keep="first")]
+
+        # Count missing Data values (NaNs)
+        total_points = len(date_data)
+        missing_points = date_data["Data"].isna().sum()
+        missing_pct = (missing_points / total_points) * 100
+
+        # If missing > 10%, warn user (but DO NOT drop or alter data)
+        if missing_pct > 10:
+            messagebox.showwarning(
+                "Data Warning",
+                f"Warning: {missing_pct:.1f}% of photometry samples are missing.\n"
+                f"({missing_points} out of {total_points} samples)\n"
+                "This may affect interpolation and alignment."
+            )
+
+        # Notify about duplicates removed
+        if dup_count > 0:
+            print(f"Removed {dup_count} duplicate timestamps from telemetry.")
+    
         return date_data, offset, previous_time
+    
+    #TODO FIX THIS PLEASE
 
     def extract_data_with_buffer(self, dataframe, previous_time, offset, duration, sample_rate):
         """
@@ -3164,8 +3209,6 @@ class MenopauseDataProcessingApp(ttk.Frame):
         expected_length = int(stim_data_df['Duration of test (min)'].iloc[0])
 
         self.duration_main_data = expected_length
-
-        print(self.stim_timings)
 
         self.overlay_temp_and_act()
 
@@ -3641,7 +3684,13 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 '%H:%M:%S')
             return offset_minutes, prev_time_from_data
         else:
-            print("No valid previous time found")
+            first_time = dataframe['DateTime'].iloc[0].strftime('%H:%M:%S')
+            messagebox.showinfo(
+                "No Earlier Time Found",
+                f"This is the first timestamp in the sheet ({first_time}).\n"
+                f"Please pick a time after this but remember some \n"
+                f"of the earlier times may have missing data."
+            )
             return None, None
 
     def precalculate_data_versions(self):
@@ -5164,17 +5213,22 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 # Desired axis width and height in cm
                 axis_width_in = float(width_str) / 2.54
                 axis_height_in = float(height_str) / 2.54
-                
-                margin_multiplier = math.sqrt(axis_width_in**2 + axis_height_in**2)
-                
+
+                margin_multiplier = math.sqrt(
+                    axis_width_in**2 + axis_height_in**2)
+
                 # Set the default font size relative to the diagonal length of the figure
                 default_font_size = 1.8 * margin_multiplier
-                
-                xlabel_font_size = int(xlabel_fontsize) if xlabel_fontsize else default_font_size
-                ylabel_font_size = int(ylabel_fontsize) if ylabel_fontsize else default_font_size
-                xtick_label_size = int(xtick_fontsize) if xtick_fontsize else default_font_size
-                ytick_label_size = int(ytick_fontsize) if ytick_fontsize else default_font_size            
-                
+
+                xlabel_font_size = int(
+                    xlabel_fontsize) if xlabel_fontsize else default_font_size
+                ylabel_font_size = int(
+                    ylabel_fontsize) if ylabel_fontsize else default_font_size
+                xtick_label_size = int(
+                    xtick_fontsize) if xtick_fontsize else default_font_size
+                ytick_label_size = int(
+                    ytick_fontsize) if ytick_fontsize else default_font_size
+
                 # Determine scaling factors based on the ratio of new font size to the default font size
                 xlabel_scale = xlabel_font_size / default_font_size
                 ylabel_scale = ylabel_font_size / default_font_size
@@ -5182,13 +5236,14 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 ytick_scale = ytick_label_size / default_font_size
 
                 # Use the maximum scale factor to adjust margins (to account for the largest text size change)
-                scale_factor = max(xlabel_scale, ylabel_scale, xtick_scale, ytick_scale)
+                scale_factor = max(xlabel_scale, ylabel_scale,
+                                   xtick_scale, ytick_scale)
 
                 # Fixed margins in inches, scaled conservatively to accommodate labels and ticks
                 left_margin_in = 0.2 * margin_multiplier * scale_factor
                 right_margin_in = 0.3 * scale_factor
                 top_margin_in = 0.1 * scale_factor
-                bottom_margin_in = 0.15 * margin_multiplier * scale_factor    
+                bottom_margin_in = 0.15 * margin_multiplier * scale_factor
 
                 fig_width = left_margin_in + axis_width_in + right_margin_in
                 fig_height = bottom_margin_in + axis_height_in + top_margin_in
@@ -5215,13 +5270,9 @@ class MenopauseDataProcessingApp(ttk.Frame):
 
                 ax.set_title(ax.get_title(), fontsize=int(
                     title_fontsize) if title_fontsize else ax.title.get_fontsize())
-                
-                print(f"font sizes: {xlabel_fontsize}, {ylabel_fontsize}, {xtick_fontsize}, {ytick_fontsize}, {title_fontsize}")
-                print(f"default font size: {default_font_size}")
 
             except ValueError:
                 print("Invalid height or width. Using default figure size.")
-
 
         selected_format = self.export_options_container.image_format_combobox.get().lower()
         dpi = int(self.export_options_container.dpi_entry.get())
