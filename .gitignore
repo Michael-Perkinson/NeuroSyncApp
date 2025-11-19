@@ -1,0 +1,35 @@
+# Python bytecode / cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# App state / runtime files
+*.pkl
+*.json
+!default_settings.json    # (optional whitelist your template JSON if needed)
+
+# VS Code / IDE stuff
+.vscode/
+.idea/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+*.spec
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.json
+
+# Virtual environments
+.venv/
+venv/
+env/
