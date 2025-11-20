@@ -351,7 +351,6 @@ class DataSelectionFrame(ttk.Frame):
 
         return mouse_name
 
-
     def is_time_data(self, dataframe, subset_size=20, tolerance_ratio=0.9):
         """
         Checks if the first column of the given DataFrame is consistent time data.
@@ -373,7 +372,7 @@ class DataSelectionFrame(ttk.Frame):
             mode_diff = pd.Series(diffs).mode()[0]
 
             # Count how many differences are close to the mode (within a small tolerance)
-            tolerance = mode_diff * 0.05 
+            tolerance = mode_diff * 0.05
             consistent_diffs_count = sum(abs(diffs - mode_diff) < tolerance)
 
             # Check if the majority of differences are close to the mode
