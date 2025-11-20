@@ -1391,7 +1391,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
                 processed_data.iloc[:, 0] -= peak_time
                 processed_data.set_index(
                     processed_data.columns[0], inplace=True)
-                
+
                 aligned_data = processed_data.reindex(
                     common_time_axis, method='nearest', tolerance=0.002).interpolate()
 
@@ -1900,22 +1900,24 @@ class MenopauseDataProcessingApp(ttk.Frame):
         if isinstance(data_column, pd.Series):
             data_column = data_column.values
 
-        threshold = 0.3 * np.nanmax(data_column)  # This my need work?
-        
-        prominence = 0.35 * np.nanmax(data_column) # Added to help lower signal for now but random number choice?
+        # Robust amplitude estimate instead of nanmax
+        amp = np.nanpercentile(data_column, 99.9)  # stable across machines
 
+        threshold = 0.3 * amp
+        prominence = 0.35 * amp
+        
         peaks, _ = find_peaks(
             data_column, prominence=prominence, height=threshold, distance=min_distance)
 
         return peaks
-    
+
     # def detect_peaks_with_optimal_prominence(self, data_column, min_distance=150):
     #     """
     #     Improved peak detection for low-sample-rate photometry with smoothing.
     #     """
     #     # Potential fix for lower signal but we may want to reindex into the original data to avoid using smoothed data for analysis.
     #     from scipy.signal import savgol_filter
-        
+
     #     if isinstance(data_column, pd.Series):
     #         data_column = data_column.values
 
@@ -1930,7 +1932,7 @@ class MenopauseDataProcessingApp(ttk.Frame):
     #         prominence=prominence_threshold,
     #         distance=min_distance
     #     )
-        
+
     #     return peaks
 
     def detect_sub_threshold_peaks(self, data_column, min_distance=150):
@@ -2813,10 +2815,10 @@ class MenopauseDataProcessingApp(ttk.Frame):
         # Notify about duplicates removed
         if dup_count > 0:
             print(f"Removed {dup_count} duplicate timestamps from telemetry.")
-    
+
         return date_data, offset, previous_time
-    
-    #TODO FIX THIS PLEASE
+
+    # TODO FIX THIS PLEASE
 
     def extract_data_with_buffer(self, dataframe, previous_time, offset, duration, sample_rate):
         """
