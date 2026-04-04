@@ -52,7 +52,7 @@ To get started with NeuroSyncApp:
 
    - Place the `.exe` file in any folder where you’d like to store your settings.
    - Simply double-click the `.exe` file to launch NeuroSyncApp.
-  
+
 No additional setup or installation steps are required.
 
 ### Python Setups for Advanced User
@@ -64,7 +64,7 @@ If you prefer to run the app from source code or make custom modifications, you 
 - Create an environment named `neuro_env` using Conda:
 
   ```bash
-  conda create -n neuro_env python=3.8
+  conda create -n neuro_env python=3.12
   conda activate neuro_env
   ```
 
@@ -105,7 +105,7 @@ If you prefer to run the app from source code or make custom modifications, you 
 2. **Run the App**:
 
    ```bash
-   python main_app.py
+   python main.py
    ```
 
 ---
@@ -198,10 +198,10 @@ Adapt the app to align photometry with telemetry physiological recordings. Files
 
 I am excited about expanding NeuroSyncApp’s capabilities! Here are some planned features:
 
-- **Expanded Analysis Options:**  
+- **Expanded Analysis Options:**
   Adding more analytical tools to provide deeper insights into synchronized photometry and behavior data for each recording.
 
-- **Multi-Mouse Data Alignment:**  
+- **Multi-Mouse Data Alignment:**
   A full-featured app for aligning data from multiple mice simultaneously, ideal for generating peri-event histograms and comparing across subjects.
 
 - **Integrated SQLite Database for Organized Storage and Search:**

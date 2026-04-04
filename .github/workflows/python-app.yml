@@ -72,7 +72,7 @@ jobs:
 
       - name: Install GitHub CLI
         run: |
-          choco install gh  # Install GitHub CLI on Windows
+          choco install gh || (curl -L -o gh-installer.msi https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_windows_amd64.msi && msiexec.exe /i gh-installer.msi /qn /norestart)
 
       - name: Create GitHub Release
         env:
