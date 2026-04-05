@@ -70,6 +70,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "telemetry_folder_path": "",
     "default_data_folder_path": "",
     "number_of_minor_ticks": "0",
+    "remove_first_60_minutes_var": True,
     "onset_line_color": "red",
     "onset_line_thickness": "1",
     "onset_line_style": "--",

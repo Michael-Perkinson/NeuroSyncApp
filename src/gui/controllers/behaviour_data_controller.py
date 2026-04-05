@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tkinter import messagebox
+from PySide6.QtWidgets import QMessageBox
 
 from src.processing.behavior_metrics import compute_z_score
 from src.processing.behaviour_parser import build_params_from_df
@@ -19,12 +19,17 @@ class BehaviourDataController:
         if self.app.figure_display_dropdown.get() != "Z-scored data":
             self.app.figure_display_dropdown.set("Z-scored data")
 
-        current_baseline_start = (
-            float(self.app.data_selection_frame.baseline_start_entry.get()) / 60
-        )
-        current_baseline_end = (
-            float(self.app.data_selection_frame.baseline_end_entry.get()) / 60
-        )
+        raw_start = self.app.data_selection_frame.baseline_start_entry.get().strip()
+        raw_end = self.app.data_selection_frame.baseline_end_entry.get().strip()
+        if not raw_start or not raw_end:
+            QMessageBox.warning(
+                self.app,
+                "Baseline Incomplete",
+                "Please enter both a start and end time for the baseline before applying z-score.",
+            )
+            return
+        current_baseline_start = float(raw_start) / 60
+        current_baseline_end = float(raw_end) / 60
 
         if (
             self.app.z_score_computed
@@ -66,21 +71,24 @@ class BehaviourDataController:
         )
 
         if missing_pre:
-            messagebox.showwarning(
+            QMessageBox.warning(
+                self.app,
                 "Pre-behaviour Time Missing",
                 f"Pre-behaviour time is missing for: {', '.join(missing_pre)}",
             )
             return None
 
         if missing_post:
-            messagebox.showwarning(
+            QMessageBox.warning(
+                self.app,
                 "Post-behaviour Time Missing",
                 f"Post-behaviour time is missing for: {', '.join(missing_post)}",
             )
             return None
 
         if not_divisible:
-            messagebox.showwarning(
+            QMessageBox.warning(
+                self.app,
                 "Total Time Not Divisible",
                 f"Total time not divisible by bin size for: {', '.join(not_divisible)}",
             )

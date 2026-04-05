@@ -1,8 +1,13 @@
-from tkinter import messagebox
 from typing import Union
 
+from PySide6.QtWidgets import QMessageBox, QWidget
 
-def show_error(title: str, message: Union[str, Exception]) -> None:
+
+def show_error(
+    title: str,
+    message: Union[str, Exception],
+    parent: QWidget | None = None,
+) -> None:
     """
     Display an error message in a messagebox.
 
@@ -16,4 +21,4 @@ def show_error(title: str, message: Union[str, Exception]) -> None:
 
     # Ensure the message is a string
     error_message = str(message)
-    messagebox.showerror(title, error_message)
+    QMessageBox.critical(parent, title, error_message)

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-import tkinter as tk
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
+
+from src.gui.shared.qt_bindings import CheckBoxControl
 
 
 class BehaviourOptionsController:
@@ -23,44 +25,52 @@ class BehaviourOptionsController:
 
     def destroy_existing_frame(self) -> None:
         if hasattr(self.app, "behaviour_frame"):
-            self.app.behaviour_frame.destroy()
+            self.app.graph_settings_container_instance.setup_canvas()
 
     def create_control_buttons(self) -> None:
-        select_all_button = tk.Button(
-            self.app.graph_settings_container_instance.behaviour_frame,
-            text="Select All",
-            command=self.app.behaviour_settings_controller.select_all,
-        )
-        select_all_button.grid(row=0, column=1, padx=10, pady=(5, 2), sticky=tk.W)
+        controls_row = QWidget(self.app.graph_settings_container_instance.behaviour_frame)
+        controls_layout = QHBoxLayout(controls_row)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
+        controls_layout.setSpacing(10)
 
-        deselect_all_button = tk.Button(
-            self.app.graph_settings_container_instance.behaviour_frame,
-            text="Deselect All",
-            command=self.app.behaviour_settings_controller.deselect_all,
+        behaviour_list_label = QLabel("Behaviours", controls_row)
+        controls_layout.addWidget(behaviour_list_label)
+
+        select_all_button = QPushButton(
+            "Select All", self.app.graph_settings_container_instance.behaviour_frame
         )
-        deselect_all_button.grid(row=0, column=2, padx=10, pady=(5, 2), sticky=tk.W)
+        select_all_button.clicked.connect(self.app.behaviour_settings_controller.select_all)
+        controls_layout.addWidget(select_all_button)
+
+        deselect_all_button = QPushButton(
+            "Deselect All", self.app.graph_settings_container_instance.behaviour_frame
+        )
+        deselect_all_button.clicked.connect(
+            self.app.behaviour_settings_controller.deselect_all
+        )
+        controls_layout.addWidget(deselect_all_button)
+        controls_layout.addStretch(1)
+        self.app.graph_settings_container_instance.behaviour_frame_layout.addWidget(controls_row)
 
     def create_behaviour_labels_and_controls(self, sorted_behaviours) -> None:
-        behaviour_list_label = tk.Label(
-            self.app.graph_settings_container_instance.behaviour_frame,
-            text="Behaviours",
-            bg="snow",
-            font=("Helvetica", 12, "bold"),
-        )
-        behaviour_list_label.grid(row=0, column=0, padx=10, pady=(5, 2), sticky=tk.W)
-
         self.app.color_buttons = {}
-        for row_index, behaviour in enumerate(sorted_behaviours, start=1):
-            self.create_behaviour_control(behaviour, row_index)
+        for behaviour in sorted_behaviours:
+            self.create_behaviour_control(behaviour)
 
-    def create_behaviour_control(self, behaviour, row_index) -> None:
+    def create_behaviour_control(self, behaviour) -> None:
         behaviour_color = self.app.behaviour_colors.get(behaviour)
         if behaviour_color is None:
             return
 
         color_code, text_color = self.get_color_code_and_text_color(behaviour_color)
-        self.create_color_button(behaviour, color_code, text_color, row_index)
-        self.create_checkbox(behaviour, row_index)
+        row_widget = QWidget(self.app.graph_settings_container_instance.behaviour_frame)
+        row_layout = QHBoxLayout(row_widget)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(10)
+        self.create_checkbox(behaviour, row_layout, row_widget)
+        self.create_color_button(behaviour, color_code, text_color, row_layout, row_widget)
+        row_layout.addStretch(1)
+        self.app.graph_settings_container_instance.behaviour_frame_layout.addWidget(row_widget)
 
     def get_color_code_and_text_color(self, behaviour_color):
         r, g, b = [int(component * 255) for component in behaviour_color[:3]]
@@ -71,29 +81,27 @@ class BehaviourOptionsController:
         text_color = "black" if color_brightness > 0.5 else "white"
         return color_code, text_color
 
-    def create_color_button(self, behaviour, color_code, text_color, row_index) -> None:
-        color_button = tk.Button(
-            self.app.graph_settings_container_instance.behaviour_frame,
-            text=behaviour,
-            command=lambda b=behaviour: self.app.graph_settings_container_instance.choose_color(
+    def create_color_button(self, behaviour, color_code, text_color, row_layout, parent) -> None:
+        color_button = QPushButton(behaviour, parent)
+        color_button.clicked.connect(
+            lambda _checked=False, b=behaviour: self.app.graph_settings_container_instance.choose_color(
                 b, color_button
-            ),
+            )
         )
-        color_button.grid(row=row_index, column=0, padx=10, pady=(5, 2), sticky=tk.W)
-        color_button.config(fg=text_color, bg=color_code)
+        color_button.setStyleSheet(f"background: {color_code}; color: {text_color};")
+        row_layout.addWidget(color_button)
         self.app.color_buttons[behaviour] = color_button
 
-    def create_checkbox(self, behaviour, row_index) -> None:
-        behaviour_option_checkbox = tk.Checkbutton(
-            self.app.graph_settings_container_instance.behaviour_frame,
-            variable=self.app.behaviour_display_status[behaviour],
-            command=self.app.behaviour_settings_controller.refresh_behaviour_options,
-            bg="snow",
+    def create_checkbox(self, behaviour, row_layout, parent) -> None:
+        behaviour_option_checkbox = CheckBoxControl(
+            "",
+            self.app.behaviour_display_status[behaviour],
+            parent,
         )
-        behaviour_option_checkbox.grid(
-            row=row_index, column=1, padx=10, pady=(5, 2), sticky=tk.W
+        behaviour_option_checkbox.clicked.connect(
+            self.app.behaviour_settings_controller.refresh_behaviour_options
         )
-        behaviour_option_checkbox.config(font=("Helvetica", 8))
+        row_layout.addWidget(behaviour_option_checkbox)
         self.app.behaviour_checkboxes[behaviour] = behaviour_option_checkbox
 
     def update_box_colors_and_behaviour_options(self, behaviour, color_rgb) -> None:
@@ -112,12 +120,14 @@ class BehaviourOptionsController:
             self.app.behaviour_colors[behaviour] = color_rgb
 
             if button_to_update:
-                button_to_update.config(bg=color_hex)
+                button_to_update.setStyleSheet(f"background: {color_hex};")
                 behaviour_color = self.app.behaviour_colors[behaviour]
                 color_brightness = self.app.graph_settings_container_instance.brightness(
                     behaviour_color
                 )
                 text_color = "black" if color_brightness > 0.5 else "white"
-                button_to_update.config(fg=text_color)
+                button_to_update.setStyleSheet(
+                    f"background: {color_hex}; color: {text_color};"
+                )
 
         self.app.settings_manager.update_behaviour_colors(self.app.behaviour_colors)

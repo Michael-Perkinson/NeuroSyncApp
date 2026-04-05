@@ -130,6 +130,50 @@ class TelemetryExcelController:
             native_frame,
         )
 
+    def _get_photometry_export_interval_seconds(self) -> float:
+        telemetry_intervals = []
+        for attribute_name in ("temp_sample_rate", "act_sample_rate"):
+            raw_value = getattr(self.app, attribute_name, None)
+            try:
+                interval_seconds = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+            if interval_seconds > 0:
+                telemetry_intervals.append(interval_seconds)
+        return max(telemetry_intervals) if telemetry_intervals else 1.0
+
+    def _prepare_photometry_export_frame(self, data: pd.DataFrame | None):
+        preview_label = "Photometry Preview"
+        if not isinstance(data, pd.DataFrame) or data.empty:
+            return data, preview_label
+
+        interval_seconds = self._get_photometry_export_interval_seconds()
+        interval_minutes = interval_seconds / 60.0
+        time_column = data.columns[0]
+
+        working = data.copy()
+        working[time_column] = pd.to_numeric(working[time_column], errors="coerce")
+        working = working.dropna(subset=[time_column]).sort_values(time_column).reset_index(
+            drop=True
+        )
+        if working.empty or interval_minutes <= 0:
+            return working, preview_label
+
+        for column in working.columns[1:]:
+            working[column] = pd.to_numeric(working[column], errors="coerce")
+
+        start_time = float(working[time_column].iloc[0])
+        working["_export_bin"] = (((working[time_column] - start_time) / interval_minutes) // 1).astype(
+            int
+        )
+        downsampled = (
+            working.groupby("_export_bin", sort=True, as_index=False)[list(data.columns)]
+            .mean(numeric_only=True)
+            .reset_index(drop=True)
+        )
+        downsampled = downsampled.drop(columns=["_export_bin"], errors="ignore")
+        return downsampled, f"{preview_label} (~{interval_seconds:g}s bins)"
+
     def populate_raw_data_sheet(self, writer, sheet_name, cluster_number):
         cluster_data = self.app.mean_cluster_data.get(cluster_number)
         worksheet = writer.book.add_worksheet(sheet_name)
@@ -148,7 +192,9 @@ class TelemetryExcelController:
         full_temp_data = cluster_data["full"]["raw_temp_data"]
         full_act_data = cluster_data["full"]["raw_act_data"]
         if self.app.data_type == "photometry":
-            full_photometry_data = cluster_data["full"]["photometry_cluster_data"]
+            full_photometry_data, photometry_export_label = self._prepare_photometry_export_frame(
+                cluster_data["full"]["photometry_cluster_data"]
+            )
 
         row_idx, col_idx = 0, 0
         next_col_idx, full_row_idx_after_temp = self.write_raw_data_to_sheet(
@@ -157,6 +203,7 @@ class TelemetryExcelController:
         next_col_idx, full_row_idx_after_act = self.write_raw_data_to_sheet(
             worksheet, writer, row_idx, next_col_idx, "Full", "Act", full_act_data
         )
+        full_section_end_rows = [full_row_idx_after_temp, full_row_idx_after_act]
         if self.app.data_type == "photometry":
             next_col_idx, full_row_idx_after_photometry = self.write_raw_data_to_sheet(
                 worksheet,
@@ -164,18 +211,24 @@ class TelemetryExcelController:
                 row_idx,
                 next_col_idx,
                 "Full",
-                "Photometry",
+                photometry_export_label,
                 full_photometry_data,
             )
+            full_section_end_rows.append(full_row_idx_after_photometry)
 
         col_idx = 0
-        row_idx = full_row_idx_after_temp
+        row_idx = max(full_section_end_rows)
+        day_start_row = None
+        night_start_row = None
 
         if cluster_data["day"].get("mean_temp_data") is not None:
+            day_start_row = row_idx
             day_temp_data = cluster_data["day"]["raw_temp_data"]
             day_act_data = cluster_data["day"]["raw_act_data"]
             if self.app.data_type == "photometry":
-                day_photometry_data = cluster_data["day"]["photometry_cluster_data"]
+                day_photometry_data, photometry_export_label = self._prepare_photometry_export_frame(
+                    cluster_data["day"]["photometry_cluster_data"]
+                )
 
             next_col_idx, day_row_idx_after_temp = self.write_raw_data_to_sheet(
                 worksheet, writer, row_idx, col_idx, "Day", "Temp", day_temp_data
@@ -183,6 +236,7 @@ class TelemetryExcelController:
             next_col_idx, day_row_idx_after_act = self.write_raw_data_to_sheet(
                 worksheet, writer, row_idx, next_col_idx, "Day", "Act", day_act_data
             )
+            day_section_end_rows = [day_row_idx_after_temp, day_row_idx_after_act]
             if self.app.data_type == "photometry":
                 next_col_idx, day_row_idx_after_photometry = self.write_raw_data_to_sheet(
                     worksheet,
@@ -190,18 +244,22 @@ class TelemetryExcelController:
                     row_idx,
                     next_col_idx,
                     "Day",
-                    "Photometry",
+                    photometry_export_label,
                     day_photometry_data,
                 )
+                day_section_end_rows.append(day_row_idx_after_photometry)
 
-            row_idx = day_row_idx_after_temp
+            row_idx = max(day_section_end_rows)
             col_idx = 0
 
         if cluster_data["night"].get("mean_temp_data") is not None:
+            night_start_row = row_idx
             night_temp_data = cluster_data["night"]["raw_temp_data"]
             night_act_data = cluster_data["night"]["raw_act_data"]
             if self.app.data_type == "photometry":
-                night_photometry_data = cluster_data["night"]["photometry_cluster_data"]
+                night_photometry_data, photometry_export_label = self._prepare_photometry_export_frame(
+                    cluster_data["night"]["photometry_cluster_data"]
+                )
 
             next_col_idx, night_row_idx_after_temp = self.write_raw_data_to_sheet(
                 worksheet, writer, row_idx, col_idx, "Night", "Temp", night_temp_data
@@ -209,6 +267,7 @@ class TelemetryExcelController:
             next_col_idx, night_row_idx_after_act = self.write_raw_data_to_sheet(
                 worksheet, writer, row_idx, next_col_idx, "Night", "Act", night_act_data
             )
+            night_section_end_rows = [night_row_idx_after_temp, night_row_idx_after_act]
             if self.app.data_type == "photometry":
                 next_col_idx, night_row_idx_after_photometry = self.write_raw_data_to_sheet(
                     worksheet,
@@ -216,28 +275,23 @@ class TelemetryExcelController:
                     row_idx,
                     next_col_idx,
                     "Night",
-                    "Photometry",
+                    photometry_export_label,
                     night_photometry_data,
                 )
+                night_section_end_rows.append(night_row_idx_after_photometry)
 
-            row_idx = night_row_idx_after_temp
+            row_idx = max(night_section_end_rows)
             col_idx = 1
 
-        if cluster_data["day"].get("mean_temp_data") is not None:
-            row_for_night = day_row_idx_after_temp
-            night_col_idx = 2
-        else:
-            row_for_night = full_row_idx_after_temp
-            night_col_idx = 1
-
-        if cluster_data["day"].get("mean_temp_data") is not None:
+        if day_start_row is not None:
             self.add_navigation_hyperlink(
-                worksheet, writer, "Day", full_row_idx_after_temp + 1, 1
+                worksheet, writer, "Day", day_start_row + 1, 1
             )
 
-        if cluster_data["night"].get("mean_temp_data") is not None:
+        if night_start_row is not None:
+            night_col_idx = 2 if day_start_row is not None else 1
             self.add_navigation_hyperlink(
-                worksheet, writer, "Night", row_for_night + 1, night_col_idx
+                worksheet, writer, "Night", night_start_row + 1, night_col_idx
             )
 
         worksheet.set_column(0, 30, 20.5)

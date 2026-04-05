@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import tkinter as tk
-import tkinter.font as tkf
-from tkinter import messagebox, ttk
-
 import pandas as pd
+from PySide6.QtWidgets import QMessageBox, QFrame, QVBoxLayout
+
+from src.gui.shared.qt_view_styles import panel_stylesheet
+from src.gui.shared.qt_table_adapter import QtTableAdapter
 
 from src.processing.behaviour_plotting import build_treeview_rows
 
@@ -30,45 +30,18 @@ class BehaviourTableController:
         self.app = app
 
     def create_table_container(self, frame) -> None:
-        table_container_frame = ttk.Frame(frame, style="NoBorder.TFrame")
-        table_container_frame.grid(
-            row=0, column=0, columnspan=3, padx=10, pady=10, sticky=tk.NSEW
+        table_container_frame = QFrame(frame)
+        table_container_frame.setObjectName("behaviourTableContainer")
+        table_container_frame.setStyleSheet(
+            panel_stylesheet("behaviourTableContainer")
         )
+        layout = QVBoxLayout(table_container_frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        frame.layout().addWidget(table_container_frame)
 
-        table_hscrollbar = ttk.Scrollbar(table_container_frame, orient=tk.HORIZONTAL)
-        table_hscrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-
-        self.app.table_vscrollbar = ttk.Scrollbar(
-            table_container_frame, orient="vertical"
-        )
-        self.app.table_vscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.app.table_canvas = tk.Canvas(
-            table_container_frame,
-            xscrollcommand=table_hscrollbar.set,
-            yscrollcommand=self.app.table_vscrollbar.set,
-            height=430,
-        )
-        self.app.table_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        table_scroll_frame = ttk.Frame(self.app.table_canvas)
-        self.app.table_canvas.create_window((0, 0), window=table_scroll_frame, anchor="nw")
-
-        def configure_scroll_region(_event):
-            self.app.table_canvas.configure(
-                scrollregion=self.app.table_canvas.bbox("all"), height=420
-            )
-
-        table_scroll_frame.bind("<Configure>", configure_scroll_region)
-
-        self.app.table_treeview = ttk.Treeview(
-            table_scroll_frame,
-            columns=self.TABLE_COLUMNS,
-            show="headings",
-            name="treeview",
-        )
+        self.app.table_treeview = QtTableAdapter(self.TABLE_COLUMNS, table_container_frame)
         self.app.table_treeview.configure(height=30)
-        self.app.table_treeview.pack(fill=tk.BOTH, expand=True)
+        layout.addWidget(self.app.table_treeview)
 
         for column in self.TABLE_COLUMNS:
             self.app.table_treeview.heading(
@@ -80,15 +53,10 @@ class BehaviourTableController:
             )
 
         for column in self.TABLE_COLUMNS:
-            measured_width = tkf.Font().measure(column)
+            measured_width = max(len(column) * 10, 80)
             width = measured_width - 20 if measured_width > 110 else measured_width
             self.app.table_treeview.column(column, width=width)
 
-        table_hscrollbar.configure(command=self.app.table_canvas.xview)
-        self.app.table_vscrollbar.configure(command=self.app.table_treeview.yview)
-
-        table_container_frame.grid_rowconfigure(0, weight=1)
-        table_container_frame.grid_columnconfigure(0, weight=1)
         self.app.table_treeview.bind(
             "<<TreeviewSelect>>", self.app.manual_controller.on_row_click
         )
@@ -129,7 +97,10 @@ class BehaviourTableController:
         self.app.duration_data_cache = {}
 
     def adjust_start_end_times(self, dataframe):
-        baseline_offset = float(self.app.data_selection_frame.baseline_start_entry.get())
+        raw = self.app.data_selection_frame.baseline_start_entry.get().strip()
+        if not raw:
+            return dataframe
+        baseline_offset = float(raw)
         dataframe["Start Time"] -= baseline_offset
         dataframe["End Time"] = pd.to_numeric(dataframe["End Time"], errors="coerce")
         dataframe["End Time"] = dataframe["End Time"].apply(
@@ -164,7 +135,8 @@ class BehaviourTableController:
 
             if negative_behaviours:
                 negative_behaviours_str = ", ".join(negative_behaviours)
-                messagebox.showwarning(
+                QMessageBox.warning(
+                    self.app,
                     "Negative Time Warning",
                     "The following behaviours have a start time that, when adjusted "
                     f"by the pre-behaviour time, becomes negative: {negative_behaviours_str}",
@@ -188,8 +160,7 @@ class BehaviourTableController:
 
     def adjust_column_widths(self) -> None:
         for column in self.TABLE_COLUMNS:
-            self.app.table_treeview.column(column, width=tkf.Font().measure(column))
+            self.app.table_treeview.column(column, width=max(len(column) * 10, 80))
 
     def update_table_scrollbar(self) -> None:
-        self.app.table_treeview.configure(yscrollcommand=self.app.table_vscrollbar.set)
         self.app.table_treeview.update_idletasks()

@@ -5,12 +5,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 import math
 import re
-import tkinter as tk
-from tkinter import messagebox
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from PySide6.QtWidgets import QMessageBox
 
 from src.processing.telemetry_processing import (
     calculate_nighttime_periods,
@@ -34,12 +33,13 @@ class TelemetryPlotController:
         return parse_recording_date(date_str)
 
     def calculate_nighttime_period(self):
-        start_time_str = self.app.temp_and_act_start_time_var.get()
+        start_time_str = self._get_recording_start_time_str()
 
-        if not start_time_str:
-            start_time_str = self.app.start_time_timedelta
+        lights_off_time_str = (self.app.light_off_time_var.get() or "").strip()
+        if not getattr(self.app, "date", None):
+            self.app.nighttime_periods = []
+            return
 
-        lights_off_time_str = self.app.light_off_time_var.get()
         recording_date = parse_recording_date(self.app.date).date()
         self.app.nighttime_periods = calculate_nighttime_periods(
             recording_date,
@@ -51,10 +51,19 @@ class TelemetryPlotController:
         self.app.settings_manager.save_variables()
 
     def add_nighttime_shading_to_plot(self, ax, time_column):
-        start_time = pd.to_datetime(
-            self.app.temp_and_act_start_time_var.get(), format="%H:%M:%S"
-        ).time()
+        if not getattr(self.app, "nighttime_periods", None):
+            return
+
+        start_time_value = self._get_recording_start_time_str()
+        parsed_start_time = pd.to_datetime(
+            start_time_value, format="%H:%M:%S", errors="coerce"
+        )
+        if pd.isna(parsed_start_time):
+            return
+
+        start_time = parsed_start_time.time()
         recording_date = datetime.strptime(self.app.date, "%y-%m-%d").date()
+        display_offset_minutes = self._get_display_time_offset_minutes()
 
         for night_start_time, night_end_time in self.app.nighttime_periods:
             night_start_datetime = datetime.combine(recording_date, night_start_time)
@@ -65,14 +74,110 @@ class TelemetryPlotController:
 
             night_start_minutes = (
                 night_start_datetime - datetime.combine(recording_date, start_time)
-            ).total_seconds() / 60
+            ).total_seconds() / 60 - display_offset_minutes
             night_end_minutes = (
                 night_end_datetime - datetime.combine(recording_date, start_time)
-            ).total_seconds() / 60
+            ).total_seconds() / 60 - display_offset_minutes
 
+            if night_end_minutes < time_column.iloc[0]:
+                continue
+            night_start_minutes = max(night_start_minutes, time_column.iloc[0])
             night_end_minutes = min(night_end_minutes, time_column.iloc[-1])
             if night_start_minutes <= time_column.iloc[-1]:
-                ax.axvspan(night_start_minutes, night_end_minutes, color="gray", alpha=0.3, label="Nighttime")
+                ax.axvspan(
+                    night_start_minutes,
+                    night_end_minutes,
+                    color="gray",
+                    alpha=0.3,
+                    label="Nighttime",
+                )
+
+    def _get_recording_start_time_str(self) -> str:
+        start_time_str = (self.app.temp_and_act_start_time_var.get() or "").strip()
+        if start_time_str:
+            return start_time_str
+        return str(self.app.start_time_timedelta or "").strip()
+
+    def _get_display_time_offset_minutes(self) -> float:
+        if getattr(self.app, "data_type", None) != "photometry":
+            return 0.0
+        if not self.app.graph_settings_container_instance.remove_first_60_minutes_var.get():
+            return 0.0
+        return float(getattr(self.app, "seconds_removed", 0) or 0) / 60.0
+
+    @staticmethod
+    def _time_of_day_interval_minutes(span_minutes: float) -> int:
+        if span_minutes <= 120:
+            return 15
+        if span_minutes <= 360:
+            return 30
+        if span_minutes <= 720:
+            return 60
+        return 120
+
+    @staticmethod
+    def _round_up_datetime(dt: datetime, interval_minutes: int) -> datetime:
+        total_minutes = dt.hour * 60 + dt.minute + dt.second / 60
+        rounded_minutes = math.ceil(total_minutes / interval_minutes) * interval_minutes
+        rounded_base = datetime.combine(dt.date(), datetime.min.time())
+        rounded = rounded_base + timedelta(minutes=rounded_minutes)
+        if rounded < dt:
+            rounded += timedelta(minutes=interval_minutes)
+        return rounded
+
+    def _apply_time_of_day_axis(self, ax, time_column) -> bool:
+        start_time_str = self._get_recording_start_time_str()
+        if not start_time_str or not getattr(self.app, "date", None):
+            return False
+
+        parsed_start_time = pd.to_datetime(
+            start_time_str, format="%H:%M:%S", errors="coerce"
+        )
+        if pd.isna(parsed_start_time):
+            return False
+
+        recording_date = parse_recording_date(self.app.date).date()
+        recording_start = datetime.combine(recording_date, parsed_start_time.time())
+        display_offset_minutes = self._get_display_time_offset_minutes()
+        absolute_window_start = display_offset_minutes + float(time_column.iloc[0])
+        absolute_window_end = display_offset_minutes + float(time_column.iloc[-1])
+        window_start = recording_start + timedelta(minutes=absolute_window_start)
+        window_end = recording_start + timedelta(minutes=absolute_window_end)
+        span_minutes = max(
+            1.0, float(time_column.iloc[-1]) - float(time_column.iloc[0])
+        )
+        interval_minutes = self._time_of_day_interval_minutes(span_minutes)
+        tick_time = self._round_up_datetime(window_start, interval_minutes)
+
+        tick_positions = []
+        tick_labels = []
+        while tick_time <= window_end:
+            tick_positions.append(
+                (tick_time - recording_start).total_seconds() / 60
+                - display_offset_minutes
+            )
+            tick_labels.append(tick_time.strftime("%H:%M"))
+            tick_time += timedelta(minutes=interval_minutes)
+
+        if not tick_positions:
+            tick_positions = [
+                float(time_column.iloc[0]),
+                float(time_column.iloc[-1]),
+            ]
+            tick_labels = [
+                window_start.strftime("%H:%M"),
+                window_end.strftime("%H:%M"),
+            ]
+
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels(
+            tick_labels,
+            rotation=45,
+            ha="right",
+            rotation_mode="anchor",
+            va="center",
+        )
+        return True
 
     def find_time_column(self, dataframe):
         for col in dataframe.columns:
@@ -126,7 +231,10 @@ class TelemetryPlotController:
         fig, ax = plt.subplots(figsize=(6, 4))
 
         time_unit = self.app.graph_settings_container_instance.time_unit_menu.get()
-        show_time_of_day = time_unit == "time of day"
+        selected_display = getattr(self.app.selected_display, "get", lambda: "Full Trace Display")()
+        show_time_of_day = (
+            time_unit == "time of day" and selected_display != "Mean Cluster Display"
+        )
 
         if show_time_of_day:
             ax.set_xlabel("Time of Day")
@@ -137,28 +245,11 @@ class TelemetryPlotController:
                 ax.set_xlabel("Time (h)")
             elif time_unit == "minutes":
                 ax.set_xlabel("Time (min)")
+            elif time_unit == "time of day":
+                ax.set_xlabel("Time (min)")
 
-        if show_time_of_day:
-            start_time_str = self.app.temp_and_act_start_time_var.get()
-            if start_time_str:
-                start_time = datetime.strptime(start_time_str, "%H:%M:%S")
-                interval_hours = 0.5
-                interval_minutes = interval_hours * 60
-                minutes_since_hour_start = (
-                    start_time.minute + start_time.second / 60 + start_time.microsecond / 60000000
-                )
-                rounding_offset = (interval_minutes - minutes_since_hour_start % interval_minutes) % interval_minutes
-                closest_interval = start_time + timedelta(minutes=rounding_offset)
-
-                time_labels = []
-                current_time = closest_interval
-                max_time = start_time + timedelta(minutes=time_column.max())
-                while current_time <= max_time:
-                    time_labels.append(current_time.strftime("%H:%M"))
-                    current_time += timedelta(hours=interval_hours)
-
-                ax.set_xticks([round(i) for i in np.linspace(0, max(time_column), len(time_labels))])
-                ax.set_xticklabels(time_labels, rotation=45, ha="right", rotation_mode="anchor", va="center")
+        if show_time_of_day and not self._apply_time_of_day_axis(ax, time_column):
+            ax.set_xlabel("Time (min)")
 
         if show_nighttime:
             self.add_nighttime_shading_to_plot(ax, time_column)
@@ -287,7 +378,10 @@ class TelemetryPlotController:
                 alpha=float(self.app.settings_manager.selected_temp_sem_line_alpha),
             )
 
-        ax_temp.set_ylabel("Temperature (Â°C)", color=self.app.settings_manager.selected_temp_sem_color)
+        ax_temp.set_ylabel(
+            "Temperature (\N{DEGREE SIGN}C)",
+            color=self.app.settings_manager.selected_temp_sem_color,
+        )
         ax_temp.tick_params(axis="y", labelcolor=self.app.settings_manager.selected_temp_sem_color)
 
         if sem_temp_data is not None and "SEM" in trimmed_temp_df.columns:
@@ -389,6 +483,8 @@ class TelemetryPlotController:
             for stim_start, stim_end in timings:
                 time_unit = self.app.graph_settings_container_instance.time_unit_menu.get()
                 time_factor = self.app.get_time_scale(time_unit)
+                if time_factor is None:
+                    time_factor = self.app.get_time_scale("minutes")
                 scaled_stim_start = stim_start * time_factor
                 scaled_stim_end = stim_end * time_factor
                 rect = plt.Rectangle(
@@ -440,7 +536,7 @@ class TelemetryPlotController:
         temp_data = self.app.temp_data
         act_data = self.app.act_data
         time_column = temp_data["Time (min)"]
-        self.app.display_dropdown.configure(state=tk.NORMAL)
+        self.app.display_dropdown.configure(state="normal")
 
         fig, ax, _ = self.prepare_figure(time_column, show_nighttime, show_time_of_day=False)
         ymin_photometry, ymax_photometry = ax.get_ylim()
@@ -502,7 +598,7 @@ class TelemetryPlotController:
         temp_file_path = self.app.temp_file_path
         duration_main_data = self.app.duration_main_data
         extended_duration = duration_main_data + 60
-        self.app.display_dropdown.configure(state=tk.NORMAL)
+        self.app.display_dropdown.configure(state="normal")
 
         parsed_date = self.custom_date_parser(target_date)
         formatted_date = parsed_date.strftime("%m/%d/%Y")
@@ -510,7 +606,11 @@ class TelemetryPlotController:
             if self.app.start_time_timedelta is not None:
                 target_time = self.app.start_time_timedelta
             else:
-                messagebox.showerror("Input Error", "Please enter a valid file alignment time.")
+                QMessageBox.critical(
+                    self.app,
+                    "Input Error",
+                    "Please enter a valid file alignment time.",
+                )
                 return None, None
         else:
             target_time = self.app.temp_and_act_start_time_var.get().strip()

@@ -260,7 +260,7 @@ def build_params_from_df(
         Time``, ``Post Behaviour Time``, ``Bin Size``, ``Start Time``.
     behaviour_display_status:
         ``{behaviour_name: int}`` — 1 = enabled, 0/missing = skip.
-        The caller resolves ``tk.IntVar.get()`` before passing this in.
+        The caller resolves any GUI-bound state before passing this in.
 
     Returns
     -------

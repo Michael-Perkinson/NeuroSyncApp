@@ -130,6 +130,7 @@ class AppSettingsManager:
             "selected_activity_num_bins": self.selected_activity_num_bins,
             "selected_activity_num_ticks": self.selected_activity_num_ticks,
             "telemetry_folder_path": self.telemetry_folder_path,
+            "remove_first_60_minutes_var": self.remove_first_60_minutes_var,
         }
 
     def raw_photometry_processing_specific_config(self) -> dict:

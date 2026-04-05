@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import tkinter as tk
-import tkinter.font as tkf
-from tkinter import ttk
+from PySide6.QtWidgets import QFrame, QVBoxLayout
 
+from src.gui.shared.qt_view_styles import panel_stylesheet
+from src.gui.shared.qt_table_adapter import QtTableAdapter
 
 class TelemetryTableController:
     """Owns telemetry cluster table construction and row updates."""
@@ -34,53 +34,18 @@ class TelemetryTableController:
         self.app = app
 
     def create_table_container(self, frame) -> None:
-        style = ttk.Style()
-        style.configure("Treeview", rowheight=25)
-        style.map("Treeview", background=[("selected", "blue")])
-        style.configure("Treeview", selectbackground="blue", selectforeground="white")
-        style.configure("Treeview", relief="flat", borderwidth=0)
-        style.configure("Treeview.Heading", relief="flat", borderwidth=0)
-        style.map("Treeview.Heading", background=[("", "grey")])
-
-        table_container_frame = ttk.Frame(frame, style="NoBorder.TFrame")
-        table_container_frame.grid(
-            row=0, column=0, columnspan=3, padx=10, pady=10, sticky=tk.NSEW
+        table_container_frame = QFrame(frame)
+        table_container_frame.setObjectName("telemetryTableContainer")
+        table_container_frame.setStyleSheet(
+            panel_stylesheet("telemetryTableContainer")
         )
+        layout = QVBoxLayout(table_container_frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        frame.layout().addWidget(table_container_frame)
 
-        table_hscrollbar = ttk.Scrollbar(table_container_frame, orient=tk.HORIZONTAL)
-        table_hscrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-
-        self.app.table_vscrollbar = ttk.Scrollbar(
-            table_container_frame, orient="vertical"
-        )
-        self.app.table_vscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        self.app.table_canvas = tk.Canvas(
-            table_container_frame,
-            xscrollcommand=table_hscrollbar.set,
-            yscrollcommand=self.app.table_vscrollbar.set,
-            height=430,
-        )
-        self.app.table_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        table_scroll_frame = ttk.Frame(self.app.table_canvas)
-        self.app.table_canvas.create_window((0, 0), window=table_scroll_frame, anchor="nw")
-
-        def configure_scroll_region(_event):
-            self.app.table_canvas.configure(
-                scrollregion=self.app.table_canvas.bbox("all"), height=420
-            )
-
-        table_scroll_frame.bind("<Configure>", configure_scroll_region)
-
-        self.app.table_treeview = ttk.Treeview(
-            table_scroll_frame,
-            columns=self.COLUMNS,
-            show="headings",
-            name="treeview",
-        )
+        self.app.table_treeview = QtTableAdapter(self.COLUMNS, table_container_frame)
         self.app.table_treeview.configure(height=30)
-        self.app.table_treeview.pack(fill=tk.BOTH, expand=True)
+        layout.addWidget(self.app.table_treeview)
         self.app.table_treeview.tag_configure("Even", background="white")
         self.app.table_treeview.tag_configure("Odd", background="lightgray")
 
@@ -95,12 +60,7 @@ class TelemetryTableController:
                     self.app.table_treeview, _col, False
                 ),
             )
-            self.app.table_treeview.column(column, width=tkf.Font().measure(column) + 11)
-
-        table_hscrollbar.configure(command=self.app.table_canvas.xview)
-        self.app.table_vscrollbar.configure(command=self.app.table_treeview.yview)
-        table_container_frame.grid_rowconfigure(0, weight=1)
-        table_container_frame.grid_columnconfigure(0, weight=1)
+            self.app.table_treeview.column(column, width=max(len(column) * 10, 80))
 
     def treeview_sort_column(self, tv, col, reverse) -> None:
         values = [(tv.set(key, col), key) for key in tv.get_children("")]

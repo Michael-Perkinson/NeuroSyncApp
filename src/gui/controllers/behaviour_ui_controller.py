@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
-import tkinter as tk
-from tkinter import colorchooser, ttk
+from PySide6.QtWidgets import (
+    QColorDialog,
+    QFrame,
+    QHBoxLayout,
+    QPushButton,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
-from src.gui.views.export_options_container import ExportOptionsContainer
-from src.gui.views.graph_settings_container import GraphSettingsContainer
+from src.gui.shared.qt_bindings import ComboBoxControl, ObservableValue
+from src.gui.shared.qt_view_styles import panel_stylesheet
+from src.gui.views.export_options_panel import ExportOptionsPanel
+from src.gui.views.graph_settings_panel import GraphSettingsPanel
 
 
 class BehaviourUIController:
@@ -18,7 +27,7 @@ class BehaviourUIController:
     def initialize_graph_settings(
         self, graph_settings_tab, export_options_tab, notebook_graphs
     ):
-        self.app.graph_settings_container_instance = GraphSettingsContainer(
+        self.app.graph_settings_container_instance = GraphSettingsPanel(
             graph_settings_tab,
             widgets_to_include=[
                 "line_width",
@@ -45,7 +54,7 @@ class BehaviourUIController:
             save_and_close_axis_callback=self.app.plot_controller.save_and_close_axis_range,
         )
 
-        self.app.export_options_container = ExportOptionsContainer(
+        self.app.export_options_container = ExportOptionsPanel(
             export_options_tab,
             file_path_var=self.app.file_path_var,
             settings_manager=self.app.settings_manager,
@@ -54,60 +63,69 @@ class BehaviourUIController:
         )
 
         self.app.graph_settings_container_instance.complete_initialization()
+        self._ensure_layout(graph_settings_tab).addWidget(
+            self.app.graph_settings_container_instance
+        )
+        self._ensure_layout(export_options_tab).addWidget(self.app.export_options_container)
 
-        self.configure_grid(graph_settings_tab, row=0, weight=1)
-        self.configure_grid(graph_settings_tab, column=0, weight=1)
-        self.configure_grid(export_options_tab, row=0, weight=1)
-        self.configure_grid(export_options_tab, column=0, weight=1)
+        graph_tab = QWidget(notebook_graphs)
+        table_tab = QWidget(notebook_graphs)
+        self._ensure_layout(graph_tab)
+        self._ensure_layout(table_tab)
 
-        graph_tab = ttk.Frame(notebook_graphs, style="CustomNotebook.TFrame")
-        table_tab = ttk.Frame(notebook_graphs, style="CustomNotebook.TFrame")
-
-        self.configure_grid(graph_tab, row=0, weight=1)
-        self.configure_grid(graph_tab, column=0, weight=1)
-        self.configure_grid(table_tab, row=0, weight=1)
-        self.configure_grid(table_tab, column=0, weight=1)
-
-        notebook_graphs.add(graph_tab, text="Graph")
-        notebook_graphs.add(table_tab, text="Table")
+        notebook_graphs.addTab(graph_tab, "Graph")
+        notebook_graphs.addTab(table_tab, "Table")
 
         return graph_tab, table_tab
 
-    def configure_grid(self, container, row=None, column=None, weight=None) -> None:
-        if row is not None:
-            container.grid_rowconfigure(row, weight=weight)
-        if column is not None:
-            container.grid_columnconfigure(column, weight=weight)
+    def _ensure_layout(self, container):
+        layout = container.layout()
+        if layout is None:
+            layout = QVBoxLayout(container)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(10)
+        return layout
 
     def create_graphs_container(self, frame) -> None:
-        graphs_container_frame = ttk.Frame(
-            frame, style="NoBorder.TFrame", borderwidth=2, relief="solid"
+        graphs_container_frame = QFrame(frame)
+        graphs_container_frame.setObjectName("behaviourGraphsContainer")
+        graphs_container_frame.setStyleSheet(
+            panel_stylesheet("behaviourGraphsContainer")
         )
-        graphs_container_frame.grid(
-            row=0, column=0, columnspan=3, padx=10, pady=10, sticky=tk.NSEW
-        )
-        graphs_container_frame.columnconfigure(0, weight=1)
-        graphs_container_frame.rowconfigure(0, weight=1)
+        frame.layout().addWidget(graphs_container_frame)
 
-        color_button = tk.Button(
-            graphs_container_frame,
+        container_layout = QVBoxLayout(graphs_container_frame)
+        container_layout.setContentsMargins(10, 10, 10, 10)
+        container_layout.setSpacing(10)
+
+        toolbar_layout = QHBoxLayout()
+        container_layout.addLayout(toolbar_layout)
+
+        self.app.trace_color_button = QPushButton(
             text="Main Trace Colour",
-            bg="lightblue",
-            command=self.handle_trace_color_selection,
+            parent=graphs_container_frame,
         )
-        color_button.grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+        self.app.trace_color_button.clicked.connect(self.handle_trace_color_selection)
+        self._style_color_button(
+            self.app.trace_color_button,
+            self.app.settings_manager.selected_trace_color,
+        )
+        toolbar_layout.addWidget(self.app.trace_color_button)
 
-        sem_color_button = tk.Button(
-            graphs_container_frame,
+        self.app.sem_color_button = QPushButton(
             text="SEM Colour",
-            bg="lightblue",
-            command=self.handle_sem_color_selection,
+            parent=graphs_container_frame,
         )
-        sem_color_button.grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
+        self.app.sem_color_button.clicked.connect(self.handle_sem_color_selection)
+        self._style_color_button(
+            self.app.sem_color_button,
+            self.app.settings_manager.selected_sem_color,
+        )
+        toolbar_layout.addWidget(self.app.sem_color_button)
 
-        self.app.selected_behaviour = tk.StringVar(value="Choose behaviour to plot")
+        self.app.selected_behaviour = ObservableValue("Choose behaviour to plot")
 
-        def behaviour_selection_changed(*args):
+        def behaviour_selection_changed():
             if self.app.selected_behaviour.get() == "":
                 return
 
@@ -117,31 +135,24 @@ class BehaviourUIController:
                 self.app.figure_display_dropdown.set("Behaviour Mean and SEM")
                 self.app.plot_controller.handle_figure_display_selection(None)
 
-        self.app.selected_behaviour.trace("w", behaviour_selection_changed)
+        self.app.selected_behaviour.trace_add("write", behaviour_selection_changed)
 
-        self.app.behaviour_choice_graph = ttk.Combobox(
-            graphs_container_frame,
-            state="readonly",
-            width=30,
-            textvariable=self.app.selected_behaviour,
+        self.app.behaviour_choice_graph = ComboBoxControl(
+            self.app.selected_behaviour, graphs_container_frame
         )
-        self.app.behaviour_choice_graph.grid(row=0, column=2, padx=5, sticky=tk.W)
-        self.app.behaviour_choice_graph.configure(state=tk.DISABLED)
+        self.app.behaviour_choice_graph.configure(state="disabled")
+        toolbar_layout.addWidget(self.app.behaviour_choice_graph)
         self.app.figure_display_choices = [
             "Full Trace Display",
             "Single Row Display",
             "Behaviour Mean and SEM",
         ]
-        self.app.figure_display_dropdown = ttk.Combobox(
-            graphs_container_frame,
-            state="readonly",
-            values=self.app.figure_display_choices,
-            width=30,
-        )
-        self.app.figure_display_dropdown.grid(row=0, column=3, padx=5, sticky=tk.W)
+        self.app.figure_display_dropdown = ComboBoxControl(parent=graphs_container_frame)
+        self.app.figure_display_dropdown.set_options(self.app.figure_display_choices)
         self.app.figure_display_dropdown.bind(
             "<<ComboboxSelected>>", self.app.plot_controller.handle_figure_display_selection
         )
+        toolbar_layout.addWidget(self.app.figure_display_dropdown)
 
         self.app.figure_display_dropdown.set(self.app.figure_display_choices[0])
         self.app.data_selection_frame.set_figure_display_dropdown(
@@ -151,26 +162,33 @@ class BehaviourUIController:
             self.app.figure_display_choices
         )
 
-        self.app.graph_canvas = tk.Canvas(
-            graphs_container_frame, bg="snow", highlightthickness=1
-        )
-        self.app.graph_canvas.grid(row=1, column=0, columnspan=4, sticky=tk.NSEW)
-
-        self.configure_grid(graphs_container_frame, column=0, weight=1)
-        self.configure_grid(graphs_container_frame, row=0, weight=0)
-        self.configure_grid(graphs_container_frame, column=1, weight=1)
-        self.configure_grid(graphs_container_frame, row=1, weight=1)
+        self.app.graph_canvas = QWidget(graphs_container_frame)
+        self._ensure_layout(self.app.graph_canvas)
+        container_layout.addWidget(self.app.graph_canvas, 1)
 
     def handle_sem_color_selection(self) -> None:
-        new_color = colorchooser.askcolor(title="Choose SEM Colour")
-        if new_color[1]:
-            self.app.settings_manager.selected_sem_color = new_color[1]
+        new_color = QColorDialog.getColor(parent=self.app.graph_canvas)
+        if new_color.isValid():
+            self.app.settings_manager.selected_sem_color = new_color.name()
+            self._style_color_button(self.app.sem_color_button, new_color.name())
             self.app.plot_controller.handle_figure_display_selection(None)
 
     def handle_trace_color_selection(self) -> None:
-        new_color = colorchooser.askcolor(
-            color=self.app.settings_manager.selected_trace_color
-        )
-        if new_color[1]:
-            self.app.settings_manager.selected_trace_color = new_color[1]
+        new_color = QColorDialog.getColor(parent=self.app.graph_canvas)
+        if new_color.isValid():
+            self.app.settings_manager.selected_trace_color = new_color.name()
+            self._style_color_button(self.app.trace_color_button, new_color.name())
             self.app.plot_controller.handle_figure_display_selection(None)
+
+    @staticmethod
+    def _style_color_button(button: QPushButton, color: str) -> None:
+        from PySide6.QtGui import QColor
+        from PySide6.QtCore import Qt
+        qc = QColor(color)
+        brightness = (0.299 * qc.red() + 0.587 * qc.green() + 0.114 * qc.blue()) / 255
+        fg = "white" if brightness < 0.56 else "#17324D"
+        button.setCursor(Qt.PointingHandCursor)
+        button.setStyleSheet(
+            f"QPushButton {{ background: {color}; color: {fg}; border: 1px solid rgba(23,50,77,0.16);"
+            f" border-radius: 10px; padding: 7px 12px; font-weight: 600; }}"
+        )

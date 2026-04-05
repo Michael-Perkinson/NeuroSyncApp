@@ -1,6 +1,5 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, simpledialog
-from tkinter import messagebox
+from __future__ import annotations
+
 import logging
 import os
 import re
@@ -15,18 +14,35 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from tkinter import colorchooser
 from datetime import datetime, time, timedelta
+from PySide6.QtWidgets import (
+    QApplication,
+    QColorDialog,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from src.gui.views.behaviour_event_input_frame import BehaviourInputFrame
-from src.gui.views.data_selection_frame_legacy import DataSelectionFrame
-from src.gui.views.graph_settings_container import GraphSettingsContainer
+from src.gui.views.data_selection_panel import DataSelectionPanel
+from src.gui.views.graph_settings_panel import GraphSettingsPanel
 from src.gui.views.static_inputs_frame import StaticInputsFrame
-from src.gui.views.export_options_container import ExportOptionsContainer
-from src.gui.shared.tk_styles import define_custom_ttk_styles
+from src.gui.views.export_options_panel import ExportOptionsPanel
 from src.core.app_state import TelemetryViewState
 from src.core.app_settings_manager import AppSettingsManager
+from src.gui.shared.qt_bindings import CheckBoxControl, LineEditControl, ObservableValue
+from src.gui.shared.qt_graph_canvas import (
+    destroy_embedded_figure,
+    embed_figure_in_qt,
+)
+from src.gui.shared.qt_view_styles import APP_TABS_STYLESHEET, PALETTE, apply_button_role
 from src.gui.shared.graph_plotter import (
     apply_figure_size_and_fonts,
     build_save_path,
@@ -69,7 +85,7 @@ from src.gui.controllers.telemetry_cluster_controller import TelemetryClusterCon
 logger = logging.getLogger(__name__)
 
 
-class TelemetryPhotomOptoProcessingApp(ttk.Frame):
+class TelemetryPhotomOptoProcessingApp(QWidget):
     CONTROLLER_TYPES = {
         "telemetry_table_controller": TelemetryTableController,
         "telemetry_display_controller": TelemetryDisplayController,
@@ -81,30 +97,21 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         "telemetry_cluster_controller": TelemetryClusterController,
     }
 
-    def __init__(self, parent, **kwargs):
-        """
-        Initialize the application.
-
-        Parameters:
-        - parent: The parent widget.
-        - **kwargs: Additional keyword arguments.
-        """
-        self.settings_manager = AppSettingsManager(
-            app_type="telemetry_photom_opto")
+    def __init__(self, parent: QWidget | None = None, **kwargs):
+        self.settings_manager = AppSettingsManager(app_type="telemetry_photom_opto")
         self.app_name = "telemetry_photom_opto"
 
-        super().__init__(parent, style='Bordered.TFrame', **kwargs)
-        self.initialize_attributes(parent)
+        super().__init__(parent, **kwargs)
+        self.initialize_attributes()
 
         self.configure_main_frames()
         self.configure_notebooks()
         self.configure_tabs()
         self.create_widgets()
 
-    def initialize_attributes(self, parent):
-        """Initialize shared state, Tk variables, controller instances, and styles."""
-        self.parent = parent
-        define_custom_ttk_styles()
+    def initialize_attributes(self):
+        """Initialize shared state, value models, and controllers."""
+        self.setWindowTitle("Align Telemetry Data")
         self._initialize_state()
         self._initialize_tk_variables()
         self._initialize_controllers()
@@ -158,39 +165,37 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
             },
         )
 
-    def _bind_state_var(self, tk_var, state_field):
-        tk_var.set(getattr(self.view_state, state_field))
-        tk_var.trace_add(
-            "write", lambda *_: setattr(self.view_state, state_field, tk_var.get())
-        )
+    def _bind_state_var(self, value_var, state_field):
+        value_var.set(getattr(self.view_state, state_field))
+        value_var.trace_add("write", lambda: setattr(self.view_state, state_field, value_var.get()))
 
-    def _set_state_var(self, tk_var, state_field, value):
+    def _set_state_var(self, value_var, state_field, value):
         setattr(self.view_state, state_field, value)
-        if tk_var.get() != value:
-            tk_var.set(value)
+        if value_var.get() != value:
+            value_var.set(value)
 
     def _initialize_tk_variables(self):
-        self.file_path_var = tk.StringVar()
-        self.adjust_clustering_var = tk.StringVar()
-        self.associated_temp_data_entry = tk.StringVar()
-        self.associated_act_data_entry = tk.StringVar()
-        self.light_off_time_var = tk.StringVar()
-        self.temp_and_act_start_time_var = tk.StringVar()
-        self.label_color_var = tk.StringVar()
-        self.label_symbol_var = tk.StringVar()
-        self.label_size_var = tk.StringVar()
-        self.y_offset_peak_symbol = tk.StringVar()
-        self.peak_count_color_var = tk.StringVar()
-        self.peak_count_size_var = tk.StringVar()
-        self.y_for_peak_count = tk.StringVar()
-        self.baseline_multiplier = tk.StringVar()
-        self.baseline_color = tk.StringVar()
-        self.baseline_style = tk.StringVar()
-        self.baseline_thickness = tk.StringVar()
-        self.cluster_box_height_modifier = tk.StringVar()
-        self.cluster_box_color = tk.StringVar()
-        self.cluster_box_alpha = tk.StringVar()
-        self.telemetry_folder_path = tk.StringVar()
+        self.file_path_var = ObservableValue("")
+        self.adjust_clustering_var = ObservableValue("")
+        self.associated_temp_data_entry = ObservableValue("")
+        self.associated_act_data_entry = ObservableValue("")
+        self.light_off_time_var = ObservableValue("")
+        self.temp_and_act_start_time_var = ObservableValue("")
+        self.label_color_var = ObservableValue("")
+        self.label_symbol_var = ObservableValue("")
+        self.label_size_var = ObservableValue("")
+        self.y_offset_peak_symbol = ObservableValue("")
+        self.peak_count_color_var = ObservableValue("")
+        self.peak_count_size_var = ObservableValue("")
+        self.y_for_peak_count = ObservableValue("")
+        self.baseline_multiplier = ObservableValue("")
+        self.baseline_color = ObservableValue("")
+        self.baseline_style = ObservableValue("")
+        self.baseline_thickness = ObservableValue("")
+        self.cluster_box_height_modifier = ObservableValue("")
+        self.cluster_box_color = ObservableValue("")
+        self.cluster_box_alpha = ObservableValue("")
+        self.telemetry_folder_path = ObservableValue("")
         self._bind_state_var(self.file_path_var, "file_path")
         self._bind_state_var(self.adjust_clustering_var, "adjust_clustering")
         self._bind_state_var(
@@ -224,6 +229,16 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
             setattr(self, attribute, controller_type(self))
 
     def _load_settings_into_variables(self):
+        light_off_time = (
+            self.settings_manager.light_off_time_var
+            or self.settings_manager.default_settings.get("light_off_time_var", "19:00:00")
+        )
+        self.settings_manager.light_off_time_var = light_off_time
+        self._set_state_var(
+            self.light_off_time_var,
+            "light_off_time",
+            light_off_time,
+        )
         self._set_state_var(
             self.label_color_var, "label_color", self.settings_manager.selected_label_color
         )
@@ -297,44 +312,53 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         )
 
     def configure_main_frames(self):
-        """Configure the main frames within the application."""
-        self.top_frame = ttk.Frame(
-            self, relief="groove", borderwidth=2, style="CustomFrame.TFrame")
-        self.top_frame.grid(row=0, column=0, sticky="nsew")
-        self.top_frame.grid_columnconfigure(0, weight=1)
-        self.top_frame.grid_columnconfigure(1, weight=1)
-        self.top_frame.grid_columnconfigure(2, weight=1)
+        """Configure the root layout and main frames."""
+        self.setObjectName("telemetryAppRoot")
+        self.setStyleSheet(
+            f"#telemetryAppRoot {{ background: {PALETTE['app_bg']}; }}"
+        )
+        self._root_layout = QVBoxLayout(self)
+        self._root_layout.setContentsMargins(10, 10, 10, 10)
+        self._root_layout.setSpacing(10)
 
-        self.bottom_frame = ttk.Frame(
-            self, relief="groove", borderwidth=2, style="CustomFrame.TFrame")
-        self.bottom_frame.grid(row=1, column=0, sticky="nsew")
-        self.bottom_frame.grid_rowconfigure(1, weight=1)
-        self.bottom_frame.grid_columnconfigure(0, weight=1)
+        self.top_frame = QWidget(self)
+        self.top_frame_layout = QGridLayout(self.top_frame)
+        self.top_frame_layout.setContentsMargins(0, 0, 0, 0)
+        self.top_frame_layout.setHorizontalSpacing(10)
+        self.top_frame_layout.setVerticalSpacing(10)
+        self._root_layout.addWidget(self.top_frame)
+
+        self.bottom_frame = QWidget(self)
+        self.bottom_frame_layout = QGridLayout(self.bottom_frame)
+        self.bottom_frame_layout.setContentsMargins(0, 0, 0, 0)
+        self.bottom_frame_layout.setHorizontalSpacing(10)
+        self.bottom_frame_layout.setVerticalSpacing(0)
+        self._root_layout.addWidget(self.bottom_frame, 1)
 
     def configure_notebooks(self):
         """Configure the notebooks for graphs and settings."""
-        self.notebook_graphs = ttk.Notebook(
-            self.bottom_frame, style="CustomNotebook.TNotebook", width=780)
-        self.notebook_graphs.grid(
-            row=1, column=0, columnspan=2, padx=10, sticky=tk.NSEW)
+        self.notebook_graphs = QTabWidget(self.bottom_frame)
+        self.notebook_settings = QTabWidget(self.bottom_frame)
+        self.notebook_graphs.setStyleSheet(APP_TABS_STYLESHEET)
+        self.notebook_settings.setStyleSheet(APP_TABS_STYLESHEET)
+        self.bottom_frame_layout.addWidget(self.notebook_graphs, 0, 0)
+        self.bottom_frame_layout.addWidget(self.notebook_settings, 0, 1)
+        self.bottom_frame_layout.setColumnStretch(0, 3)
+        self.bottom_frame_layout.setColumnStretch(1, 2)
 
-        self.notebook_settings = ttk.Notebook(
-            self.bottom_frame, style="CustomNotebook.TNotebook", height=520, width=540)
-        self.notebook_settings.grid(row=1, column=3, padx=10, sticky=tk.NSEW)
+        self.graph_settings_tab = QWidget(self.notebook_settings)
+        self.graph_settings_tab.setLayout(QVBoxLayout())
+        self.graph_settings_tab.layout().setContentsMargins(0, 0, 0, 0)
+        self.export_options_tab = QWidget(self.notebook_settings)
+        self.export_options_tab.setLayout(QVBoxLayout())
+        self.export_options_tab.layout().setContentsMargins(0, 0, 0, 0)
 
-        self.graph_settings_tab = ttk.Frame(self.notebook_settings)
-        self.export_options_tab = ttk.Frame(self.notebook_settings)
-
-        self.notebook_settings.add(
-            self.graph_settings_tab, text="Graph Settings")
-        self.notebook_settings.add(
-            self.export_options_tab, text="Export Options")
-
-        self.notebook_settings.columnconfigure(0, weight=1)
+        self.notebook_settings.addTab(self.graph_settings_tab, "Graph Settings")
+        self.notebook_settings.addTab(self.export_options_tab, "Export Options")
 
     def configure_tabs(self):
         """ Initialize and configure the tabs for graph settings, export options, graph display, and table display."""
-        self.graph_settings_container_instance = GraphSettingsContainer(
+        self.graph_settings_container_instance = GraphSettingsPanel(
             self.graph_settings_tab,
             widgets_to_include=[
                 'photometry_settings',
@@ -345,6 +369,15 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
                 'graph_time_labels',
                 'axis_range',
             ],
+            appearance_section_title="Trace Controls",
+            advanced_buttons_title=None,
+            advanced_button_role="primary",
+            axis_range_button_role="primary",
+            photometry_button_text="Edit Photometry",
+            temperature_button_text="Edit Temperature",
+            activity_button_text="Edit Activity",
+            overlay_visibility_in_appearance=True,
+            show_visibility_card=False,
             app_name=self.app_name,
             settings_manager=self.settings_manager,
             refresh_graph_display_callback=self.refresh_graph_display,
@@ -356,45 +389,36 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
             save_and_close_axis_callback=self.save_and_close,
             redraw_graph_callback=self.redraw_graph,
         )
+        self.graph_settings_tab.layout().addWidget(self.graph_settings_container_instance)
+        self.graph_settings_container_instance.y_gridlines_label.hide()
+        self.graph_settings_container_instance.y_gridlines_entry.hide()
+        self.graph_settings_container_instance.time_unit_menu.set_options(
+            ["minutes", "seconds", "hours", "time of day"]
+        )
 
-        self.graph_settings_container_instance.y_gridlines_label.grid_forget()
-        self.graph_settings_container_instance.y_gridlines_entry.grid_forget()
-
-        curr_row, curr_col = self.graph_settings_container_instance.update_button.grid_info()['row'], \
-            self.graph_settings_container_instance.update_button.grid_info()[
-            'column']
-
-        self.graph_settings_container_instance.update_button.grid(
-            row=curr_row + 1, column=curr_col - 1)
-
-        self.export_options_container = ExportOptionsContainer(
+        self.export_options_container = ExportOptionsPanel(
             self.export_options_tab,
             file_path_var=self.file_path_var,
             settings_manager=self.settings_manager,
             extract_button_click_handler=self.extract_button_click_handler,
             save_image=self.save_image
         )
+        self.export_options_tab.layout().addWidget(self.export_options_container)
 
         self.graph_settings_container_instance.complete_initialization()
 
-        self.graph_settings_tab.grid_rowconfigure(0, weight=1)
-        self.graph_settings_tab.grid_columnconfigure(0, weight=1)
-        self.export_options_tab.grid_rowconfigure(0, weight=1)
-        self.export_options_tab.grid_columnconfigure(0, weight=1)
+        self.graph_tab = QWidget(self.notebook_graphs)
+        self.graph_tab.setLayout(QVBoxLayout())
+        self.graph_tab.layout().setContentsMargins(0, 0, 0, 0)
+        self.table_tab = QWidget(self.notebook_graphs)
+        self.table_tab.setLayout(QVBoxLayout())
+        self.table_tab.layout().setContentsMargins(0, 0, 0, 0)
 
-        self.graph_tab = ttk.Frame(self.notebook_graphs)
-        self.table_tab = ttk.Frame(self.notebook_graphs)
-
-        self.notebook_graphs.add(self.graph_tab, text="Graph")
-        self.notebook_graphs.add(self.table_tab, text="Table")
+        self.notebook_graphs.addTab(self.graph_tab, "Graph")
+        self.notebook_graphs.addTab(self.table_tab, "Table")
 
         self.create_graphs_container(self.graph_tab)
         self.create_table_container(self.table_tab)
-
-        self.graph_tab.grid_rowconfigure(0, weight=1)
-        self.graph_tab.grid_columnconfigure(0, weight=1)
-        self.table_tab.grid_rowconfigure(0, weight=1)
-        self.table_tab.grid_columnconfigure(0, weight=1)
 
     def create_table_container(self, frame):
         self.telemetry_table_controller.create_table_container(frame)
@@ -837,16 +861,14 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
             pandas.Series: The scaled time column.
         """
         time_unit = self.graph_settings_container_instance.time_unit_menu.get()
+        if time_unit == "time of day" and self.selected_display.get() == "Mean Cluster Display":
+            time_unit = "minutes"
+
         time_factor = self.get_time_scale(time_unit)
-        show_time_of_day = (time_unit == 'time of day')
 
-        if self.selected_display.get() != 'Full Trace Display' and show_time_of_day:
-            time_factor = self.get_time_scale("minutes")
-
-        if not show_time_of_day and time_factor is not None:
+        if time_factor is not None:
             return pd.Series([time * time_factor for time in time_column])
-        else:
-            return pd.Series(time_column)
+        return pd.Series(time_column)
 
     def plot_mean_cluster(self, mean_temp_data, mean_act_data, photometry_cluster_data_df, cluster_count=None):
         self.telemetry_display_controller.plot_mean_cluster(
@@ -859,139 +881,192 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
     def populate_static_input_dropdown(self):
         """Populate the dropdown menu for cluster or stimulation selection based on the data type."""
         if self.data_type == 'photometry':
-            peak_counts = self.get_peak_counts()
-            peak_counts.append("All Clusters")
+            options = [
+                f"{count} Peak" if count == 1 else f"{count} Peaks"
+                for count in self.get_peak_counts()
+            ]
+            options.append("All Clusters")
         elif self.data_type == 'optogenetics':
-            stim_counts = self.get_stim_counts()
-            stim_counts.append("All Stims")
-
-        menu = self.static_inputs_frame.behaviour_dropdown["menu"]
-        menu.delete(0, "end")
-
-        options = peak_counts if self.data_type == 'photometry' else stim_counts
-
-        for option in options:
-            menu.add_command(label=option, command=tk._setit(
-                self.static_inputs_frame.selected_behaviour, option))
+            options = [f"{count} stim" for count in self.get_stim_counts()]
+            options.append("All Stims")
+        else:
+            options = []
 
         if options:
-            self.static_inputs_frame.selected_behaviour.set(
-                options[0])
-
-        self.static_inputs_frame.behaviour_dropdown.configure(
-            state=tk.NORMAL if options else tk.DISABLED)
+            self.static_inputs_frame.set_behaviour_options(options)
+            self.static_inputs_frame.selected_behaviour.set(options[0])
+        else:
+            self.static_inputs_frame.set_behaviour_options([])
 
     def create_widgets(self):
-        """Creates and configures various widgets for the GUI, including data selection frames, buttons, labels, and entry fields."""
-        self.data_selection_frame = DataSelectionFrame(
+        """Create and configure the Qt widget sections used by the telemetry tool."""
+        self.data_selection_frame = DataSelectionPanel(
             self.top_frame,
+            width=500,
             settings_manager=self.settings_manager,
             new_data_file_callback=self.telemetry_file_controller.handle_new_data_file,
         )
-        self.data_selection_frame.grid(
-            row=0, column=0, padx=5, pady=5, sticky=tk.NSEW)
+        self.top_frame_layout.addWidget(self.data_selection_frame, 0, 0)
 
         self.behaviour_input_frame = BehaviourInputFrame(
             self.top_frame,
-            select_column_names_callback=self.select_column_names,
             select_event_file_callback=self.select_behaviour_file,
+            show_column_names=False,
         )
-        self.behaviour_input_frame.grid(
-            row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
+        self.top_frame_layout.addWidget(self.behaviour_input_frame, 0, 1)
 
-        self.behaviour_input_frame.behaviour_input_label.config(
-            text="Change Associated Files and Align Time")
-        self.behaviour_input_frame.behaviour_input_label.grid(
-            row=0, column=0, columnspan=5, padx=10, pady=(10, 5))
+        self.behaviour_input_frame.behaviour_input_label.setText(
+            "Change Associated Files and Align Time"
+        )
 
-        self.behaviour_input_frame.column_names_button.grid_forget()
-        self.behaviour_input_frame.import_behaviour_button.grid_forget()
-        self.behaviour_input_frame.behaviour_coding_frame.grid_forget()
+        self.behaviour_input_frame.import_behaviour_button.hide()
+        self.behaviour_input_frame.behaviour_coding_frame.hide()
 
-        self.temp_file_name_label = tk.Entry(self.behaviour_input_frame, width=15, font=('Helvetica', 10), fg='black', bg='snow',
-                                             state='readonly', textvariable=self.associated_temp_data_entry)
-        self.temp_file_name_label.grid(row=1, column=1, padx=5, pady=(10, 5))
+        associated_files_frame = QFrame(self.behaviour_input_frame)
+        associated_files_frame.setObjectName("behaviourInputSection")
+        associated_layout = QGridLayout(associated_files_frame)
+        associated_layout.setContentsMargins(8, 8, 8, 8)
+        associated_layout.setHorizontalSpacing(8)
+        associated_layout.setVerticalSpacing(6)
+        associated_layout.setColumnStretch(0, 0)
+        associated_layout.setColumnStretch(1, 1)
+        associated_layout.setColumnStretch(2, 0)
+        associated_layout.setColumnStretch(3, 1)
+        self.behaviour_input_frame.layout().addWidget(associated_files_frame, 1, 0, 1, 2)
 
-        self.activity_file_name_label = tk.Entry(self.behaviour_input_frame, width=15, font=('Helvetica', 10), fg='black', bg='snow',
-                                                 state='readonly', textvariable=self.associated_act_data_entry)
-        self.activity_file_name_label.grid(
-            row=1, column=3, padx=5, pady=(10, 5))
+        self.change_associated_temp_file_button = QPushButton(
+            "Temperature File:",
+            associated_files_frame,
+        )
+        self.change_associated_temp_file_button.clicked.connect(
+            self.change_associated_temp_file
+        )
+        apply_button_role(self.change_associated_temp_file_button, "primary")
+        self.change_associated_temp_file_button.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
+        associated_layout.addWidget(self.change_associated_temp_file_button, 0, 0)
 
-        self.change_associated_temp_file_button = tk.Button(self.behaviour_input_frame, text="Temperature File: ", font=('Helvetica', 10),
-                                                            bg='lightblue',
-                                                            command=self.change_associated_temp_file)
-        self.change_associated_temp_file_button.grid(
-            row=1, column=0, padx=5, pady=(10, 5))
+        self.temp_file_name_label = LineEditControl(
+            self.associated_temp_data_entry, associated_files_frame
+        )
+        self.temp_file_name_label.setReadOnly(True)
+        self.temp_file_name_label.setMinimumWidth(150)
+        self.temp_file_name_label.setMaximumWidth(260)
+        self.temp_file_name_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        associated_layout.addWidget(self.temp_file_name_label, 0, 1)
 
-        self.change_associated_act_file_button = tk.Button(self.behaviour_input_frame, text="Activity File: ", font=('Helvetica', 10),
-                                                           bg='lightblue',
-                                                           command=self.change_associated_act_file)
-        self.change_associated_act_file_button.grid(
-            row=1, column=2, padx=5, pady=(10, 5))
+        self.change_associated_act_file_button = QPushButton(
+            "Activity File:",
+            associated_files_frame,
+        )
+        self.change_associated_act_file_button.clicked.connect(
+            self.change_associated_act_file
+        )
+        apply_button_role(self.change_associated_act_file_button, "primary")
+        self.change_associated_act_file_button.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
+        associated_layout.addWidget(self.change_associated_act_file_button, 0, 2)
 
-        self.temp_and_act_start_time = tk.Label(self.behaviour_input_frame, text="Associated files Start Time (hh:mm:ss): ", bg='snow',
-                                                font=('Helvetica', 10), wraplength=120)
-        self.temp_and_act_start_time.grid(
-            row=2, column=0, padx=5, pady=(10, 5))
+        self.activity_file_name_label = LineEditControl(
+            self.associated_act_data_entry, associated_files_frame
+        )
+        self.activity_file_name_label.setReadOnly(True)
+        self.activity_file_name_label.setMinimumWidth(150)
+        self.activity_file_name_label.setMaximumWidth(260)
+        self.activity_file_name_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        associated_layout.addWidget(self.activity_file_name_label, 0, 3)
 
-        self.temp_and_act_start_time_entry = tk.Entry(
-            self.behaviour_input_frame, width=10, textvariable=self.temp_and_act_start_time_var)
-        self.temp_and_act_start_time_entry.grid(
-            row=2, column=1, padx=5, pady=(10, 5))
+        self.temp_and_act_start_time = QLabel(
+            "Associated files Start Time (hh:mm:ss): ",
+            associated_files_frame,
+        )
+        self.temp_and_act_start_time.setWordWrap(True)
+        self.temp_and_act_start_time.setMaximumWidth(140)
+        associated_layout.addWidget(self.temp_and_act_start_time, 1, 0)
 
-        self.adjust_clustering_label = tk.Label(self.behaviour_input_frame, text="Adjust clustering minimum time between clusters (s):", bg='snow',
-                                                font=('Helvetica', 10),
-                                                wraplength=120)
-        self.adjust_clustering_label.grid(
-            row=2, column=2, padx=5, pady=(10, 5))
+        self.temp_and_act_start_time_entry = LineEditControl(
+            self.temp_and_act_start_time_var, associated_files_frame
+        )
+        self.temp_and_act_start_time_entry.setMinimumWidth(90)
+        self.temp_and_act_start_time_entry.setMaximumWidth(140)
+        self.temp_and_act_start_time_entry.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        associated_layout.addWidget(self.temp_and_act_start_time_entry, 1, 1)
 
-        self.adjust_clustering_entry = tk.Entry(
-            self.behaviour_input_frame, width=10, textvariable=self.adjust_clustering_var)
-        self.adjust_clustering_entry.grid(
-            row=2, column=3, padx=5, pady=(10, 5))
-        self.adjust_clustering_entry.bind('<FocusOut>', self.on_focus_out)
-        self.adjust_clustering_entry.bind(
-            '<Key>', lambda event: self.set_adjusted_false())
+        self.adjust_clustering_label = QLabel(
+            "Adjust clustering minimum time between clusters (s):",
+            associated_files_frame,
+        )
+        self.adjust_clustering_label.setWordWrap(True)
+        self.adjust_clustering_label.setMaximumWidth(175)
+        associated_layout.addWidget(self.adjust_clustering_label, 1, 2)
 
-        self.adjust_clustering_entry.bind(
-            '<Return>', lambda event: self.reset_clusters_based_on_user_input())
+        self.adjust_clustering_entry = LineEditControl(
+            self.adjust_clustering_var, associated_files_frame
+        )
+        self.adjust_clustering_entry.setMinimumWidth(90)
+        self.adjust_clustering_entry.setMaximumWidth(140)
+        self.adjust_clustering_entry.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        associated_layout.addWidget(self.adjust_clustering_entry, 1, 3)
+        self.adjust_clustering_entry.editingFinished.connect(lambda: self.on_focus_out(None))
+        self.adjust_clustering_entry.textEdited.connect(lambda *_args: self.set_adjusted_false())
+        self.adjust_clustering_entry.returnPressed.connect(self.reset_clusters_based_on_user_input)
 
-        self.light_off_time_label = tk.Label(self.behaviour_input_frame, text="Lights off (hh:mm:ss): ", bg='snow',
-                                             font=('Helvetica', 10), wraplength=120)
-        self.light_off_time_label.grid(row=3, column=0, padx=5, pady=(10, 5))
+        self.light_off_time_label = QLabel(
+            "Lights off (hh:mm:ss): ",
+            associated_files_frame,
+        )
+        self.light_off_time_label.setWordWrap(True)
+        self.light_off_time_label.setMaximumWidth(120)
+        associated_layout.addWidget(self.light_off_time_label, 2, 0)
 
-        self.light_off_time_entry = tk.Entry(
-            self.behaviour_input_frame, width=10, textvariable=self.light_off_time_var)
-        self.light_off_time_entry.grid(row=3, column=1, padx=5, pady=(10, 5))
-        self.light_off_time_entry.delete(0, tk.END)  # Clear current value
-        self.light_off_time_entry.insert(
-            0, self.settings_manager.light_off_time_var)  # Insert the loaded value
+        self.light_off_time_entry = LineEditControl(
+            self.light_off_time_var, associated_files_frame
+        )
+        self.light_off_time_entry.setMinimumWidth(90)
+        self.light_off_time_entry.setMaximumWidth(140)
+        self.light_off_time_entry.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        associated_layout.addWidget(self.light_off_time_entry, 2, 1)
 
-        self.overlay_temp_and_act_button = tk.Button(self.behaviour_input_frame, text="Align Temperature and Activity with Photometry",
-                                                     font=('Helvetica', 10), bg='lightblue', command=self.telemetry_plot_controller.overlay_temp_and_act)
-        self.overlay_temp_and_act_button.grid(
-            row=3, column=2, columnspan=3, padx=5, pady=(10, 5))
+        self.overlay_temp_and_act_button = QPushButton(
+            "Align Temperature and Activity with Photometry",
+            associated_files_frame,
+        )
+        self.overlay_temp_and_act_button.clicked.connect(
+            self.telemetry_plot_controller.overlay_temp_and_act
+        )
+        apply_button_role(self.overlay_temp_and_act_button, "primary")
+        self.overlay_temp_and_act_button.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        associated_layout.addWidget(self.overlay_temp_and_act_button, 2, 2, 1, 2)
 
         self.static_inputs_frame = StaticInputsFrame(
             self.top_frame,
             save_inputs_callback=self.telemetry_settings_controller.save_inputs,
         )
-        self.static_inputs_frame.grid(
-            row=0, column=2, padx=5, pady=5, sticky=tk.NSEW)
+        self.top_frame_layout.addWidget(self.static_inputs_frame, 0, 2)
 
-        self.static_inputs_frame.pre_behaviour_time_label.config(
-            text="Pre-Cluster time (s): ")
-        self.static_inputs_frame.post_behaviour_time_label.config(
-            text="Post-Cluster time (s): ")
+        self.static_inputs_frame.pre_behaviour_time_label.setText("Pre-Cluster time (s): ")
+        self.static_inputs_frame.post_behaviour_time_label.setText("Post-Cluster time (s): ")
 
-        self.top_frame.grid_columnconfigure(0, weight=1)
-        self.top_frame.grid_columnconfigure(1, weight=1)
-        self.top_frame.grid_columnconfigure(2, weight=1)
+        self.top_frame_layout.setColumnStretch(0, 1)
+        self.top_frame_layout.setColumnStretch(1, 1)
+        self.top_frame_layout.setColumnStretch(2, 1)
 
-        self.behaviour_input_frame.grid_columnconfigure(0, weight=1)
-        self.behaviour_input_frame.grid_columnconfigure(1, weight=1)
-        self.behaviour_input_frame.grid_columnconfigure(2, weight=1)
-        self.behaviour_input_frame.grid_columnconfigure(3, weight=1)
+    def update_idletasks(self):
+        QApplication.processEvents()
 
     def set_adjusted_false(self):
         """Set the 'adjusted' attribute to False."""
@@ -1002,12 +1077,15 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         Handle the event when the focus leaves the clustering adjustment entry.
 
         Parameters:
-            event (tk.Event): The event object associated with the focus out event.
+            event: The event object associated with the focus out event.
         """
         value = self.view_state.adjust_clustering.strip()
         if value and not self.adjusted:
-            messagebox.showinfo(
-                "Reminder", "After typing into the clustering adjustment please click back into the box and press Enter to apply changes.")
+            QMessageBox.information(
+                self,
+                "Reminder",
+                "After typing into the clustering adjustment please click back into the box and press Enter to apply changes.",
+            )
 
     def create_cluster_options(self, destroy_frame=True):
         """
@@ -1016,11 +1094,15 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         Parameters:
             destroy_frame (bool, optional): Whether to destroy the existing frame if it exists. Defaults to True.
         """
+        if not hasattr(self.graph_settings_container_instance, "behaviour_frame"):
+            return
         if self.cluster_options_created:
             return
         if destroy_frame:
-            if hasattr(self, "cluster_frame"):
-                self.cluster_frame.destroy()
+            if hasattr(self, "cluster_frame") and self.cluster_frame is not None:
+                self.cluster_frame.setParent(None)
+                self.cluster_frame.deleteLater()
+                self.cluster_frame = None
 
         self.graph_settings_container_instance.setup_canvas()
 
@@ -1037,61 +1119,75 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         self.peak_alignment_vars = {}
         self.cluster_colors = {}
 
-        select_all_button = tk.Button(
-            self.graph_settings_container_instance.behaviour_frame, text='Select All', command=self.select_all_clusters)
-        select_all_button.grid(row=0, column=1, padx=10,
-                               pady=(5, 2), sticky=tk.W)
+        self.cluster_frame = QFrame(self.graph_settings_container_instance.behaviour_frame)
+        cluster_layout = QGridLayout(self.cluster_frame)
+        cluster_layout.setContentsMargins(0, 0, 0, 0)
+        cluster_layout.setHorizontalSpacing(10)
+        cluster_layout.setVerticalSpacing(8)
+        self.graph_settings_container_instance.behaviour_frame_layout.addWidget(
+            self.cluster_frame
+        )
 
-        deselect_all_button = tk.Button(self.graph_settings_container_instance.behaviour_frame,
-                                        text='Deselect All', command=self.deselect_all_clusters)
-        deselect_all_button.grid(
-            row=0, column=2, padx=10, pady=(5, 2), sticky=tk.W)
+        cluster_list_label = QLabel("Clusters", self.cluster_frame)
+        cluster_layout.addWidget(cluster_list_label, 0, 0)
 
-        save_peak_alignment_button = tk.Button(
-            self.graph_settings_container_instance.behaviour_frame, text='Save peak alignment', command=self.save_peak_alignment)
-        save_peak_alignment_button.grid(
-            row=0, column=3, padx=10, pady=(5, 2), sticky=tk.W)
+        select_all_button = QPushButton("Select All", self.cluster_frame)
+        select_all_button.clicked.connect(self.select_all_clusters)
+        cluster_layout.addWidget(select_all_button, 0, 1)
 
-        cluster_list_label = tk.Label(self.graph_settings_container_instance.behaviour_frame,
-                                      text='Clusters', bg='snow', font=('Helvetica', 12, 'bold'))
-        cluster_list_label.grid(row=0, column=0, padx=10,
-                                pady=(5, 2), sticky=tk.W)
+        deselect_all_button = QPushButton("Deselect All", self.cluster_frame)
+        deselect_all_button.clicked.connect(self.deselect_all_clusters)
+        cluster_layout.addWidget(deselect_all_button, 0, 2)
+
+        save_peak_alignment_button = QPushButton("Save peak alignment", self.cluster_frame)
+        save_peak_alignment_button.clicked.connect(self.save_peak_alignment)
+        cluster_layout.addWidget(save_peak_alignment_button, 0, 3)
 
         cluster_sizes = [len(cluster_data['peaks'])
                          for cluster_data in self.cluster_dict.values()]
         self.cluster_display_status = {self.format_cluster_string(
-            size): tk.BooleanVar(value=True) for size in set(cluster_sizes)}
+            size): ObservableValue(True) for size in set(cluster_sizes)}
 
         for i, cluster_size in enumerate(sorted_cluster_sizes, start=1):
-            cluster_button = tk.Button(
-                self.graph_settings_container_instance.behaviour_frame,
-                text=self.format_cluster_string(cluster_size),
-                command=lambda cs=cluster_size: self.choose_cluster_color(cs)
+            color_value = ObservableValue(
+                self.settings_manager.selected_cluster_box_color
             )
-            cluster_button.grid(row=i, column=0, padx=10, pady=5, sticky=tk.W)
+            self.cluster_colors[cluster_size] = color_value
+
+            cluster_button = QPushButton(
+                self.format_cluster_string(cluster_size),
+                self.cluster_frame,
+            )
+            cluster_button.clicked.connect(
+                lambda _checked=False, cs=cluster_size: self.choose_cluster_color(cs)
+            )
+            cluster_button.setStyleSheet(
+                f"background-color: {color_value.get()}; color: black;"
+            )
+            cluster_layout.addWidget(cluster_button, i, 0)
             self.cluster_buttons[cluster_size] = cluster_button
 
-            cluster_count_label = tk.Label(self.graph_settings_container_instance.behaviour_frame, text=str(
-                cluster_size_counts[cluster_size]), bg='snow')
-            cluster_count_label.grid(
-                row=i, column=1, padx=10, pady=5, sticky=tk.W)
+            cluster_count_label = QLabel(str(cluster_size_counts[cluster_size]), self.cluster_frame)
+            cluster_layout.addWidget(cluster_count_label, i, 1)
 
             cluster_var = self.cluster_display_status[self.format_cluster_string(
                 cluster_size)]
-            cluster_checkbox = tk.Checkbutton(self.graph_settings_container_instance.behaviour_frame, variable=cluster_var, command=self.refresh_cluster_options,
-                                              bg='snow')
-            cluster_checkbox.grid(
-                row=i, column=2, padx=10, pady=5, sticky=tk.W)
+            cluster_checkbox = CheckBoxControl("", cluster_var, self.cluster_frame)
+            cluster_checkbox.stateChanged.connect(
+                lambda _state, self=self: self.refresh_cluster_options()
+            )
+            cluster_layout.addWidget(cluster_checkbox, i, 2)
             self.cluster_checkboxes[cluster_size] = cluster_checkbox
 
-            peak_alignment_var = tk.StringVar(value='1')  # Default value is 1
-            peak_alignment_var.trace(
-                'w', lambda *args: self.validate_peak_alignment(cluster_size))
+            peak_alignment_var = ObservableValue('1')
+            peak_alignment_var.trace_add(
+                'write', lambda cs=cluster_size: self.validate_peak_alignment(cs)
+            )
             self.peak_alignment_vars[cluster_size] = peak_alignment_var
-            tk.Label(self.graph_settings_container_instance.behaviour_frame, text="Peak Alignment:", bg='snow').grid(
-                row=i, column=3, sticky=tk.W, padx=10, pady=5)
-            tk.Entry(self.graph_settings_container_instance.behaviour_frame, textvariable=peak_alignment_var,
-                     width=7).grid(row=i, column=4, padx=10, pady=5)
+            cluster_layout.addWidget(QLabel("Peak Alignment:", self.cluster_frame), i, 3)
+            cluster_layout.addWidget(LineEditControl(peak_alignment_var, self.cluster_frame), i, 4)
+
+        self.cluster_options_created = True
 
     def save_peak_alignment(self):
         """
@@ -1150,10 +1246,13 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         Parameters:
             cluster_size (int): The size of the cluster for which the color is being chosen.
         """
-        color = colorchooser.askcolor()
-        if color[1]:
-            self.cluster_colors[cluster_size].set(color[1])
-            self.cluster_buttons[cluster_size].config(bg=color[1])
+        color = QColorDialog.getColor(parent=self)
+        if color.isValid():
+            color_name = color.name()
+            self.cluster_colors[cluster_size].set(color_name)
+            self.cluster_buttons[cluster_size].setStyleSheet(
+                f"background-color: {color_name}; color: black;"
+            )
 
     def select_all_clusters(self):
         """Function to select all clusters."""
@@ -1402,8 +1501,12 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         """Change the associated temperature file."""
         current_file_path = self._get_current_file_path()
         initial_dir = os.path.dirname(current_file_path) if current_file_path else ""
-        file_path = filedialog.askopenfilename(initialdir=initial_dir, title="Select file",
-                                               filetypes=(("csv and Excel files", ("*.csv", "*.xlsx")),))
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select file",
+            initial_dir,
+            "csv and Excel files (*.csv *.xlsx)",
+        )
 
         if file_path:
             file_name = os.path.basename(file_path)
@@ -1414,8 +1517,12 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         """Change the associated activity file."""
         current_file_path = self._get_current_file_path()
         initial_dir = os.path.dirname(current_file_path) if current_file_path else ""
-        file_path = filedialog.askopenfilename(initialdir=initial_dir, title="Select file",
-                                               filetypes=(("csv and Excel files", ("*.csv", "*.xlsx")),))
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select file",
+            initial_dir,
+            "csv and Excel files (*.csv *.xlsx)",
+        )
 
         if file_path:
             file_name = os.path.basename(file_path)
@@ -1464,7 +1571,6 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         self.data_type = 'optogenetics'
         self.telemetry_file_controller.handle_opto_data_file()
 
-        # self.display_dropdown.configure(state=tk.DISABLED)
         self.selected_display.set("Full Trace Display")
 
     def update_column_headings(self):
@@ -1632,49 +1738,20 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
             return f"Clusters with {burst_count} Peaks"
 
     def embed_figure_in_canvas(self, fig, graph_canvas):
-        """
-        Embed the given figure into the Tkinter canvas.
-
-        Parameters:
-        - fig (matplotlib.figure.Figure): The figure to embed.
-        - graph_canvas (tk.Canvas): The Tkinter canvas to embed the figure into.
-        """
         if hasattr(self, "current_fig"):
             plt.close(self.current_fig)
 
-        self.figure_canvas = FigureCanvasTkAgg(fig, master=graph_canvas)
-
         self.current_fig = fig
-
-        self.figure_canvas.draw()
-
-        self.figure_canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        self.toolbar = NavigationToolbar2Tk(self.figure_canvas, graph_canvas)
-        self.toolbar.update()
-
-        self.toolbar.config(background="snow")
-        self.toolbar._message_label.config(background="snow")
-
-        self.toolbar._message_label.config(
-            foreground="black", font=("Arial", 10))
-
-        self.figure_canvas.get_tk_widget().configure(
-            borderwidth=0, highlightthickness=0)
-
-        self.toolbar.configure(background="snow", bd=0)
-        self.toolbar._message_label.configure(background="snow", bd=0)
-
-        self.toolbar.pack(side="top", fill="x")
+        self.figure_canvas, self.toolbar = embed_figure_in_qt(fig, graph_canvas)
 
     def delete_current_figure(self):
         """Delete the current figure from the canvas."""
-        if self.figure_canvas:
-            self.figure_canvas.get_tk_widget().destroy()
-            self.figure_canvas = None
-        if self.toolbar:
-            self.toolbar.destroy()
-            self.toolbar = None
+        if self.current_fig is not None:
+            plt.close(self.current_fig)
+            self.current_fig = None
+        destroy_embedded_figure(self.figure_canvas, self.toolbar)
+        self.figure_canvas = None
+        self.toolbar = None
 
     def save_and_close_label_settings(self, popup):
         self.telemetry_label_settings_controller.save_and_close_label_settings(popup)
@@ -1704,7 +1781,10 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
     def save_and_close(self, popup=None, close=True):
         if not hasattr(self, "current_fig") or self.current_fig is None:
             if close and popup:
-                popup.destroy()
+                if hasattr(popup, "accept"):
+                    popup.accept()
+                else:
+                    popup.close()
             return
 
         ax = self.current_fig.axes[0]
@@ -1727,7 +1807,10 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         self.settings_manager.save_variables()
 
         if close and popup:
-            popup.destroy()
+            if hasattr(popup, "accept"):
+                popup.accept()
+            else:
+                popup.close()
 
     def populate_raw_data_sheet(self, writer, sheet_name, cluster_number):
         self.telemetry_excel_controller.populate_raw_data_sheet(
@@ -1817,7 +1900,7 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
         Handle the extract button click event, perform data binning, and save the data to an Excel file.
 
         Parameters:
-        - file_path_var (tk.StringVar): StringVar containing the file path.
+        - file_path_var: Variable containing the file path.
         """
         if self.export_options_container.use_binned_data_var.get() == 1:
             self.bin_all_cluster_data()
@@ -1913,8 +1996,10 @@ class TelemetryPhotomOptoProcessingApp(ttk.Frame):
             self.export_options_container.width_entry.get().strip(),
             self.export_options_container.image_format_combobox.get(),
             self.export_options_container.dpi_entry.get().strip(),
-            self.figure_display_dropdown.get(),
-            self.behaviour_choice_graph.get(),
+            self.selected_display.get() if hasattr(self, "selected_display") else "",
+            self.static_inputs_frame.selected_behaviour.get()
+            if hasattr(self, "static_inputs_frame")
+            else "",
         )
 
         if request.axis_width_cm is not None and request.axis_height_cm is not None:

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import copy
-import tkinter as tk
+from PySide6.QtWidgets import QMessageBox
 
-from src.gui.shared.tk_graph_canvas import (
+from src.gui.shared.qt_graph_canvas import (
     create_styled_figure,
     destroy_embedded_figure,
-    embed_figure_in_tk,
+    embed_figure_in_qt,
 )
 from src.gui.shared.graph_plotter import (
     apply_figure_size_and_fonts,
@@ -32,6 +32,9 @@ from src.processing.behavior_metrics import generate_mean_sem_df
 
 def handle_figure_display_selection(app, event=None) -> None:
     """Render the selected figure display mode."""
+    if app.dataframe is None:
+        return
+
     selected_option = app.figure_display_dropdown.get()
 
     if (
@@ -61,7 +64,8 @@ def handle_figure_display_selection(app, event=None) -> None:
             label.get_text() for label in app.ax.get_xticklabels()
         ]
         if selected_option == "Behaviour Mean and SEM":
-            tk.messagebox.showinfo(
+            QMessageBox.information(
+                app,
                 "No Behaviour Selected",
                 "Please select a behaviour to display the mean and SEM.",
             )
@@ -73,7 +77,9 @@ def handle_figure_display_selection(app, event=None) -> None:
 
     elif selected_option == "Behaviour Mean and SEM":
         plot_mean_and_sem_trace(app, ax)
-        scale_factor = app.behaviour_graph_helpers_controller.convert_and_retrieve_time(1)
+        scale_factor = app.behaviour_graph_helpers_controller.get_time_scale(
+            app.graph_settings_container_instance.time_unit_menu.get()
+        )
         ax.set_xlim(
             app.min_x_for_behaviour_mean_and_sem * scale_factor,
             app.max_x_for_behaviour_mean_and_sem * scale_factor,
@@ -85,13 +91,13 @@ def handle_figure_display_selection(app, event=None) -> None:
         current_xlim = ax.get_xlim()
         ax.set_xlim(left=current_xlim[0], right=current_xlim[1])
 
-    app.figure_canvas, app.toolbar = embed_figure_in_tk(app.fig, app.graph_canvas)
+    app.figure_canvas, app.toolbar = embed_figure_in_qt(app.fig, app.graph_canvas)
     app.settings_manager.save_variables()
 
 
 def plot_z_scored_data(app, ax) -> None:
     """Plot the z-scored trace mode."""
-    if not app.baseline_button_pressed:
+    if not app.data_selection_frame.baseline_button_pressed:
         app.behaviour_data_controller.calculate_z_score()
 
     if (
@@ -234,6 +240,14 @@ def plot_full_trace(app, ax) -> None:
 
 def plot_single_row(app, ax) -> None:
     """Plot the currently selected single-row window."""
+    if not hasattr(app, "start_time") or not hasattr(app, "pre_behaviour_time"):
+        return
+    if app.checkbox_state:
+        app.behaviour_data_controller.calculate_z_score()
+        selected_column = "baselined_z_score"
+    else:
+        selected_column = app.selected_column_var.get()
+
     selected_data_to_plot, start_point, end_point = select_single_row_window(
         app.dataframe,
         app.start_time,
@@ -241,12 +255,10 @@ def plot_single_row(app, ax) -> None:
         app.post_behaviour_time,
     )
 
-    if app.checkbox_state:
-        selected_column = app.behaviour_data_controller.calculate_z_score()
+    if app.checkbox_state and "z_scored_time" in selected_data_to_plot:
+        time_data = selected_data_to_plot["z_scored_time"].copy()
     else:
-        selected_column = app.selected_column_var.get()
-
-    time_data = selected_data_to_plot.iloc[:, 0].copy()
+        time_data = selected_data_to_plot.iloc[:, 0].copy()
     converted_time_data, x_label = app.behaviour_graph_helpers_controller.convert_and_retrieve_time(
         time_data, return_label=True
     )
@@ -349,14 +361,12 @@ def plot_mean_and_sem_trace(app, ax) -> None:
     if app.graph_settings_container_instance.limit_axis_range_var.get():
         y_min = app.graph_settings_container_instance.y_axis_min_var.get()
         y_max = app.graph_settings_container_instance.y_axis_max_var.get()
-        ax.set_ylim(app.ax.set_ylim(float(y_min), float(y_max)))
+        ax.set_ylim(float(y_min), float(y_max))
 
     if hasattr(app, "bar_items") and app.bar_items:
         update_duration_box(app, ax, mean_sem_df)
     else:
         add_duration_box(app, ax, mean_sem_df)
-
-    app.fig.tight_layout()
 
 
 def generate_behaviour_graph(
@@ -379,6 +389,7 @@ def generate_behaviour_graph(
         mean_sem_df["Time"].copy(), return_label=True
     )
     ax.set_xlabel(x_label)
+    ax.set_ylabel(getattr(app, "column_used", app.selected_column_var.get()))
     ax.plot(
         converted_time_data,
         mean_sem_df["Mean"],
@@ -503,14 +514,17 @@ def save_and_close_axis_range(app, popup=None, close: bool = True) -> None:
         not app.graph_settings_container_instance.x_axis_min_var.get()
         and not app.graph_settings_container_instance.y_axis_min_var.get()
     ):
-        tk.messagebox.showerror("Error", "Please enter values for both x and y!")
+        QMessageBox.critical(app, "Error", "Please enter values for both x and y!")
         return
 
     app.figure_canvas.draw()
     app.settings_manager.save_variables()
 
     if close and popup:
-        popup.destroy()
+        if hasattr(popup, "accept"):
+            popup.accept()
+        elif hasattr(popup, "close"):
+            popup.close()
 
 
 def handle_zeroing(app, behaviours, start_times_min, end_times_min, converted_time_data):

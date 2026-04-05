@@ -13,9 +13,8 @@ NeuroSyncApp is a Python tool designed for neuroscientists and researchers to al
   - [Table of Contents](#table-of-contents)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
-    - [Python Setups for Advanced User](#python-setups-for-advanced-user)
-    - [Conda Environment Setup](#conda-environment-setup)
-    - [Standard Python (venv) Setup](#standard-python-venv-setup)
+    - [End users (Windows / macOS)](#end-users-windows--macos)
+    - [Developers (running from source)](#developers-running-from-source)
   - [Quick Start](#quick-start)
   - [Features](#features)
   - [How to Use](#how-to-use)
@@ -36,63 +35,37 @@ NeuroSyncApp is a Python tool designed for neuroscientists and researchers to al
 
 ## Prerequisites
 
-- Windows OS.
-- For the source code: Python 3.8 or higher, `pip` or `conda` for dependency management.
+- Windows OS (macOS/Linux support in progress).
+- Python 3.10 or higher, `pip` or `conda` for dependency management.
 
 ## Installation
 
-To get started with NeuroSyncApp:
+### End users (Windows / macOS)
 
-1. Download the `.exe` file:
+1. Go to the [Releases](../../releases) page.
+2. Download the latest `.exe` (Windows) or `.dmg` (macOS).
+3. Run it — no Python or extra setup required.
 
-   - Go to the Releases page on GitHub.
-   - Download the latest version of the NeuroSyncApp `.exe` file.
+### Developers (running from source)
 
-2. Run the App:
+**venv:**
 
-   - Place the `.exe` file in any folder where you’d like to store your settings.
-   - Simply double-click the `.exe` file to launch NeuroSyncApp.
+```bash
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # macOS / Linux
+pip install -r requirements.txt
+python main.py
+```
 
-No additional setup or installation steps are required.
+**Conda:**
 
-### Python Setups for Advanced User
-
-If you prefer to run the app from source code or make custom modifications, you can also set it up in a Python environment:
-
-### Conda Environment Setup
-
-- Create an environment named `neuro_env` using Conda:
-
-  ```bash
-  conda create -n neuro_env python=3.12
-  conda activate neuro_env
-  ```
-
-- Install the required dependencies:
-
-  ```bash
-  pip install -r requirements.txt
-  ```
-
-### Standard Python (venv) Setup
-
-- Create a virtual environment named `neuro_env`:
-
-  ```bash
-  python -m venv venv
-  ```
-
-- Activate the environment:
-
-  ```bash
-  neuro_env\Scripts\activate
-  ```
-
-- Install the required dependencies:
-
-  ```bash
-  pip install -r requirements.txt
-  ```
+```bash
+conda create -n neuro_env python=3.12
+conda activate neuro_env
+pip install -r requirements.txt
+python main.py
+```
 
 ## Quick Start
 
@@ -196,21 +169,11 @@ Adapt the app to align photometry with telemetry physiological recordings. Files
 
 ## Future Additions
 
-I am excited about expanding NeuroSyncApp’s capabilities! Here are some planned features:
+- **Expanded Analysis Options:** Adding more analytical tools to provide deeper insights into synchronized photometry and behavior data for each recording.
 
-- **Expanded Analysis Options:**
-  Adding more analytical tools to provide deeper insights into synchronized photometry and behavior data for each recording.
+- **Multi-Mouse Data Alignment:** A full-featured app for aligning data from multiple mice simultaneously, ideal for generating peri-event histograms and comparing across subjects.
 
-- **Multi-Mouse Data Alignment:**
-  A full-featured app for aligning data from multiple mice simultaneously, ideal for generating peri-event histograms and comparing across subjects.
-
-- **Integrated SQLite Database for Organized Storage and Search:**
-Future versions will include an integrated SQLite database, allowing you to process raw files directly through the app and automatically save them in a well-organized, searchable format. This “digital filing system” will enable you to instantly retrieve any past recordings and search based on criteria, such as finding data from mice that had GCaMP6s recordings from the MPOA brain region. Additionally, the app will still generate .csv files for manual storage.
-
-- **Enhanced Interface with PySide6/PyQt6:**
-Transitioning to a desktop application interface using PyQt6/PySide6 for a faster, more user-friendly experience, improved visual presentation, and the ability to run the app on both Mac and Windows.
-
-Stay tuned for these and other updates as I continue to enhance NeuroSyncApp!
+- **Integrated SQLite Database for Organized Storage and Search:** Process raw files directly through the app and automatically save them in a well-organized, searchable database, while still generating `.csv` files for manual storage.
 
 ## Contributing
 
