@@ -1,0 +1,100 @@
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Folders
+/Utility scripts
+/Other scripts
+/Images
+/dist
+/build
+/_from_MRP_Script_v1
+/.vscode
+/.git
+.venv/
+venv/
+src/dist
+src/build
+
+.idea/
+__pycache__
+.idea/workspace.xml
+.claude
+.ruff_cache
+.mypy_cache
+.pytest_cache
+tmp_pytest/
+
+# Files
+*.json
+.gitignore
+*.pstats
+.idea/photometry-behaviour_analysis_app.iml
+.idea/workspace.xml
+*.spec
+*.jpg
+tooltip_utils.py
+test_case.py
+*.mkv
+PY_VAR0.xlsx
+qodana.yaml
+*.js
+tests/*
+*.css
+my-data-analysis-app/public/robots.txt
+my-data-analysis-app/src/logo.svg
+my-data-analysis-app/public/logo512.png
+my-data-analysis-app/public/logo192.png
+my-data-analysis-app/public/index.html
+my-data-analysis-app/public/favicon.ico
+*.html
+*.jpg
+
+# Ignore all files in example data except the two sheets required in each folder
+!example_data/menopause_photometry\23-9-20 MP5 OVXd69_Data.csv
+!example_data/menopause_photometry\Act 23-9-20.xlsx
+!example_data/menopause_photometry\Temp 23-9-20.xlsx
+!example_data/menopause_stim\ST1 24-3-27.csv
+!example_data/menopause_stim\Act 24-3-27.xlsx
+!example_data/menopause_stim\Temp 24-3-27.xlsx
+!example_data/photometry_behaviour\example_coding_behaviour.csv
+!example_data/photometry_behaviour\example_Data ST5435.csv
+
+# Ignore tests for now
+example_data/*
+tests/
+src/app_state.pkl
