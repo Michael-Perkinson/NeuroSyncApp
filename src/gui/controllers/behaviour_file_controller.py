@@ -21,7 +21,7 @@ class BehaviourFileController:
         if not validate_baseline_state(
             self.app.checkbox_state,
             self.app.data_selection_frame.baseline_button_pressed,
-            show_error,
+            lambda title, message: show_error(title, message, self.app),
         ):
             return
 
@@ -29,7 +29,7 @@ class BehaviourFileController:
             clear_common_selections(self.app)
             clear_photometry_app_specific_selections(self.app)
 
-        file_path = select_csv_file()
+        file_path = select_csv_file(self.app)
         if file_path:
             self.process_file(file_path)
 
@@ -38,4 +38,4 @@ class BehaviourFileController:
             self.app.manual_controller.parse_manual_data(file_path)
             self.app.is_file_parsed = True
         except Exception as error:
-            show_error("File Error", f"Failed to process file: {error}")
+            show_error("File Error", f"Failed to process file: {error}", self.app)

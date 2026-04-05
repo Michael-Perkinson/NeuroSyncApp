@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import tkinter as tk
 import traceback
 import uuid
-from tkinter import messagebox
+
+from PySide6.QtWidgets import QMessageBox
 
 import pandas as pd
 
@@ -15,6 +15,7 @@ from src.data.json_handler import (
 )
 from src.processing.behaviour_parser import process_behaviour_rows, read_behaviour_csv
 from src.processing.behavior_metrics import calculate_duration_metrics
+from src.gui.shared.qt_bindings import ObservableValue
 from src.string_ops.string_utils import normalize_deduplicate_and_order_strings
 
 
@@ -30,8 +31,10 @@ class BehaviourManualController:
                 self.app.checkbox_state
                 and not self.app.data_selection_frame.baseline_button_pressed
             ):
-                messagebox.showinfo(
-                    "Error", "Please remember to save the baseline values."
+                QMessageBox.information(
+                    self.app,
+                    "Error",
+                    "Please remember to save the baseline values.",
                 )
                 return
 
@@ -46,10 +49,12 @@ class BehaviourManualController:
             self.update_ui_with_manual_data(table_data, behaviour_names)
         except IOError:
             traceback.print_exc()
-            messagebox.showerror("Error", "Failed to open the CSV file.")
+            QMessageBox.critical(self.app, "Error", "Failed to open the CSV file.")
         except Exception as exc:
             traceback.print_exc()
-            messagebox.showerror("Error", f"Failed to parse the CSV file: {exc}")
+            QMessageBox.critical(
+                self.app, "Error", f"Failed to parse the CSV file: {exc}"
+            )
 
     def read_and_process_file(self, file_path: str):
         column_names = self.app.behaviour_column_settings_controller.prompt_column_names()
@@ -130,7 +135,7 @@ class BehaviourManualController:
 
     def update_behaviour_display_status(self, behaviour) -> None:
         if behaviour not in self.app.behaviour_display_status:
-            self.app.behaviour_display_status[behaviour] = tk.BooleanVar(value=True)
+            self.app.behaviour_display_status[behaviour] = ObservableValue(True)
         else:
             self.app.behaviour_display_status[behaviour].set(True)
 
@@ -170,7 +175,7 @@ class BehaviourManualController:
         menu = menu_widget["menu"]
         menu.delete(0, "end")
         for choice in choices:
-            menu.add_command(label=choice, command=tk._setit(variable, choice))
+            menu.add_command(label=choice, command=lambda value=choice: variable.set(value))
 
     def get_single_instance_behaviours(self, table_data):
         behaviour_counts = {}
@@ -216,8 +221,7 @@ class BehaviourManualController:
             selected_column_var, column_dropdown = column_dropdown, selected_column_var
 
         if not hasattr(file_path_var, "get"):
-            normalized_file_path = tk.StringVar()
-            normalized_file_path.set(str(file_path_var))
+            normalized_file_path = ObservableValue(str(file_path_var))
             file_path_var = normalized_file_path
 
         self.app.file_path_var = file_path_var
@@ -250,12 +254,12 @@ class BehaviourManualController:
 
         self.app.figure_display_dropdown.set("Full Trace Display")
         self.app.selected_behaviour.set("")
-        self.app.behaviour_choice_graph.configure(state=tk.DISABLED)
+        self.app.behaviour_choice_graph.configure(state="disabled")
         self.app.behaviour_options_controller.create_behaviour_options(
             self.app.no_behaviours, destroy_frame=True
         )
 
-        if hasattr(self.app, "ax"):
+        if self.app.ax is not None:
             self.app.ax.clear()
 
         menu = self.app.graph_settings_container_instance.behaviour_to_zero_dropdown["menu"]

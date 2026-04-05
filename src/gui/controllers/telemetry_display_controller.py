@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-import tkinter as tk
-from tkinter import ttk
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
+
+from src.gui.shared.qt_bindings import ComboBoxControl, ObservableValue
+from src.gui.shared.qt_view_styles import apply_button_role, panel_stylesheet
 
 
 class TelemetryDisplayController:
@@ -17,87 +19,90 @@ class TelemetryDisplayController:
         self.app = app
 
     def create_graphs_container(self, frame) -> None:
-        graphs_container_frame = ttk.Frame(
-            frame, style="NoBorder.TFrame", borderwidth=2, relief="solid"
+        graphs_container_frame = QFrame(frame)
+        graphs_container_frame.setObjectName("telemetryGraphsContainer")
+        graphs_container_frame.setStyleSheet(
+            panel_stylesheet("telemetryGraphsContainer")
         )
-        graphs_container_frame.grid(
-            row=0, column=0, columnspan=3, padx=10, pady=10, sticky=tk.NSEW
-        )
-        graphs_container_frame.columnconfigure(0, weight=1)
-        graphs_container_frame.rowconfigure(0, weight=1)
+        frame.layout().addWidget(graphs_container_frame)
+
+        container_layout = QVBoxLayout(graphs_container_frame)
+        container_layout.setContentsMargins(10, 10, 10, 10)
+        container_layout.setSpacing(10)
+
+        controls_layout = QHBoxLayout()
+        controls_layout.setSpacing(8)
+        container_layout.addLayout(controls_layout)
 
         self.app.display_choices = [
             "Full Trace Display",
             "Single Cluster Display",
             "Mean Cluster Display",
         ]
-        self.app.selected_display = tk.StringVar(value=self.app.display_choices[0])
-        self.app.display_dropdown = ttk.Combobox(
+        self.app.selected_display = ObservableValue(self.app.display_choices[0])
+        self.app.display_dropdown = ComboBoxControl(
+            self.app.selected_display,
             graphs_container_frame,
-            state="readonly",
-            values=self.app.display_choices,
-            textvariable=self.app.selected_display,
-            width=20,
         )
-        self.app.display_dropdown.bind(
-            "<<ComboboxSelected>>", self.on_cluster_display_selection_changed
+        self.app.display_dropdown.set_options(self.app.display_choices)
+        self.app.display_dropdown.currentTextChanged.connect(
+            lambda *_args: self.on_cluster_display_selection_changed(None)
         )
-        self.app.display_dropdown.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
-        self.app.display_dropdown.configure(state=tk.DISABLED)
+        self.app.display_dropdown.configure(state="disabled")
 
-        self.app.selected_period = tk.StringVar(value="Full")
-        self.app.period_dropdown = ttk.Combobox(
+        self.app.selected_period = ObservableValue("Full")
+        self.app.period_dropdown = ComboBoxControl(
+            self.app.selected_period,
             graphs_container_frame,
-            state="readonly",
-            values=["Full", "Day", "Night"],
-            textvariable=self.app.selected_period,
-            width=10,
         )
-        self.app.period_dropdown.bind(
-            "<<ComboboxSelected>>", self.on_cluster_selection_changed
+        self.app.period_dropdown.set_options(["Full", "Day", "Night"])
+        self.app.period_dropdown.currentTextChanged.connect(
+            lambda *_args: self.on_cluster_selection_changed(None)
         )
-        self.app.period_dropdown.grid(row=0, column=2, padx=5, pady=5, sticky=tk.W)
-        self.app.period_dropdown.configure(state=tk.DISABLED)
+        self.app.period_dropdown.configure(state="disabled")
 
-        self.app.selected_cluster = tk.StringVar(value="")
-        self.app.cluster_dropdown = ttk.Combobox(
+        self.app.selected_cluster = ObservableValue("")
+        self.app.cluster_dropdown = ComboBoxControl(
+            self.app.selected_cluster,
             graphs_container_frame,
-            state="readonly",
-            textvariable=self.app.selected_cluster,
-            width=30,
         )
-        self.app.cluster_dropdown.bind(
-            "<<ComboboxSelected>>", self.on_cluster_selection_changed
+        self.app.cluster_dropdown.setMinimumWidth(150)
+        self.app.cluster_dropdown.currentTextChanged.connect(
+            lambda *_args: self.on_cluster_selection_changed(None)
         )
-        self.app.cluster_dropdown.grid(row=0, column=3, padx=5, pady=5, sticky=tk.W)
-        self.app.cluster_dropdown.configure(state=tk.DISABLED)
+        self.app.cluster_dropdown.configure(state="disabled")
 
-        self.app.label_settings_button = tk.Button(
+        self.app.label_settings_button = QPushButton(
             graphs_container_frame,
             text="Peak & Cluster Settings",
-            command=self.app.telemetry_label_settings_controller.open_label_settings_popup,
-            bg="lightblue",
         )
-        self.app.label_settings_button.grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
-
-        self.app.graph_canvas = tk.Canvas(
-            graphs_container_frame, bg="snow", highlightthickness=1
+        apply_button_role(self.app.label_settings_button, "primary")
+        self.app.label_settings_button.clicked.connect(
+            self.app.telemetry_label_settings_controller.open_label_settings_popup
         )
-        self.app.graph_canvas.grid(row=1, column=0, columnspan=4, sticky=tk.NSEW)
 
-        graphs_container_frame.grid_columnconfigure(0, weight=1)
-        graphs_container_frame.grid_rowconfigure(0, weight=0)
-        graphs_container_frame.grid_columnconfigure(0, weight=1)
-        graphs_container_frame.grid_rowconfigure(1, weight=1)
+        controls_layout.addWidget(self.app.label_settings_button)
+        controls_layout.addWidget(self.app.display_dropdown)
+        controls_layout.addWidget(self.app.period_dropdown)
+        controls_layout.addWidget(self.app.cluster_dropdown)
+        controls_layout.addStretch(1)
+
+        self.app.graph_canvas = QWidget(graphs_container_frame)
+        canvas_layout = QVBoxLayout(self.app.graph_canvas)
+        canvas_layout.setContentsMargins(0, 0, 0, 0)
+        canvas_layout.setSpacing(0)
+        container_layout.addWidget(self.app.graph_canvas, 1)
 
     def on_cluster_display_selection_changed(self, event):
-        choice = self.app.selected_display.get()
+        choice = self.app.display_dropdown.currentText()
+        self.app.selected_display.set(choice)
 
         if choice == "Full Trace Display":
             self.app.cluster_dropdown["values"] = []
             self.app.selected_cluster.set("")
-            self.app.cluster_dropdown.configure(state=tk.DISABLED)
-            self.app.period_dropdown.configure(state=tk.DISABLED)
+            self.app.selected_period.set("Full")
+            self.app.cluster_dropdown.configure(state="disabled")
+            self.app.period_dropdown.configure(state="disabled")
             if self.app.act_data is not None and self.app.temp_data is not None:
                 self.app.telemetry_plot_controller.visualize_photometry_data_with_overlays(
                     self.app.time_column,
@@ -124,32 +129,44 @@ class TelemetryDisplayController:
             ]
             self.app.cluster_dropdown["values"] = cluster_ids
             self.app.selected_cluster.set(cluster_ids[0])
-            self.app.cluster_dropdown.configure(state=tk.NORMAL)
-            self.app.period_dropdown.configure(state=tk.DISABLED)
+            self.app.cluster_dropdown.configure(state="normal")
+            self.app.period_dropdown.configure(state="disabled")
             self.on_cluster_selection_changed()
 
         elif choice == "Mean Cluster Display":
             if self.app.data_type == "photometry":
                 peak_counts = self.app.get_peak_counts()
-                self.app.cluster_dropdown["values"] = peak_counts
-                if event.widget == self.app.display_dropdown and peak_counts:
-                    self.app.selected_cluster.set(peak_counts[0])
+                cluster_values = [
+                    f"{count} Peak" if count == 1 else f"{count} Peaks"
+                    for count in peak_counts
+                ]
             elif self.app.data_type == "optogenetics":
                 stim_counts = self.app.get_stim_counts()
-                self.app.cluster_dropdown["values"] = stim_counts
-                if event.widget == self.app.display_dropdown and stim_counts:
-                    self.app.selected_cluster.set(stim_counts[0])
-            self.app.cluster_dropdown.configure(state=tk.NORMAL)
-            self.app.period_dropdown.configure(state=tk.NORMAL)
+                cluster_values = [f"{count} stim" for count in stim_counts]
+            else:
+                cluster_values = []
+
+            self.app.cluster_dropdown["values"] = cluster_values
+            if cluster_values and self.app.selected_cluster.get() not in cluster_values:
+                self.app.selected_cluster.set(cluster_values[0])
+            self.app.cluster_dropdown.configure(state="normal")
+            self.app.period_dropdown.configure(state="normal")
             self.on_cluster_selection_changed()
 
     def on_cluster_selection_changed(self, event=None) -> None:
-        selected_cluster_string = self.app.selected_cluster.get()
-        selected_display_type = self.app.selected_display.get()
+        selected_display_type = self.app.display_dropdown.currentText()
+        selected_cluster_string = self.app.cluster_dropdown.currentText()
+        self.app.selected_display.set(selected_display_type)
+        self.app.selected_cluster.set(selected_cluster_string)
+        self.app.selected_period.set(self.app.period_dropdown.currentText())
 
         if selected_display_type == "Single Cluster Display":
+            if not selected_cluster_string:
+                return
             self.visualize_single_cluster(selected_cluster_string)
         elif selected_display_type == "Mean Cluster Display":
+            if not selected_cluster_string:
+                return
             self.visualize_mean_cluster(selected_cluster_string)
 
     def visualize_mean_cluster(self, selected_cluster_string):
@@ -354,9 +371,9 @@ class TelemetryDisplayController:
         )
 
         self.app.telemetry_plot_controller.create_photometry_figure(
-            ax, scaled_time_column, data_column, [], [], []
+            ax, time_column, data_column, [], [], []
         )
-        ax.set_xlim(adjusted_start_time, adjusted_end_time)
+        ax.set_xlim(scaled_time_column.iloc[0], scaled_time_column.iloc[-1])
 
         ymin_photometry, ymax_photometry = ax.get_ylim()
         temp_present = (

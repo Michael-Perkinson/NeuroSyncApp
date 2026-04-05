@@ -6,10 +6,11 @@ from datetime import datetime
 import logging
 from pathlib import Path
 import re
-import tkinter as tk
-from tkinter import filedialog
 
 import pandas as pd
+from PySide6.QtWidgets import QFileDialog
+
+from src.gui.shared.qt_bindings import ObservableValue
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +22,10 @@ class TelemetryFileController:
         self.app = app
 
     def select_folder_for_telemetry_data(self, date):
-        root = tk.Tk()
-        root.withdraw()
-        folder_path_str = filedialog.askdirectory(
-            title=f"Select folder for telemetry data of {date}"
+        folder_path_str = QFileDialog.getExistingDirectory(
+            self.app,
+            f"Select folder for telemetry data of {date}",
         )
-        root.destroy()
 
         if not folder_path_str:
             logger.info("Telemetry folder selection cancelled.")
@@ -77,8 +76,7 @@ class TelemetryFileController:
             selected_column_var, column_dropdown = column_dropdown, selected_column_var
 
         if not hasattr(file_path_var, "get"):
-            normalized_file_path = tk.StringVar()
-            normalized_file_path.set(str(file_path_var))
+            normalized_file_path = ObservableValue(str(file_path_var))
             file_path_var = normalized_file_path
 
         self.common_setup(file_path_var, dataframe, mouse_name)
@@ -222,7 +220,7 @@ class TelemetryFileController:
         self.app.telemetry_settings_controller.populate_data_dict()
         self.app.telemetry_table_controller.populate_table()
         self.app.populate_static_input_dropdown()
-        self.app.display_dropdown.configure(state=tk.DISABLED)
+        self.app.display_dropdown.configure(state="disabled")
         self.app.selected_display.set("Full Trace Display")
 
     def handle_opto_data_file(self) -> None:
@@ -237,7 +235,10 @@ class TelemetryFileController:
         else:
             raise ValueError(f"Unsupported file extension: {file_extension}")
 
-        self.app.label_settings_button.grid_remove()
+        if hasattr(self.app.label_settings_button, "hide"):
+            self.app.label_settings_button.hide()
+        elif hasattr(self.app.label_settings_button, "grid_remove"):
+            self.app.label_settings_button.grid_remove()
 
         stim_data_df["Stim onset (hh:mm:ss)"] = stim_data_df["Stim onset (hh:mm:ss)"].apply(
             lambda value: pd.to_timedelta(

@@ -12,8 +12,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from openpyxl import load_workbook
-from openpyxl.styles import Border, Font, Side
 
 from src.processing.behaviour_parser import retrieve_static_params, truncate_sheet_title
 
@@ -391,6 +389,8 @@ def build_non_binned_metrics_df(
 
 def format_non_binned_excel(output_file_name: str) -> None:
     """Remove borders from the header row of every sheet in *output_file_name*."""
+    from openpyxl import load_workbook
+    from openpyxl.styles import Border, Side
     wb = load_workbook(output_file_name)
     no_border = Border(
         left=Side(style="none"),
@@ -461,16 +461,19 @@ def export_separate_csv(
 # ---------------------------------------------------------------------------
 
 def bold_first_row(ws) -> None:
+    from openpyxl.styles import Font
     for cell in ws[1]:
         cell.font = Font(bold=True)
 
 
 def bold_first_column(ws) -> None:
+    from openpyxl.styles import Font
     for cell in ws["A"]:
         cell.font = Font(bold=True)
 
 
 def bold_behavior_name_rows(ws, behaviours_results: dict) -> None:
+    from openpyxl.styles import Font
     for row in ws.iter_rows(min_row=1, min_col=1, max_col=ws.max_column, max_row=ws.max_row):
         if row[0].value in behaviours_results:
             for cell in row:
@@ -478,6 +481,7 @@ def bold_behavior_name_rows(ws, behaviours_results: dict) -> None:
 
 
 def remove_borders(ws) -> None:
+    from openpyxl.styles import Border, Side
     no_border = Border(
         left=Side(style="none"),
         right=Side(style="none"),
@@ -490,6 +494,7 @@ def remove_borders(ws) -> None:
 
 def format_excel(output_file_name: str, behaviours_results: dict) -> None:
     """Apply bold/border formatting to an already-written Excel workbook."""
+    from openpyxl import load_workbook
     wb = load_workbook(output_file_name)
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]

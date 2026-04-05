@@ -6,9 +6,9 @@ passing them in.  Every function takes an ``ax`` (matplotlib Axes) or
 ``fig`` (Figure) plus explicit data/style parameters and returns only
 plain Python / NumPy / pandas objects.
 
-When migrating to PySide6 the only change needed in the UI layer is
-replacing FigureCanvasTkAgg / NavigationToolbar2Tk with their Qt
-equivalents; none of the functions in this module change.
+When migrating between GUI frameworks the only change needed in the UI
+layer is the canvas/toolbar embedding; none of the functions in this
+module change.
 """
 
 from __future__ import annotations
@@ -232,7 +232,7 @@ def adjust_behavior_times(
 
 
 # ---------------------------------------------------------------------------
-# Drawing primitives (pure matplotlib — no Tk)
+# Drawing primitives (pure matplotlib)
 # ---------------------------------------------------------------------------
 
 def draw_trace(

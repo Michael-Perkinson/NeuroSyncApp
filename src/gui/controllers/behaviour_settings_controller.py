@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import tkinter as tk
-
 from src.data.json_handler import save_behaviour_static_inputs
 
 
@@ -56,20 +54,20 @@ class BehaviourSettingsController:
 
     def toggle_behaviour_start_time(self) -> None:
         if self.app.behaviour_event_input_frame.behaviour_type_var.get() == "Point":
-            self.app.behaviour_event_input_frame.start_time_entry.config(state=tk.NORMAL)
-            self.app.behaviour_event_input_frame.end_time_entry.config(state=tk.DISABLED)
+            self.app.behaviour_event_input_frame.start_time_entry.config(state="normal")
+            self.app.behaviour_event_input_frame.end_time_entry.config(state="disabled")
             self.app.behaviour_event_input_frame.end_time_var.set("")
         else:
-            self.app.behaviour_event_input_frame.start_time_entry.config(state=tk.NORMAL)
-            self.app.behaviour_event_input_frame.end_time_entry.config(state=tk.NORMAL)
+            self.app.behaviour_event_input_frame.start_time_entry.config(state="normal")
+            self.app.behaviour_event_input_frame.end_time_entry.config(state="normal")
 
     def toggle_behaviour_end_time(self) -> None:
         if self.app.behaviour_event_input_frame.behaviour_type_var.get() == "Continuous":
-            self.app.behaviour_event_input_frame.start_time_entry.config(state=tk.NORMAL)
-            self.app.behaviour_event_input_frame.end_time_entry.config(state=tk.NORMAL)
+            self.app.behaviour_event_input_frame.start_time_entry.config(state="normal")
+            self.app.behaviour_event_input_frame.end_time_entry.config(state="normal")
         else:
-            self.app.behaviour_event_input_frame.start_time_entry.config(state=tk.NORMAL)
-            self.app.behaviour_event_input_frame.end_time_entry.config(state=tk.DISABLED)
+            self.app.behaviour_event_input_frame.start_time_entry.config(state="normal")
+            self.app.behaviour_event_input_frame.end_time_entry.config(state="disabled")
 
     def select_all(self) -> None:
         for behaviour, checkbox in self.app.behaviour_checkboxes.items():

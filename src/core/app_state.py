@@ -1,6 +1,6 @@
 """Plain Python UI/app state models for GUI applications.
 
-These models keep the source of truth out of Tk variables so the widget layer
+These models keep the source of truth out of GUI-bound variables so the widget layer
 can be swapped more easily in the future.
 """
 
@@ -36,7 +36,7 @@ class TelemetryViewState:
     adjust_clustering: str = ""
     associated_temp_data: str = ""
     associated_act_data: str = ""
-    light_off_time: str = ""
+    light_off_time: str = "19:00:00"
     temp_and_act_start_time: str = ""
     label_color: str = ""
     label_symbol: str = ""

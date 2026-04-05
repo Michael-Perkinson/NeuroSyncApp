@@ -343,6 +343,17 @@ def parse_recording_date(date_str: str) -> datetime:
     return datetime.strptime(f"{day}-{month}-{year}", "%d-%m-%Y")
 
 
+def _parse_clock_time(value: str | None):
+    """Return a ``time`` parsed from ``HH:MM:SS`` or ``None`` when blank/invalid."""
+    normalized_value = str(value or "").strip()
+    if not normalized_value:
+        return None
+    try:
+        return datetime.strptime(normalized_value, "%H:%M:%S").time()
+    except ValueError:
+        return None
+
+
 def calculate_nighttime_periods(
     recording_date,
     start_time_str: str,
@@ -350,8 +361,10 @@ def calculate_nighttime_periods(
     duration_minutes: float,
 ) -> list[tuple]:
     """Return nighttime periods bounded by the recording duration."""
-    start_time = datetime.strptime(start_time_str, "%H:%M:%S").time()
-    lights_off_time = datetime.strptime(lights_off_time_str, "%H:%M:%S").time()
+    start_time = _parse_clock_time(start_time_str)
+    lights_off_time = _parse_clock_time(lights_off_time_str)
+    if start_time is None or lights_off_time is None:
+        return []
 
     start_datetime = datetime.combine(recording_date, start_time)
     lights_off_datetime = datetime.combine(recording_date, lights_off_time)
