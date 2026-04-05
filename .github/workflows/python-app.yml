@@ -1,27 +1,27 @@
-name: Build and Release NeuroSyncApp Executable
+name: Build and Release NeuroSyncApp
 
 on:
   push:
     tags:
-      - 'v*'  # Trigger only on tags that start with "v" (e.g., v2.0.15)
+      - 'v*'
 
 permissions:
-  contents: write   # Allow GitHub Actions to write to the repository
+  contents: write
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
       - name: Cache pip dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
@@ -34,48 +34,107 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Test tkinter import
-        run: |
-          python -c "import tkinter; print('tkinter is working')"
-
-      - name: Create dist directory
-        run: |
-          mkdir dist\NeuroSyncApp_${{ github.ref_name }}
-
-      - name: Build executable with PyInstaller
+      - name: Build Windows executable
         shell: cmd
         run: |
-          pyinstaller --onefile src\main_app.py ^
+          pyinstaller --onefile main.py ^
             --name "NeuroSyncApp_${{ github.ref_name }}" ^
             --icon icon\icon.ico ^
-            --distpath "dist\NeuroSyncApp_${{ github.ref_name }}" ^
-            --collect-all tkinter ^
-            --hidden-import=uuid ^
-            --hidden-import matplotlib.backends.backend_svg ^
-            --hidden-import matplotlib.backends.backend_ps
+            --distpath "dist" ^
+            --collect-all PySide6 ^
+            --hidden-import=matplotlib.backends.backend_qtagg ^
+            --hidden-import=matplotlib.backends.backend_svg ^
+            --hidden-import=matplotlib.backends.backend_ps ^
+            --hidden-import=openpyxl ^
+            --hidden-import=h5py
 
-      - name: Verify .exe file path
+      - name: Verify .exe exists
         shell: powershell
         run: |
-          if (Test-Path "dist/NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe") {
-            Write-Output "File exists."
-          } else {
-            Write-Output "File does not exist."
-            exit 1
-          }
+          $path = "dist\NeuroSyncApp_${{ github.ref_name }}.exe"
+          if (Test-Path $path) { Write-Output "Found: $path" }
+          else { Write-Error "Not found: $path"; exit 1 }
 
-      - name: Upload .exe artifact
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-executable
-          path: dist\NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe
+          name: windows-exe
+          path: dist\NeuroSyncApp_${{ github.ref_name }}.exe
 
-      - name: Install GitHub CLI
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
         run: |
-          choco install gh || (curl -L -o gh-installer.msi https://github.com/cli/cli/releases/download/v2.63.0/gh_2.63.0_windows_amd64.msi && msiexec.exe /i gh-installer.msi /qn /norestart)
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build macOS app
+        run: |
+          pyinstaller --windowed main.py \
+            --name "NeuroSyncApp" \
+            --distpath "dist" \
+            --collect-all PySide6 \
+            --hidden-import=matplotlib.backends.backend_qtagg \
+            --hidden-import=matplotlib.backends.backend_svg \
+            --hidden-import=matplotlib.backends.backend_ps \
+            --hidden-import=openpyxl \
+            --hidden-import=h5py
+
+      - name: Create .dmg
+        run: |
+          hdiutil create -volname "NeuroSyncApp" \
+            -srcfolder "dist/NeuroSyncApp.app" \
+            -ov -format UDZO \
+            "dist/NeuroSyncApp_${{ github.ref_name }}.dmg"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist/NeuroSyncApp_${{ github.ref_name }}.dmg
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-exe
+          path: artifacts
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: artifacts
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ github.ref_name }} dist\NeuroSyncApp_${{ github.ref_name }}\NeuroSyncApp_${{ github.ref_name }}.exe --title "NeuroSyncApp ${{ github.ref_name }}" --notes "Automated release of NeuroSyncApp version ${{ github.ref_name }}"
+          gh release create ${{ github.ref_name }} \
+            artifacts/NeuroSyncApp_${{ github.ref_name }}.exe \
+            artifacts/NeuroSyncApp_${{ github.ref_name }}.dmg \
+            --repo ${{ github.repository }} \
+            --title "NeuroSyncApp ${{ github.ref_name }}" \
+            --notes "Release ${{ github.ref_name }}"

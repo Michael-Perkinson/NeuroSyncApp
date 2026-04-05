@@ -2,6 +2,10 @@
 
 ## [Unreleased] — PySide6 rewrite (branch: pyside6-rewrite)
 
+### CI
+
+- Updated `python-app.yml` to build with PySide6 (removes Tkinter, updates entry point to `main.py`, adds macOS `.dmg` job, splits into `build-windows` / `build-macos` / `release` jobs).
+
 ### Changed
 
 - Migrated the entire UI from Tkinter to PySide6. All views, controllers, and shared widgets have been rewritten using `QWidget`-based components.
