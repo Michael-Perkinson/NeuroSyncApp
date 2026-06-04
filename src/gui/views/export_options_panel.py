@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from src.gui.shared.qt_bindings import ComboBoxControl, LineEditControl, ObservableValue
 from src.gui.shared.qt_log_handler import QtTextHandler
 from src.gui.shared.qt_view_styles import (
+    MONO_FONT_FAMILY,
     apply_button_role,
     panel_stylesheet,
     section_stylesheet,
@@ -154,7 +155,9 @@ class ExportOptionsPanel(QFrame):
         self.log_output.setReadOnly(True)
         self.log_output.setMinimumHeight(80)
         self.log_output.setStyleSheet(
-            "background: #f7fafc; border: 1px solid #b8c4cf; font-family: Consolas;"
+            "background: #f7fafc; "
+            "border: 1px solid #b8c4cf; "
+            f"font-family: '{MONO_FONT_FAMILY}';"
         )
         log_layout.addWidget(self.log_output, 1)
 

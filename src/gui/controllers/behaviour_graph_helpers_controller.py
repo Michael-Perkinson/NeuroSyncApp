@@ -116,8 +116,13 @@ class BehaviourGraphHelpersController:
             self.app.original_end_times_min = end_times_min.copy()
 
     def fetch_behaviour_data(self):
+        current_key = getattr(self.app, "current_table_key", None)
+        current_df = self.app.tables.get(current_key, pd.DataFrame())
+        if current_df.empty:
+            return [], self.app.selected_column_var.get(), [], []
+
         return extract_behaviour_occurrences(
-            self.app.tables[self.app.current_table_key],
+            current_df,
             self.app.behaviour_choice_graph.get(),
             self.app.selected_column_var.get(),
             self.app.checkbox_state,
@@ -139,6 +144,10 @@ class BehaviourGraphHelpersController:
         self.app.figure_canvas.draw()
 
     def handle_behaviour_change(self, *args, **kwargs) -> None:
+        current_key = getattr(self.app, "current_table_key", None)
+        if current_key is None or current_key not in getattr(self.app, "tables", {}):
+            return
+
         selected_behaviour = (
             self.app.graph_settings_container_instance.selected_behaviour_to_zero.get()
         )

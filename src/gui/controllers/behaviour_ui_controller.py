@@ -21,6 +21,12 @@ from src.gui.views.graph_settings_panel import GraphSettingsPanel
 class BehaviourUIController:
     """Owns app-specific widget setup for graph and settings panels."""
 
+    BEHAVIOUR_DISPLAY_CHOICES = [
+        "Full Trace Display",
+        "Single Row Display",
+        "Behaviour Mean and SEM",
+    ]
+
     def __init__(self, app):
         self.app = app
 
@@ -128,8 +134,13 @@ class BehaviourUIController:
         def behaviour_selection_changed():
             if self.app.selected_behaviour.get() == "":
                 return
+            if (
+                not self._has_current_behaviour_table()
+                or not self.app.behaviour_choice_graph.isEnabled()
+            ):
+                return
 
-            if self.app.selected_column_var.get() == "Behaviour Mean and SEM":
+            if self.app.figure_display_dropdown.get() == "Behaviour Mean and SEM":
                 self.app.plot_controller.handle_figure_display_selection(None)
             else:
                 self.app.figure_display_dropdown.set("Behaviour Mean and SEM")
@@ -142,13 +153,9 @@ class BehaviourUIController:
         )
         self.app.behaviour_choice_graph.configure(state="disabled")
         toolbar_layout.addWidget(self.app.behaviour_choice_graph)
-        self.app.figure_display_choices = [
-            "Full Trace Display",
-            "Single Row Display",
-            "Behaviour Mean and SEM",
-        ]
+        self.app.figure_display_choices = self.BEHAVIOUR_DISPLAY_CHOICES.copy()
         self.app.figure_display_dropdown = ComboBoxControl(parent=graphs_container_frame)
-        self.app.figure_display_dropdown.set_options(self.app.figure_display_choices)
+        self.app.figure_display_dropdown.set_options(["Full Trace Display"])
         self.app.figure_display_dropdown.bind(
             "<<ComboboxSelected>>", self.app.plot_controller.handle_figure_display_selection
         )
@@ -165,6 +172,44 @@ class BehaviourUIController:
         self.app.graph_canvas = QWidget(graphs_container_frame)
         self._ensure_layout(self.app.graph_canvas)
         container_layout.addWidget(self.app.graph_canvas, 1)
+
+    def _has_current_behaviour_table(self) -> bool:
+        current_key = getattr(self.app, "current_table_key", None)
+        tables = getattr(self.app, "tables", {})
+        return current_key is not None and current_key in tables
+
+    def update_graph_mode_controls(
+        self, behaviour_sheet_available: bool | None = None
+    ) -> None:
+        if not hasattr(self.app, "figure_display_dropdown"):
+            return
+
+        if behaviour_sheet_available is None:
+            behaviour_sheet_available = self._has_current_behaviour_table()
+
+        choices = ["Full Trace Display"]
+        if behaviour_sheet_available:
+            choices.extend(["Single Row Display", "Behaviour Mean and SEM"])
+
+        baseline_enabled = bool(
+            getattr(self.app, "checkbox_state", False)
+            or self.app.data_selection_frame.use_baseline_var.get()
+        )
+        if baseline_enabled:
+            choices.append("Z-scored data")
+
+        current_choice = self.app.figure_display_dropdown.get()
+        self.app.figure_display_dropdown.set_options(choices)
+        if current_choice in choices:
+            self.app.figure_display_dropdown.set(current_choice)
+        else:
+            self.app.figure_display_dropdown.set("Full Trace Display")
+
+        if not behaviour_sheet_available:
+            self.app.selected_behaviour.set("")
+            self.app.behaviour_choice_graph.configure(state="disabled")
+        elif self.app.behaviour_choice_graph.count() > 0:
+            self.app.behaviour_choice_graph.configure(state="normal")
 
     def handle_sem_color_selection(self) -> None:
         new_color = QColorDialog.getColor(parent=self.app.graph_canvas)

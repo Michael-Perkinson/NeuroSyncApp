@@ -23,11 +23,15 @@ def _is_pyside6_available() -> bool:
 
 
 def _create_qapplication():
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QStyleFactory
+
+    from src.gui.shared.app_fonts import apply_application_font
 
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv[:1])
+    app.setStyle(QStyleFactory.create("Fusion"))
+    apply_application_font(app)
     return app
 
 
@@ -64,7 +68,8 @@ def run_tool_window(tool_id: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Launch NeuroSyncApp.")
-    parser.add_argument("--tool", help="Launch a specific tool window directly.")
+    parser.add_argument(
+        "--tool", help="Launch a specific tool window directly.")
     parser.add_argument(
         "--framework",
         default="qt",

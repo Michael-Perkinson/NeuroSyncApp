@@ -27,9 +27,7 @@ def clear_common_selections(app_context: Any) -> None:
         "state"
     ] = "disabled"
 
-    app_context.figure_display_dropdown.set("Full Trace Display")
-    app_context.selected_behaviour.set("")
-    app_context.behaviour_choice_graph.configure(state="disabled")
+    app_context.behaviour_ui_controller.update_graph_mode_controls(False)
 
 
 def clear_photometry_app_specific_selections(app_context: Any) -> None:
