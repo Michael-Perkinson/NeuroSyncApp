@@ -645,11 +645,30 @@ class GraphSettingsPanel(QFrame):
         return card
 
     def _build_visibility_card(self) -> QWidget:
-        card, layout = self._create_card(
-            self.visibility_section_title,
-            "",
-            alt=True,
+        card = QFrame(self)
+        card.setObjectName("graphSectionCardAlt")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(6)
+
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(8)
+        layout.addLayout(header_layout)
+
+        title = QLabel(self.visibility_section_title, card)
+        title.setStyleSheet(section_title_stylesheet())
+        header_layout.addWidget(title)
+
+        self.behaviour_header_controls = QWidget(card)
+        self.behaviour_header_controls_layout = QHBoxLayout(
+            self.behaviour_header_controls
         )
+        self.behaviour_header_controls_layout.setContentsMargins(0, 0, 0, 0)
+        self.behaviour_header_controls_layout.setSpacing(8)
+        self.behaviour_header_controls.hide()
+        header_layout.addWidget(self.behaviour_header_controls)
+        header_layout.addStretch(1)
 
         scroll = QScrollArea(card)
         scroll.setWidgetResizable(True)
@@ -663,7 +682,6 @@ class GraphSettingsPanel(QFrame):
         self.behaviour_frame_layout = QVBoxLayout(self.behaviour_frame)
         self.behaviour_frame_layout.setContentsMargins(0, 0, 0, 0)
         self.behaviour_frame_layout.setSpacing(8)
-        self.behaviour_frame_layout.addStretch(1)
         return card
 
     def _create_card(

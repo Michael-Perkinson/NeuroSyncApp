@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import traceback
 import uuid
 
 from PySide6.QtWidgets import QMessageBox
@@ -47,13 +46,13 @@ class BehaviourManualController:
 
             self.calculate_and_store_behavior_metrics(behavior_durations)
             self.update_ui_with_manual_data(table_data, behaviour_names)
-        except IOError:
-            traceback.print_exc()
-            QMessageBox.critical(self.app, "Error", "Failed to open the CSV file.")
+        except OSError:
+            QMessageBox.critical(self.app, "File Error", "Failed to open the CSV file.")
+        except ValueError as exc:
+            QMessageBox.critical(self.app, "CSV Column Error", str(exc))
         except Exception as exc:
-            traceback.print_exc()
             QMessageBox.critical(
-                self.app, "Error", f"Failed to parse the CSV file: {exc}"
+                self.app, "Parse Error", f"Failed to parse the CSV file: {exc}"
             )
 
     def read_and_process_file(self, file_path: str):

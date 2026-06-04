@@ -69,6 +69,7 @@ class BehaviourUIController:
         )
 
         self.app.graph_settings_container_instance.complete_initialization()
+        self.app.behaviour_options_controller.create_control_buttons()
         self._ensure_layout(graph_settings_tab).addWidget(
             self.app.graph_settings_container_instance
         )

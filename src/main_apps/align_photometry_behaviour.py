@@ -178,6 +178,7 @@ class DataProcessingSingleInstance(QWidget):
                 "no_behaviours": [],
                 "behaviour_colors": {},
                 "behaviour_boxes": {},
+                "behaviour_checkboxes": {},
                 "adjusted_behaviour_dataframes": {},
                 "behaviour_display_status": {},
                 "data_already_adjusted": False,

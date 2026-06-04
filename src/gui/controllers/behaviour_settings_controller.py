@@ -70,21 +70,26 @@ class BehaviourSettingsController:
             self.app.behaviour_event_input_frame.end_time_entry.config(state="disabled")
 
     def select_all(self) -> None:
-        for behaviour, checkbox in self.app.behaviour_checkboxes.items():
+        for behaviour, checkbox in getattr(self.app, "behaviour_checkboxes", {}).items():
             checkbox.select()
             self.app.behaviour_display_status[behaviour].set(1)
         self.refresh_behaviour_options()
 
     def deselect_all(self) -> None:
-        for behaviour, checkbox in self.app.behaviour_checkboxes.items():
+        for behaviour, checkbox in getattr(self.app, "behaviour_checkboxes", {}).items():
             checkbox.deselect()
             self.app.behaviour_display_status[behaviour].set(0)
         self.refresh_behaviour_options()
 
     def refresh_behaviour_options(self) -> None:
-        for behaviour in self.app.behaviour_boxes:
-            visible = bool(self.app.behaviour_display_status[behaviour].get())
-            for box in self.app.behaviour_boxes[behaviour]:
+        for behaviour, boxes in getattr(self.app, "behaviour_boxes", {}).items():
+            status = self.app.behaviour_display_status.get(behaviour)
+            if status is None:
+                continue
+            visible = bool(status.get())
+            for box in boxes:
                 box.set_visible(visible)
 
-        self.app.figure_canvas.draw_idle()
+        figure_canvas = getattr(self.app, "figure_canvas", None)
+        if figure_canvas is not None:
+            figure_canvas.draw_idle()
