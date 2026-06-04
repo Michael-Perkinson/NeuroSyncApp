@@ -600,6 +600,15 @@ class TelemetryPlotController:
         extended_duration = duration_main_data + 60
         self.app.display_dropdown.configure(state="normal")
 
+        # When photometry has its first N seconds removed, advance the telemetry
+        # extraction window by the same amount so both signals stay time-aligned.
+        trim_offset_min = 0.0
+        if (
+            getattr(self.app, "data_type", None) == "photometry"
+            and self.app.graph_settings_container_instance.remove_first_60_minutes_var.get()
+        ):
+            trim_offset_min = float(getattr(self.app, "seconds_removed", 0) or 0) / 60.0
+
         parsed_date = self.custom_date_parser(target_date)
         formatted_date = parsed_date.strftime("%m/%d/%Y")
         if not self.app.temp_and_act_start_time_var.get().strip():
@@ -623,7 +632,7 @@ class TelemetryPlotController:
             act_sample_rate = self.app.calculate_sample_rate(act_timestamps_5_to_10)
             self.app.act_sample_rate = act_sample_rate
             trimmed_act_df = self.extract_and_trim_data(
-                act_data, act_previous_time, act_offset, duration_main_data, act_sample_rate, "act"
+                act_data, act_previous_time, act_offset + trim_offset_min, duration_main_data, act_sample_rate, "act"
             )
             self.app.extended_act_data = self.extract_data_with_buffer(
                 act_data, act_previous_time, act_offset, extended_duration, act_sample_rate
@@ -638,7 +647,7 @@ class TelemetryPlotController:
             temp_sample_rate = self.app.calculate_sample_rate(temp_timestamps_5_to_10)
             self.app.temp_sample_rate = temp_sample_rate
             trimmed_temp_df = self.extract_and_trim_data(
-                temp_data, temp_previous_time, temp_offset, duration_main_data, temp_sample_rate, "temp"
+                temp_data, temp_previous_time, temp_offset + trim_offset_min, duration_main_data, temp_sample_rate, "temp"
             )
             self.app.extended_temp_data = self.extract_data_with_buffer(
                 temp_data, temp_previous_time, temp_offset, extended_duration, temp_sample_rate
@@ -677,16 +686,14 @@ class TelemetryPlotController:
         if self.app.data_type == "photometry":
             time_column, data_column, detected_peaks, clusters_final, _ = self.get_current_photometry_data()
             if self.app.act_data is not None and self.app.temp_data is not None:
-                self.visualize_photometry_data_with_overlays(
-                    time_column,
-                    data_column,
-                    detected_peaks,
-                    clusters_final,
-                    self.app.graph_canvas,
-                    self.app.temp_data,
-                    self.app.act_data,
-                    show_nighttime=True,
-                )
+                # Re-extract telemetry so it matches the current photometry window
+                # (accounts for the 60-min trim being toggled on or off).
+                self.app.duration_main_data = time_column.iloc[-1] - time_column.iloc[0]
+                self.app.time_column = time_column
+                self.app.data_column = data_column
+                self.app.detected_peaks = detected_peaks
+                self.app.clusters_final = clusters_final
+                self.overlay_temp_and_act()
             else:
                 self.visualize_photometry_data_with_overlays(
                     time_column, data_column, detected_peaks, clusters_final, self.app.graph_canvas
