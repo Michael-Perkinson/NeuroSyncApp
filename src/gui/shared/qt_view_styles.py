@@ -6,6 +6,10 @@ from PySide6.QtCore import Qt
 
 _ARROW_DOWN = str(Path(__file__).parent / "assets" / "arrow_down.svg").replace("\\", "/")
 
+APP_FONT_FAMILY = "DejaVu Sans"
+MONO_FONT_FAMILY = "DejaVu Sans Mono"
+APP_FONT_POINT_SIZE = 9
+
 PALETTE = {
     "app_bg": "#EDF3F8",
     "panel_bg": "#F7FAFD",
@@ -88,7 +92,6 @@ def panel_stylesheet(object_name: str) -> str:
 #{object_name} QCheckBox::indicator {{
     width: 16px;
     height: 16px;
-    border-radius: 5px;
     border: 1px solid {PALETTE["border_strong"]};
     background: {PALETTE["card_bg"]};
 }}
@@ -98,7 +101,29 @@ def panel_stylesheet(object_name: str) -> str:
 }}
 #{object_name} QScrollArea {{
     border: 0;
-    background: transparent;
+    background: {PALETTE["panel_bg"]};
+}}
+#{object_name} QScrollArea > QWidget > QWidget {{
+    background: {PALETTE["panel_bg"]};
+}}
+#{object_name} QTreeView,
+#{object_name} QTableView {{
+    background: {PALETTE["card_bg"]};
+    alternate-background-color: {PALETTE["card_alt_bg"]};
+    color: {PALETTE["text"]};
+    border: 1px solid {PALETTE["border"]};
+    gridline-color: {PALETTE["border"]};
+}}
+#{object_name} QTreeView::item,
+#{object_name} QTableView::item {{
+    padding: 4px;
+}}
+#{object_name} QHeaderView::section {{
+    background: {PALETTE["button_bg"]};
+    color: {PALETTE["text"]};
+    border: 1px solid {PALETTE["border"]};
+    padding: 4px 6px;
+    font-weight: 600;
 }}
 """
 

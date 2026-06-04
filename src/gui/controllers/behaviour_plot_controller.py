@@ -30,12 +30,24 @@ from src.processing.image_export import build_image_export_request
 from src.processing.behavior_metrics import generate_mean_sem_df
 
 
+def _has_current_behaviour_table(app) -> bool:
+    current_key = getattr(app, "current_table_key", None)
+    tables = getattr(app, "tables", {})
+    return current_key is not None and current_key in tables
+
+
 def handle_figure_display_selection(app, event=None) -> None:
     """Render the selected figure display mode."""
     if app.dataframe is None:
         return
 
     selected_option = app.figure_display_dropdown.get()
+    table_required_options = {"Single Row Display", "Behaviour Mean and SEM"}
+    if selected_option in table_required_options and not _has_current_behaviour_table(app):
+        selected_option = "Full Trace Display"
+        app.figure_display_dropdown.blockSignals(True)
+        app.figure_display_dropdown.set(selected_option)
+        app.figure_display_dropdown.blockSignals(False)
 
     if (
         not app.is_file_parsed
@@ -46,6 +58,8 @@ def handle_figure_display_selection(app, event=None) -> None:
 
     if hasattr(app, "figure_canvas") and app.figure_canvas is not None:
         destroy_embedded_figure(app.figure_canvas, app.toolbar)
+        app.figure_canvas = None
+        app.toolbar = None
 
     app.fig, ax = create_styled_figure()
     app.ax = ax
@@ -303,6 +317,9 @@ def plot_mean_and_sem_trace(app, ax) -> None:
         pre_behaviour_times,
         post_behaviour_times,
     ) = app.behaviour_graph_helpers_controller.fetch_behaviour_data()
+
+    if not behaviour_occurrences or not pre_behaviour_times or not post_behaviour_times:
+        return
 
     start_times = [occurrence[0] for occurrence in behaviour_occurrences]
     end_times = [occurrence[1] for occurrence in behaviour_occurrences]

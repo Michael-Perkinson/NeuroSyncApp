@@ -119,6 +119,7 @@ class BehaviourManualController:
 
         self.app.current_table_key = str(uuid.uuid4())
         self.app.tables[self.app.current_table_key] = display_df
+        self.app.behaviour_ui_controller.update_graph_mode_controls(True)
         self.app.behaviour_table_controller.update_table(display_df, new=True)
         save_behaviour_static_inputs(display_df, "behaviour_settings.json")
         self.app.settings_manager.save_variables()
@@ -253,8 +254,7 @@ class BehaviourManualController:
         self.app.adjusted_behaviour_dataframes = {}
 
         self.app.figure_display_dropdown.set("Full Trace Display")
-        self.app.selected_behaviour.set("")
-        self.app.behaviour_choice_graph.configure(state="disabled")
+        self.app.behaviour_ui_controller.update_graph_mode_controls(False)
         self.app.behaviour_options_controller.create_behaviour_options(
             self.app.no_behaviours, destroy_frame=True
         )

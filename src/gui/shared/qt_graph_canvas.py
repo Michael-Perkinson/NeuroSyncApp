@@ -14,14 +14,15 @@ def create_styled_figure() -> tuple[Figure, object]:
 
 
 def destroy_embedded_figure(figure_canvas, toolbar) -> None:
-    if toolbar is not None:
-        toolbar.hide()
-        toolbar.setParent(None)
-        toolbar.deleteLater()
-    if figure_canvas is not None:
-        figure_canvas.hide()
-        figure_canvas.setParent(None)
-        figure_canvas.deleteLater()
+    for widget in (toolbar, figure_canvas):
+        if widget is None:
+            continue
+        try:
+            widget.hide()
+            widget.setParent(None)
+            widget.deleteLater()
+        except RuntimeError:
+            continue
 
 
 def embed_figure_in_qt(fig: Figure, graph_canvas: QWidget):
