@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
 from src.gui.shared.qt_bindings import CheckBoxControl
 
@@ -20,37 +20,39 @@ class BehaviourOptionsController:
         self.app.behaviour_checkboxes = {}
         self.app.settings_manager.update_unique_behaviours(unique_behaviour_names)
         self.app.graph_settings_container_instance.setup_canvas()
-        self.create_control_buttons()
         self.create_behaviour_labels_and_controls(unique_behaviour_names)
+        self.app.graph_settings_container_instance.behaviour_frame_layout.addStretch(1)
 
     def destroy_existing_frame(self) -> None:
         if hasattr(self.app, "behaviour_frame"):
             self.app.graph_settings_container_instance.setup_canvas()
 
     def create_control_buttons(self) -> None:
-        controls_row = QWidget(self.app.graph_settings_container_instance.behaviour_frame)
-        controls_layout = QHBoxLayout(controls_row)
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-        controls_layout.setSpacing(10)
-
-        behaviour_list_label = QLabel("Behaviours", controls_row)
-        controls_layout.addWidget(behaviour_list_label)
-
-        select_all_button = QPushButton(
-            "Select All", self.app.graph_settings_container_instance.behaviour_frame
+        graph_settings = self.app.graph_settings_container_instance
+        controls = getattr(graph_settings, "behaviour_header_controls", None)
+        controls_layout = getattr(
+            graph_settings, "behaviour_header_controls_layout", None
         )
+        if controls is None or controls_layout is None:
+            return
+
+        while controls_layout.count():
+            item = controls_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        controls.show()
+
+        select_all_button = QPushButton("Select All", controls)
         select_all_button.clicked.connect(self.app.behaviour_settings_controller.select_all)
         controls_layout.addWidget(select_all_button)
 
-        deselect_all_button = QPushButton(
-            "Deselect All", self.app.graph_settings_container_instance.behaviour_frame
-        )
+        deselect_all_button = QPushButton("Deselect All", controls)
         deselect_all_button.clicked.connect(
             self.app.behaviour_settings_controller.deselect_all
         )
         controls_layout.addWidget(deselect_all_button)
-        controls_layout.addStretch(1)
-        self.app.graph_settings_container_instance.behaviour_frame_layout.addWidget(controls_row)
 
     def create_behaviour_labels_and_controls(self, sorted_behaviours) -> None:
         self.app.color_buttons = {}
