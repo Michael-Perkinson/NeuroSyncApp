@@ -97,4 +97,4 @@ my-data-analysis-app/public/favicon.ico
 # Ignore tests for now
 example_data/*
 tests/
-src/app_state.pkl
+app_state.pkl
