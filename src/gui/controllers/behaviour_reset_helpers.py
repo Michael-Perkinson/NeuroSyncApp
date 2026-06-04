@@ -34,7 +34,7 @@ def clear_common_selections(app_context: Any) -> None:
 
 def clear_photometry_app_specific_selections(app_context: Any) -> None:
     """Reset behaviour-specific options and refresh the displayed figure state."""
-    app_context.create_behaviour_options(
+    app_context.behaviour_options_controller.create_behaviour_options(
         app_context.no_behaviours, destroy_frame=True
     )
     app_context.plot_controller.handle_figure_display_selection(None)

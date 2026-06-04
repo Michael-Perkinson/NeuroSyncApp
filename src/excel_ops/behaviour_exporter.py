@@ -122,31 +122,28 @@ def process_and_bin_data(
     num_bins_total : int
         Total number of bins across the window.
     behaviour_instances_data : list
-        Flat list of 2-D arrays (one per bin per instance).
+        Flat list of 1-D arrays (one per bin per instance).
     """
     behaviour_instances_data = []
-    bin_labels: list[str] = []
-    num_bins_total: int = 0
+    total_window = pre_behaviour_time + post_behaviour_time
+    num_bins_total = total_window // bin_size
+    bin_ranges = np.linspace(
+        -pre_behaviour_time, post_behaviour_time, num_bins_total, endpoint=False
+    )
+    bin_labels = [
+        f"{start} - {start + bin_size}"
+        for start in sorted(bin_ranges, key=float)
+    ]
 
     for start_data, end_data in data_list:
-        combined = np.concatenate([start_data.values, end_data.values])
-        sampling_rate = len(combined) // (pre_behaviour_time + post_behaviour_time)
-        num_bins = len(combined) // (bin_size * sampling_rate)
+        combined = np.concatenate([start_data.values, end_data.values]).ravel()
+        sampling_rate = max(1, round(len(combined) / total_window))
+        samples_per_bin = bin_size * sampling_rate
 
-        for bin_idx in range(num_bins):
-            start_idx = bin_idx * bin_size * sampling_rate
-            end_idx = start_idx + bin_size * sampling_rate
-            binned = combined[start_idx:end_idx].reshape(-1, bin_size * sampling_rate)
-            behaviour_instances_data.append(binned)
-
-        num_bins_total = (pre_behaviour_time + post_behaviour_time) // bin_size
-        bin_ranges = np.linspace(
-            -pre_behaviour_time, post_behaviour_time, num_bins_total, endpoint=False
-        )
-        bin_labels = [
-            f"{start} - {start + bin_size}"
-            for start in sorted(bin_ranges, key=float)
-        ]
+        for bin_idx in range(num_bins_total):
+            start_idx = bin_idx * samples_per_bin
+            end_idx = start_idx + samples_per_bin
+            behaviour_instances_data.append(combined[start_idx:end_idx])
 
     return bin_labels, num_bins_total, behaviour_instances_data
 

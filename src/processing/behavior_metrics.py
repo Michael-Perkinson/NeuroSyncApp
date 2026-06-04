@@ -27,12 +27,15 @@ def calculate_auc(data: np.ndarray | list, dx: float = 0.1) -> float:
     dx:
         Sample spacing in seconds (default 0.1 s = 10 Hz).
     """
-    return float(simpson(data, dx=dx))
+    arr = np.asarray(data, dtype=float).ravel()
+    if arr.size == 0:
+        return float("nan")
+    return float(simpson(arr, dx=dx))
 
 
 def calculate_max_amp(data: np.ndarray | list) -> float:
     """Maximum amplitude of a signal. Returns NaN when *data* is empty."""
-    arr = np.asarray(data)
+    arr = np.asarray(data, dtype=float).ravel()
     if arr.size == 0:
         return float("nan")
     return float(np.nanmax(arr))
@@ -40,7 +43,10 @@ def calculate_max_amp(data: np.ndarray | list) -> float:
 
 def calculate_mean_dff(data: np.ndarray | list) -> float:
     """Mean ΔF/F across all samples."""
-    return float(np.nanmean(data))
+    arr = np.asarray(data, dtype=float).ravel()
+    if arr.size == 0:
+        return float("nan")
+    return float(np.nanmean(arr))
 
 
 # ---------------------------------------------------------------------------
