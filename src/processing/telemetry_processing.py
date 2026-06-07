@@ -9,10 +9,14 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
+import logging
 import re
 
 import numpy as np
 import pandas as pd
+
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -462,6 +466,22 @@ def extract_data_for_date_and_offset(
     target_date_parsed = pd.to_datetime(target_date).date()
     date_data = data[data["Date Time"].dt.date >= target_date_parsed]
     target_day_data = data[data["Date Time"].dt.date == target_date_parsed]
+
+    dup_count = date_data["Date Time"].duplicated().sum()
+    if dup_count > 0:
+        date_data = date_data[~date_data["Date Time"].duplicated(keep="first")]
+        logger.info("Removed %s duplicate timestamps from telemetry.", dup_count)
+
+    total_points = len(date_data)
+    missing_points = date_data["Data"].isna().sum() if "Data" in date_data else 0
+    if total_points > 0:
+        missing_pct = (missing_points / total_points) * 100
+        if missing_pct > 10:
+            logger.warning(
+                "Telemetry data has %.1f%% missing Data values. These samples are preserved.",
+                missing_pct,
+            )
+
     offset, previous_time = find_offset_for_previous_time(target_day_data, target_time)
     return date_data, offset, previous_time
 

@@ -1283,10 +1283,16 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         if isinstance(data_column, pd.Series):
             data_column = data_column.values
 
-        threshold = 0.3 * data_column.max()  # This my need work?
+        data_column = np.asarray(data_column, dtype=float)
+        if data_column.size == 0 or np.all(np.isnan(data_column)):
+            return np.array([], dtype=int)
+
+        amp = np.nanpercentile(data_column, 99.9)
+        threshold = 0.3 * amp
+        prominence = 0.35 * amp
 
         peaks, _ = find_peaks(
-            data_column, height=threshold, distance=min_distance)
+            data_column, prominence=prominence, height=threshold, distance=min_distance)
 
         return peaks
 
