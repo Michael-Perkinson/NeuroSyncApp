@@ -24,8 +24,11 @@ from src.gui.shared.qt_view_styles import (
     section_stylesheet,
     title_stylesheet,
 )
+from src.shared.persistence.app_paths import config_file_path
 
-_COLUMN_NAMES_PATH = Path("column_names.json")
+
+def _column_names_path() -> Path:
+    return config_file_path("column_names.json")
 
 
 class BehaviourInputFrame(QFrame):
@@ -55,7 +58,7 @@ class BehaviourInputFrame(QFrame):
         self.time_unit_var = ObservableValue("seconds")
         self._load_saved_column_names()
 
-        # Legacy aliases kept for controllers that haven't been updated yet
+        # Compatibility aliases for older widget field names
         self.behaviour_name_var = ObservableValue("")
         self.behaviour_type_var = ObservableValue("Point")
 
@@ -72,7 +75,7 @@ class BehaviourInputFrame(QFrame):
 
     def _load_saved_column_names(self) -> None:
         try:
-            data = json.loads(_COLUMN_NAMES_PATH.read_text(encoding="utf-8"))
+            data = json.loads(_column_names_path().read_text(encoding="utf-8"))
             self.behaviours_col_var.set(data.get("Behaviours/events", ""))
             self.start_col_var.set(data.get("Start Time", ""))
             self.end_col_var.set(data.get("End Time", ""))
@@ -206,7 +209,7 @@ class BehaviourInputFrame(QFrame):
 
             self._col_content.hideEvent = _hide_event
 
-        # Legacy fields kept while controllers are being ported
+        # Compatibility fields kept for older widget access patterns
         self.start_time_entry = self.synchronize_start_time_entry
         self.end_time_entry = LineEditControl(self.end_time_var, self)
         self.end_time_entry.setEnabled(False)
@@ -242,7 +245,7 @@ class BehaviourInputFrame(QFrame):
                 "End Time": self.end_col_var.get(),
                 "Time Unit": self.time_unit_var.get(),
             }
-            _COLUMN_NAMES_PATH.write_text(json.dumps(data), encoding="utf-8")
+            _column_names_path().write_text(json.dumps(data), encoding="utf-8")
         self._col_content.hide()
 
     def on_import_behaviour_click(self) -> None:

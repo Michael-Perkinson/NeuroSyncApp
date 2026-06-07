@@ -1,10 +1,20 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt
 
-_ARROW_DOWN = str(Path(__file__).parent / "assets" / "arrow_down.svg").replace("\\", "/")
+
+def _asset_path(relative: str) -> str:
+    if getattr(sys, "frozen", False):
+        base = Path(sys._MEIPASS)
+    else:
+        base = Path(__file__).parent
+    return str(base / "assets" / relative).replace("\\", "/")
+
+
+_ARROW_DOWN = _asset_path("arrow_down.svg")
 
 APP_FONT_FAMILY = "DejaVu Sans"
 MONO_FONT_FAMILY = "DejaVu Sans Mono"
@@ -152,6 +162,24 @@ def subtitle_stylesheet() -> str:
 
 
 def button_stylesheet(role: str = "secondary") -> str:
+    if role == "outlined":
+        return f"""
+QPushButton {{
+    background: {PALETTE["accent_soft"]};
+    color: {PALETTE["accent"]};
+    border: 1.5px solid {PALETTE["accent"]};
+    border-radius: 10px;
+    padding: 7px 14px;
+    font-weight: 600;
+}}
+QPushButton:hover {{
+    background: {PALETTE["accent"]};
+    color: white;
+}}
+QPushButton:disabled {{
+    opacity: 0.5;
+}}
+"""
     if role == "primary":
         return f"""
 QPushButton {{
@@ -196,6 +224,32 @@ QPushButton:hover {{
 """
 
 
-def apply_button_role(button, role: str = "secondary") -> None:
+def combo_stylesheet() -> str:
+    """Standalone QComboBox stylesheet that includes the down-arrow asset."""
+    return f"""
+QComboBox {{
+    background: {PALETTE["card_bg"]};
+    border: 1px solid {PALETTE["border"]};
+    border-radius: 6px;
+    padding: 3px 8px;
+    color: {PALETTE["text"]};
+    font-weight: 600;
+}}
+QComboBox:focus {{
+    border-color: {PALETTE["accent"]};
+}}
+QComboBox::drop-down {{
+    width: 24px;
+    border: 0;
+}}
+QComboBox::down-arrow {{
+    image: url({_ARROW_DOWN});
+    width: 10px;
+    height: 6px;
+}}
+"""
+
+
+def apply_button_role(button, role: str = "primary") -> None:
     button.setCursor(Qt.PointingHandCursor)
     button.setStyleSheet(button_stylesheet(role))

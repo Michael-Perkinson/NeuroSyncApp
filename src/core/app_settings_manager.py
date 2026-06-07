@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.core.settings_defaults import get_default_settings
-from src.core.settings_store import load_settings, save_settings
+from src.shared.persistence.settings_store import load_settings, save_settings
 
 
 class AppSettingsManager:
@@ -135,9 +135,11 @@ class AppSettingsManager:
 
     def raw_photometry_processing_specific_config(self) -> dict:
         return {
+            "default_data_folder_path": self.default_data_folder_path,
             "time_column": self.selected_time_column,
             "405nm_column": self.selected_405nm_column,
             "465nm_column": self.selected_465nm_column,
+            "last_run_dfer_option": self.last_run_dfer_option,
         }
 
     def save_config_to_file(self, config: dict) -> None:
@@ -159,6 +161,8 @@ class AppSettingsManager:
             else:
                 setattr(self, key, value)
 
+        if str(getattr(self, "last_run_dfer_option", "1")) not in {"1", "2", "3", "4"}:
+            self.last_run_dfer_option = "1"
         self.selected_temp_line_width = self.selected_temp_mean_line_width
 
     @staticmethod

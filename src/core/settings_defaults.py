@@ -82,6 +82,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "selected_time_column": "#time(seconds)",
     "selected_405nm_column": "405nm",
     "selected_465nm_column": "465nm",
+    "last_run_dfer_option": "1",
 }
 
 

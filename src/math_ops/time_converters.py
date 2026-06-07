@@ -92,7 +92,8 @@ def check_and_convert_time_column(dataframe: pd.DataFrame, target_unit: str = "m
         if pattern.search(first_column_title):
             factor: float = CONVERSION_FACTORS[unit] / \
                 CONVERSION_FACTORS[target_unit]
-            dataframe.iloc[:, 0] = dataframe.iloc[:, 0] * factor
+            first_column_name = dataframe.columns[0]
+            dataframe[first_column_name] = dataframe.iloc[:, 0].astype(float) * factor
             dataframe.columns = [get_time_label(
                 target_unit)] + dataframe.columns.tolist()[1:]
             return dataframe
