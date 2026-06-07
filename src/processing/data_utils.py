@@ -17,12 +17,8 @@ def extract_mouse_name(file_path: str) -> Optional[str]:
     pattern = r"[A-Za-z]+\d+"
     matches = re.findall(pattern, base_name)
 
-    if len(matches) == 1:
+    if matches:
         return matches[0]
-    elif len(matches) > 1:
-        num1 = int(re.search(r"\d+", matches[0]).group())
-        num2 = int(re.search(r"\d+", matches[1]).group())
-        return matches[0] if num1 <= num2 else matches[1]
 
     return None  # Return None if no match is found
 
