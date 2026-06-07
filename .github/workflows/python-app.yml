@@ -40,6 +40,7 @@ jobs:
           pyinstaller --onefile main.py ^
             --name "NeuroSyncApp_${{ github.ref_name }}" ^
             --icon icon\icon.ico ^
+            --add-data "src\gui\shared\assets\arrow_down.svg;src\gui\shared\assets" ^
             --distpath "dist" ^
             --collect-all PySide6 ^
             --hidden-import=matplotlib.backends.backend_qtagg ^
@@ -86,10 +87,27 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      - name: Generate macOS icon
+        run: |
+          python3 - <<'PYEOF'
+          from PIL import Image
+          import os, subprocess, shutil
+          iconset = "/tmp/icon.iconset"
+          os.makedirs(iconset, exist_ok=True)
+          img = Image.open("icon/icon.ico").convert("RGBA")
+          for s in [16, 32, 128, 256, 512]:
+              img.resize((s, s), Image.LANCZOS).save(f"{iconset}/icon_{s}x{s}.png")
+              img.resize((s * 2, s * 2), Image.LANCZOS).save(f"{iconset}/icon_{s}x{s}@2x.png")
+          subprocess.run(["iconutil", "-c", "icns", iconset, "-o", "icon/icon.icns"], check=True)
+          shutil.rmtree(iconset)
+          PYEOF
+
       - name: Build macOS app
         run: |
           pyinstaller --windowed main.py \
             --name "NeuroSyncApp" \
+            --icon icon/icon.icns \
+            --add-data "src/gui/shared/assets/arrow_down.svg:src/gui/shared/assets" \
             --distpath "dist" \
             --collect-all PySide6 \
             --hidden-import=matplotlib.backends.backend_qtagg \

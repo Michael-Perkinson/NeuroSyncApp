@@ -459,8 +459,10 @@ def extract_data_for_date_and_offset(
 ) -> tuple[pd.DataFrame, float | None, str | None]:
     """Load telemetry data for *target_date* and locate its alignment offset."""
     data = _extract_sheet_table(file_path, sheet_name)
-    date_data = data[data["Date Time"].dt.date >= pd.to_datetime(target_date).date()]
-    offset, previous_time = find_offset_for_previous_time(date_data, target_time)
+    target_date_parsed = pd.to_datetime(target_date).date()
+    date_data = data[data["Date Time"].dt.date >= target_date_parsed]
+    target_day_data = data[data["Date Time"].dt.date == target_date_parsed]
+    offset, previous_time = find_offset_for_previous_time(target_day_data, target_time)
     return date_data, offset, previous_time
 
 
