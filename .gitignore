@@ -1,35 +1,58 @@
-# Python bytecode / cache
+# Python caches
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
-
-# App state / runtime files
-*.pkl
-*.json
-!default_settings.json    # (optional whitelist your template JSON if needed)
-
-# VS Code / IDE stuff
-.vscode/
-.idea/
-
-# OS cruft
-.DS_Store
-Thumbs.db
-
-# Build outputs
-dist/
-build/
-*.spec
-
-# Logs
-*.log
-
-# Temporary files
-*.tmp
-*.json
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
 # Virtual environments
 .venv/
 venv/
 env/
+
+# Build outputs
+build/
+dist/
+src/build/
+src/dist/
+*.spec
+*.dmg
+
+# Editor folders
+.vscode/
+.idea/
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+tmp_pytest/
+tmp_*/
+*.pstats
+
+# Generated analysis output
+DF_Results/
+PeakF_Results/
+*_MRP_Script/
+
+# Local app state
+*.pkl
+*.json
+!default_settings.json
+app_state.pkl
+src/gui/shared/.neurosync/
+
+# Local planning notes
+MAC_COMPAT_PLAN.md
+
+# Example/raw data outputs
+example_data/*
