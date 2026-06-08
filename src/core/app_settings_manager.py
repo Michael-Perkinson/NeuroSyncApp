@@ -12,6 +12,11 @@ class AppSettingsManager:
     APP_TYPE_ALIASES = {
         "raw_photometry_processing_app": "raw_photometry_processing",
     }
+    RAW_PHOTOMETRY_SETTING_ALIASES = {
+        "time_column": "selected_time_column",
+        "405nm_column": "selected_405nm_column",
+        "465nm_column": "selected_465nm_column",
+    }
 
     def __init__(self, app_type: str = "default"):
         self.app_type = self.APP_TYPE_ALIASES.get(app_type, app_type)
@@ -53,6 +58,8 @@ class AppSettingsManager:
             config.update(self.shared_photom_config())
             config.update(self.telemetry_photom_opto_specific_config())
         elif self.app_type == "raw_photometry_processing":
+            for legacy_key in self.RAW_PHOTOMETRY_SETTING_ALIASES:
+                config.pop(legacy_key, None)
             config.update(self.raw_photometry_processing_specific_config())
         else:
             raise ValueError(f"Unknown app type: {self.app_type}")
@@ -136,9 +143,9 @@ class AppSettingsManager:
     def raw_photometry_processing_specific_config(self) -> dict:
         return {
             "default_data_folder_path": self.default_data_folder_path,
-            "time_column": self.selected_time_column,
-            "405nm_column": self.selected_405nm_column,
-            "465nm_column": self.selected_465nm_column,
+            "selected_time_column": self.selected_time_column,
+            "selected_405nm_column": self.selected_405nm_column,
+            "selected_465nm_column": self.selected_465nm_column,
             "last_run_dfer_option": self.last_run_dfer_option,
         }
 
@@ -151,6 +158,7 @@ class AppSettingsManager:
             self.apply_settings(settings)
 
     def apply_settings(self, settings: dict) -> None:
+        settings = self._normalise_setting_keys(settings)
         for key, value in settings.items():
             if not hasattr(self, key):
                 continue
@@ -164,6 +172,14 @@ class AppSettingsManager:
         if str(getattr(self, "last_run_dfer_option", "1")) not in {"1", "2", "3", "4"}:
             self.last_run_dfer_option = "1"
         self.selected_temp_line_width = self.selected_temp_mean_line_width
+
+    def _normalise_setting_keys(self, settings: dict) -> dict:
+        normalized = settings.copy()
+        if self.app_type == "raw_photometry_processing":
+            for legacy_key, current_key in self.RAW_PHOTOMETRY_SETTING_ALIASES.items():
+                if legacy_key in settings and current_key not in normalized:
+                    normalized[current_key] = settings[legacy_key]
+        return normalized
 
     @staticmethod
     def _coerce_bool(value) -> bool:

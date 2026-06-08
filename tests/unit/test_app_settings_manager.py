@@ -42,6 +42,44 @@ def test_raw_settings_reject_invalid_last_run_dfer_option():
     assert manager.last_run_dfer_option == "1"
 
 
+def test_raw_settings_construct_config_uses_loadable_column_keys():
+    manager = AppSettingsManager(app_type="raw_photometry_processing")
+    manager.selected_time_column = "Time"
+    manager.selected_405nm_column = "Control"
+    manager.selected_465nm_column = "Signal"
+
+    config = manager.construct_config(
+        {
+            "time_column": "old-time",
+            "405nm_column": "old-control",
+            "465nm_column": "old-signal",
+        }
+    )
+
+    assert config["selected_time_column"] == "Time"
+    assert config["selected_405nm_column"] == "Control"
+    assert config["selected_465nm_column"] == "Signal"
+    assert "time_column" not in config
+    assert "405nm_column" not in config
+    assert "465nm_column" not in config
+
+
+def test_raw_settings_apply_legacy_column_keys():
+    manager = AppSettingsManager(app_type="raw_photometry_processing")
+
+    manager.apply_settings(
+        {
+            "time_column": "Time",
+            "405nm_column": "Control",
+            "465nm_column": "Signal",
+        }
+    )
+
+    assert manager.selected_time_column == "Time"
+    assert manager.selected_405nm_column == "Control"
+    assert manager.selected_465nm_column == "Signal"
+
+
 def test_raw_settings_ignore_legacy_dfer_option_keys():
     manager = AppSettingsManager(app_type="raw_photometry_processing")
 
