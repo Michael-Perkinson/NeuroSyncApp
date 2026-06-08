@@ -582,6 +582,7 @@ class GraphSettingsPanel(QFrame):
         if self._include("graph_time_labels"):
             grid.addWidget(QLabel("Time Unit", card), row, 0)
             self.time_unit_menu = ComboBoxControl(self.time_unit_var, card)
+            self.time_unit_menu.setMinimumWidth(120)
             self.time_unit_menu.set_options(["minutes", "seconds", "hours"])
             self.time_unit_menu.set(self.time_unit_var.get() or "minutes")
             self.time_unit_menu.currentTextChanged.connect(
@@ -609,6 +610,7 @@ class GraphSettingsPanel(QFrame):
             row += 1
         else:
             self.time_unit_menu = ComboBoxControl(self.time_unit_var, card)
+            self.time_unit_menu.setMinimumWidth(120)
             self.y_gridlines_label = QLabel("Y Ticks", card)
             self.y_gridlines_entry = LineEditControl(
                 self.y_gridlines_var, card)
