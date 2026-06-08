@@ -403,7 +403,6 @@ class RawPhotometryProcessingQt(QWidget):
         self._log_handler_loggers: list[logging.Logger] = []
         self._log_signal_connected = False
         self._log_edit: QPlainTextEdit | None = None
-        self.destroyed.connect(lambda _obj=None: self._teardown_log_handler())
         self._build_ui()
 
     # ── UI construction ────────────────────────────────────────────────────
@@ -776,7 +775,6 @@ class RawPhotometryProcessingQt(QWidget):
         log_layout.addWidget(log_title)
 
         self._log_edit = QPlainTextEdit(log_card)
-        self._log_edit.destroyed.connect(lambda _obj=None: self._mark_log_widget_deleted())
         self._log_edit.setReadOnly(True)
         mono = QFont("Courier New", 9)
         mono.setStyleHint(QFont.StyleHint.Monospace)
@@ -821,10 +819,6 @@ QPlainTextEdit {{
             self._log_edit = None
             self._teardown_log_handler()
 
-    def _mark_log_widget_deleted(self) -> None:
-        self._log_edit = None
-        self._teardown_log_handler()
-
     def closeEvent(self, event) -> None:  # pragma: no cover - Qt lifecycle
         if not self._shutdown_for_close():
             event.ignore()
@@ -857,7 +851,7 @@ QPlainTextEdit {{
         if self._log_signal_connected:
             try:
                 self._log_signal.disconnect(self._append_log)
-            except (RuntimeError, TypeError):
+            except Exception:
                 pass
             self._log_signal_connected = False
 
