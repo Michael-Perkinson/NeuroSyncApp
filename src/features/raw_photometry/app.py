@@ -401,6 +401,8 @@ class RawPhotometryProcessingQt(QWidget):
         self._worker: _Worker | None = None
         self._log_handler: _QtLogHandler | None = None
         self._log_handler_loggers: list[logging.Logger] = []
+        self._log_signal_connected = False
+        self._log_edit: QPlainTextEdit | None = None
         self.destroyed.connect(lambda _obj=None: self._teardown_log_handler())
         self._build_ui()
 
@@ -774,6 +776,7 @@ class RawPhotometryProcessingQt(QWidget):
         log_layout.addWidget(log_title)
 
         self._log_edit = QPlainTextEdit(log_card)
+        self._log_edit.destroyed.connect(lambda _obj=None: self._mark_log_widget_deleted())
         self._log_edit.setReadOnly(True)
         mono = QFont("Courier New", 9)
         mono.setStyleHint(QFont.StyleHint.Monospace)
@@ -793,7 +796,9 @@ QPlainTextEdit {{
         return panel
 
     def _setup_log_handler(self) -> None:
+        self._teardown_log_handler()
         self._log_signal.connect(self._append_log)
+        self._log_signal_connected = True
         handler = _QtLogHandler(self._log_signal)
         handler.setFormatter(logging.Formatter("%(levelname)s  %(message)s"))
         handler.setLevel(logging.DEBUG)
@@ -805,15 +810,20 @@ QPlainTextEdit {{
         logging.getLogger("src.dfer").setLevel(logging.DEBUG)
 
     def _append_log(self, msg: str) -> None:
-        if not hasattr(self, "_log_edit") or self._log_edit is None:
+        log_edit = self._log_edit
+        if log_edit is None:
             return
         try:
-            self._log_edit.appendPlainText(msg)
-            self._log_edit.verticalScrollBar().setValue(
-                self._log_edit.verticalScrollBar().maximum()
-            )
+            log_edit.appendPlainText(msg)
+            scroll_bar = log_edit.verticalScrollBar()
+            scroll_bar.setValue(scroll_bar.maximum())
         except RuntimeError:
+            self._log_edit = None
             self._teardown_log_handler()
+
+    def _mark_log_widget_deleted(self) -> None:
+        self._log_edit = None
+        self._teardown_log_handler()
 
     def closeEvent(self, event) -> None:  # pragma: no cover - Qt lifecycle
         if not self._shutdown_for_close():
@@ -844,10 +854,17 @@ QPlainTextEdit {{
         return True
 
     def _teardown_log_handler(self) -> None:
-        if self._log_handler is None:
-            return
-        for logger_obj in self._log_handler_loggers:
-            logger_obj.removeHandler(self._log_handler)
+        if self._log_signal_connected:
+            try:
+                self._log_signal.disconnect(self._append_log)
+            except (RuntimeError, TypeError):
+                pass
+            self._log_signal_connected = False
+
+        if self._log_handler is not None:
+            for logger_obj in self._log_handler_loggers:
+                logger_obj.removeHandler(self._log_handler)
+            self._log_handler.close()
         self._log_handler_loggers.clear()
         self._log_handler = None
 

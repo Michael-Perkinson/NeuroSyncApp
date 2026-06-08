@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import pytest
 from PySide6.QtWidgets import QApplication
 
@@ -114,6 +116,24 @@ def test_raw_qt_remembers_selected_dfer_option(monkeypatch):
     widget.settings_manager.last_run_dfer_option = "4"
     widget._restore_dfer_option_selection()
     assert widget._selected_option() == "4"
+    widget.deleteLater()
+
+
+def test_raw_qt_late_logs_after_deleted_log_widget_are_ignored():
+    app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+
+    class DeletedLogEdit:
+        def appendPlainText(self, _msg):
+            raise RuntimeError("Internal C++ object already deleted")
+
+    widget._log_edit = DeletedLogEdit()
+    widget._append_log("late worker message")
+    logging.getLogger("src.dfer.df_dual").info("late worker message")
+
+    assert widget._log_edit is None
+    assert widget._log_handler is None
+    assert widget._log_signal_connected is False
     widget.deleteLater()
 
 
