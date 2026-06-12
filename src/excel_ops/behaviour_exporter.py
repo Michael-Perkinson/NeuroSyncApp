@@ -20,6 +20,53 @@ from src.processing.behaviour_parser import retrieve_static_params, truncate_she
 # DataFrame building
 # ---------------------------------------------------------------------------
 
+def _combine_signal_parts(start_data, end_data) -> pd.Series:
+    return pd.concat(
+        [start_data.reset_index(drop=True), end_data.reset_index(drop=True)],
+        axis=0,
+    ).reset_index(drop=True)
+
+
+def _build_df_from_instance_time_ranges(
+    behaviour_name: str,
+    data_list: list[tuple],
+    instance_time_ranges: list[pd.Series],
+) -> pd.DataFrame:
+    """Build a behaviour frame aligned by actual relative timestamps."""
+    df_combined = pd.DataFrame()
+
+    for instance_index, ((start_data, end_data), time_range) in enumerate(
+        zip(data_list, instance_time_ranges), start=1
+    ):
+        combined_data = _combine_signal_parts(start_data, end_data)
+        time_values = pd.Series(time_range).reset_index(drop=True)
+        row_count = min(len(combined_data), len(time_values))
+        column_name = f"{behaviour_name}_{instance_index}"
+        frame = pd.DataFrame(
+            {
+                "Time (s)": time_values.iloc[:row_count].reset_index(drop=True),
+                column_name: combined_data.iloc[:row_count].reset_index(drop=True),
+            }
+        ).dropna(subset=["Time (s)"])
+        frame = frame.groupby("Time (s)", as_index=False).mean(numeric_only=True)
+
+        if df_combined.empty:
+            df_combined = frame
+        else:
+            df_combined = pd.merge(df_combined, frame, on="Time (s)", how="outer")
+
+    if df_combined.empty:
+        return pd.DataFrame({"Time (s)": []})
+
+    df_combined = df_combined.sort_values("Time (s)").reset_index(drop=True)
+    instance_columns = [col for col in df_combined.columns if col != "Time (s)"]
+    if len(instance_columns) > 1:
+        df_combined["Mean"] = df_combined[instance_columns].mean(axis=1)
+        df_combined["SEM"] = df_combined[instance_columns + ["Mean"]].sem(axis=1)
+
+    return df_combined
+
+
 def create_df_for_behaviours(
     behaviours_results: dict,
     sorted_behaviours: list[str],
@@ -58,28 +105,35 @@ def create_df_for_behaviours(
 
     for behaviour_name in sorted_behaviours:
         data_list = behaviours_results[behaviour_name]
-        df_combined = pd.DataFrame()
+        behaviour_time_ranges = time_ranges[behaviour_name]
 
-        for instance_index, (start_data, end_data) in enumerate(data_list, start=1):
-            combined_data = pd.concat(
-                [start_data.reset_index(drop=True), end_data.reset_index(drop=True)],
-                axis=0,
-            ).reset_index(drop=True)
-            df_combined[f"{behaviour_name}_{instance_index}"] = combined_data
-
-        if len(df_combined.columns) > 1:
-            df_combined["Mean"] = df_combined.mean(axis=1)
-            df_combined["SEM"] = df_combined.sem(axis=1)
-
-        time_range = time_ranges[behaviour_name]
-        df_combined.insert(
-            0, "Time (s)", time_range[: len(df_combined)].reset_index(drop=True)
-        )
-
-        for col in df_combined.columns:
-            df_combined[col] = (
-                df_combined[col].reindex(time_range.index).reset_index(drop=True)
+        if (
+            isinstance(behaviour_time_ranges, list)
+            and len(behaviour_time_ranges) >= len(data_list)
+        ):
+            df_combined = _build_df_from_instance_time_ranges(
+                behaviour_name, data_list, behaviour_time_ranges
             )
+        else:
+            df_combined = pd.DataFrame()
+
+            for instance_index, (start_data, end_data) in enumerate(data_list, start=1):
+                combined_data = _combine_signal_parts(start_data, end_data)
+                df_combined[f"{behaviour_name}_{instance_index}"] = combined_data
+
+            if len(df_combined.columns) > 1:
+                df_combined["Mean"] = df_combined.mean(axis=1)
+                df_combined["SEM"] = df_combined.sem(axis=1)
+
+            time_range = pd.Series(behaviour_time_ranges)
+            df_combined.insert(
+                0, "Time (s)", time_range[: len(df_combined)].reset_index(drop=True)
+            )
+
+            for col in df_combined.columns:
+                df_combined[col] = (
+                    df_combined[col].reindex(time_range.index).reset_index(drop=True)
+                )
 
         sheet_name = truncate_sheet_title(behaviour_name)
         sheet_name = re.sub(r'[\\/*?:"<>|]', "_", sheet_name)
@@ -105,6 +159,7 @@ def process_and_bin_data(
     pre_behaviour_time: int,
     post_behaviour_time: int,
     bin_size: int,
+    time_ranges: list[pd.Series] | None = None,
 ) -> tuple[list[str], int, list]:
     """Bin concatenated signal data for all instances of one behaviour.
 
@@ -114,6 +169,10 @@ def process_and_bin_data(
         ``[(start_data, end_data), ...]`` — one tuple per event instance.
     pre_behaviour_time, post_behaviour_time, bin_size:
         Integers (seconds).
+    time_ranges:
+        Optional actual relative time axis for each event instance. When
+        present, samples are assigned to bins by timestamp rather than by row
+        count, preserving scheduled-recording gaps.
 
     Returns
     -------
@@ -135,15 +194,20 @@ def process_and_bin_data(
         for start in sorted(bin_ranges, key=float)
     ]
 
-    for start_data, end_data in data_list:
+    for instance_index, (start_data, end_data) in enumerate(data_list):
         combined = np.concatenate([start_data.values, end_data.values]).ravel()
-        sampling_rate = max(1, round(len(combined) / total_window))
-        samples_per_bin = bin_size * sampling_rate
-
-        for bin_idx in range(num_bins_total):
-            start_idx = bin_idx * samples_per_bin
-            end_idx = start_idx + samples_per_bin
-            behaviour_instances_data.append(combined[start_idx:end_idx])
+        if time_ranges is not None and instance_index < len(time_ranges):
+            instance_times = pd.Series(time_ranges[instance_index]).reset_index(
+                drop=True
+            )
+            instance_times = instance_times.iloc[: len(combined)].to_numpy(dtype=float)
+            for bin_start in bin_ranges:
+                bin_end = bin_start + bin_size
+                mask = (instance_times >= bin_start) & (instance_times < bin_end)
+                behaviour_instances_data.append(combined[mask])
+        else:
+            for values in np.array_split(combined, num_bins_total):
+                behaviour_instances_data.append(values)
 
     return bin_labels, num_bins_total, behaviour_instances_data
 
@@ -157,6 +221,7 @@ def generate_summary_data(
     behaviours_results: dict,
     params: dict,
     metric_functions: dict,
+    time_ranges: dict | None = None,
 ) -> pd.DataFrame:
     """Build the summary DataFrame with bin labels and per-metric rows.
 
@@ -185,8 +250,9 @@ def generate_summary_data(
         data_list = behaviours_results[behaviour_name]
         pre, post, bin_ = retrieve_static_params(params, behaviour_name)
 
+        instance_time_ranges = time_ranges.get(behaviour_name) if time_ranges else None
         bin_labels, expected_num_bins, behaviour_instances_data = process_and_bin_data(
-            data_list, pre, post, bin_
+            data_list, pre, post, bin_, instance_time_ranges
         )
 
         summary_rows.append([behaviour_name] + bin_labels)

@@ -78,6 +78,7 @@ class AlignedBehaviourExporter:
         self,
         sorted_behaviours: list[str],
         behaviours_results: dict,
+        time_ranges: dict,
         params: dict,
         file_path: str,
         folder_path: str,
@@ -85,7 +86,11 @@ class AlignedBehaviourExporter:
         duration_df: pd.DataFrame,
     ) -> None:
         df_summary = generate_summary_data(
-            sorted_behaviours, behaviours_results, params, self._get_metric_functions()
+            sorted_behaviours,
+            behaviours_results,
+            params,
+            self._get_metric_functions(),
+            time_ranges,
         )
         df_list.insert(0, (duration_df, "Event Duration"))
 
@@ -125,6 +130,7 @@ class AlignedBehaviourExporter:
         self._export_binned_data(
             sorted_behaviours,
             behaviours_results,
+            time_ranges,
             params,
             file_path,
             folder_path,
