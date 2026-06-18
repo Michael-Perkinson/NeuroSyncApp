@@ -13,6 +13,7 @@ from src.data.json_handler import (
     load_behaviour_static_inputs,
     save_behaviour_static_inputs,
 )
+from src.file_management.file_loader import select_preferred_signal_column
 from src.processing.behaviour_parser import process_behaviour_rows, read_behaviour_csv
 from src.shared.persistence.app_paths import config_file_path
 from src.processing.behavior_metrics import calculate_duration_metrics
@@ -81,12 +82,8 @@ class BehaviourManualSessionService:
                 times["start_times"], times["end_times"]
             )
             self.app.duration_data_cache[behavior] = {
-                "mean_duration": self.app.graph_helper_service.convert_and_retrieve_time(
-                    mean_duration
-                ),
-                "sem_duration": self.app.graph_helper_service.convert_and_retrieve_time(
-                    sem_duration
-                ),
+                "mean_duration": mean_duration,
+                "sem_duration": sem_duration,
                 "mean_sem_df": None,
                 "number_of_instances": len(times["start_times"]),
             }
@@ -240,10 +237,7 @@ class BehaviourManualSessionService:
 
         self.app.graph_settings_container_instance.zero_x_axis_checkbox_var.set(0)
 
-        if "dFoF_465" in dataframe.columns:
-            self.app.selected_column_var.set("dFoF_465")
-        else:
-            self.app.selected_column_var.set(dataframe.columns[1])
+        self.app.selected_column_var.set(select_preferred_signal_column(dataframe))
 
         self.app.selected_column_var.trace(
             "w", lambda *trace_args: self.app.data_selection_frame.on_column_selection_changed()

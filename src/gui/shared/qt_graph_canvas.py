@@ -32,14 +32,30 @@ def create_styled_figure() -> tuple[Figure, object]:
     return fig, ax
 
 
+def _prepare_widget_for_deletion(widget) -> None:
+    """Detach a Qt widget after neutralising queued matplotlib redraws."""
+    if isinstance(widget, FigureCanvasQTAgg):
+        # Matplotlib queues draw_idle via QTimer.singleShot. If Qt deletes the
+        # canvas before that callback fires, backend_qt can touch a deleted C++
+        # object. Clearing this flag makes the queued callback return early.
+        widget._draw_pending = False
+        widget._is_drawing = False
+        try:
+            widget.figure.clear()
+        except Exception:
+            pass
+
+    widget.hide()
+    widget.setParent(None)
+    widget.deleteLater()
+
+
 def destroy_embedded_figure(figure_canvas, toolbar) -> None:
     for widget in (toolbar, figure_canvas):
         if widget is None:
             continue
         try:
-            widget.hide()
-            widget.setParent(None)
-            widget.deleteLater()
+            _prepare_widget_for_deletion(widget)
         except RuntimeError:
             continue
 
@@ -55,7 +71,10 @@ def embed_figure_in_qt(fig: Figure, graph_canvas: QWidget):
         item = layout.takeAt(0)
         widget = item.widget()
         if widget is not None:
-            widget.deleteLater()
+            try:
+                _prepare_widget_for_deletion(widget)
+            except RuntimeError:
+                continue
 
     figure_canvas = FigureCanvasQTAgg(fig)
     # Set parent immediately to prevent the parentless widget briefly appearing

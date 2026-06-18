@@ -34,6 +34,40 @@ def create_extraction_folder(file_path: str) -> str:
 # CSV reading
 # ---------------------------------------------------------------------------
 
+DEFAULT_BEHAVIOUR_COLUMN_CANDIDATES = {
+    "Behaviours/events": (
+        "behaviour",
+        "behavior",
+        "behaviours",
+        "behaviors",
+        "event",
+        "events",
+    ),
+    "Start Time": ("start", "start time", "onset", "onset time"),
+    "End Time": ("end", "end time", "offset", "offset time"),
+}
+
+
+def _normalise_column_mapping(column_names: dict, available_columns: list[str]) -> dict:
+    """Fill blank behaviour-column mappings from common CSV headers."""
+    normalised = {
+        key: str(value or "").strip().lower()
+        for key, value in column_names.items()
+    }
+    available = set(available_columns)
+
+    for logical_name, candidates in DEFAULT_BEHAVIOUR_COLUMN_CANDIDATES.items():
+        mapped_name = normalised.get(logical_name, "")
+        if mapped_name in available:
+            continue
+        for candidate in candidates:
+            if candidate in available:
+                normalised[logical_name] = candidate
+                break
+
+    return normalised
+
+
 def read_behaviour_csv(
     file_path: str,
     column_names: dict,
@@ -66,12 +100,8 @@ def read_behaviour_csv(
         If a required column is missing from the CSV.
     """
     df = pd.read_csv(file_path)
-    df.columns = [c.lower() for c in df.columns]
-    column_names = {k: v.lower() for k, v in column_names.items()}
-
-    if time_unit == "minutes":
-        df[column_names["Start Time"]] = df[column_names["Start Time"]] * 60
-        df[column_names["End Time"]] = df[column_names["End Time"]] * 60
+    df.columns = [str(c).strip().lower() for c in df.columns]
+    column_names = _normalise_column_mapping(column_names, list(df.columns))
 
     required = [
         column_names["Behaviours/events"],
@@ -79,12 +109,17 @@ def read_behaviour_csv(
         column_names["End Time"],
     ]
     for col in required:
-        if col not in df.columns:
+        if not col or col not in df.columns:
             available = [c for c in df.columns if not c.startswith("unnamed")]
             raise ValueError(
-                f"Required column '{col}' is not present in the CSV file.\n\n"
+                "Required column mapping "
+                f"'{col or '<blank>'}' is not present in the CSV file.\n\n"
                 f"Available columns:\n  - " + "\n  - ".join(available)
             )
+
+    if time_unit == "minutes":
+        df[column_names["Start Time"]] = df[column_names["Start Time"]] * 60
+        df[column_names["End Time"]] = df[column_names["End Time"]] * 60
 
     df = df.dropna(subset=[column_names["Behaviours/events"]])
     return df, column_names
@@ -434,7 +469,12 @@ def extract_data_slice_with_time(
     start_data = working.iloc[start_pos:behaviour_pos][column].reset_index(drop=True)
     end_data = working.iloc[behaviour_pos:end_pos][column].reset_index(drop=True)
     time_slice = time_col.iloc[start_pos:end_pos].reset_index(drop=True)
-    relative_time_seconds = ((time_slice - behaviour_time_min) * 60).round(
+    behaviour_anchor_min = (
+        time_col.iloc[behaviour_pos]
+        if behaviour_pos < len(time_col) and pd.notna(time_col.iloc[behaviour_pos])
+        else behaviour_time_min
+    )
+    relative_time_seconds = ((time_slice - behaviour_anchor_min) * 60).round(
         TIME_AXIS_DECIMALS
     )
     relative_time_seconds[np.isclose(relative_time_seconds, 0)] = 0

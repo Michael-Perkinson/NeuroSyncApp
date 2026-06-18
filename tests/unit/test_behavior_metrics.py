@@ -84,8 +84,17 @@ class TestCalculateDurationMetrics:
         mean, sem = calculate_duration_metrics([0.0, 0.0], [60.0, None])
         assert mean == pytest.approx(1.0)
 
+    def test_nan_end_times_skipped(self):
+        mean, sem = calculate_duration_metrics([0.0, 0.0], [60.0, np.nan])
+        assert mean == pytest.approx(1.0)
+        assert sem == 0.0
+
     def test_all_none_end_times_returns_nan(self):
         mean, sem = calculate_duration_metrics([0.0], [None])
+        assert np.isnan(mean) and np.isnan(sem)
+
+    def test_all_nan_end_times_returns_nan(self):
+        mean, sem = calculate_duration_metrics([0.0], [np.nan])
         assert np.isnan(mean) and np.isnan(sem)
 
     def test_three_events_correct_mean(self):

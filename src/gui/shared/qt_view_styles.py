@@ -95,6 +95,14 @@ def panel_stylesheet(object_name: str) -> str:
     width: 10px;
     height: 6px;
 }}
+#{object_name} QComboBox QAbstractItemView {{
+    background: {PALETTE["card_bg"]};
+    color: {PALETTE["text"]};
+    border: 1px solid {PALETTE["border_strong"]};
+    selection-background-color: {PALETTE["accent_soft"]};
+    selection-color: {PALETTE["text"]};
+    outline: 0;
+}}
 #{object_name} QCheckBox {{
     color: {PALETTE["text"]};
     spacing: 6px;
@@ -246,6 +254,14 @@ QComboBox::down-arrow {{
     image: url({_ARROW_DOWN});
     width: 10px;
     height: 6px;
+}}
+QComboBox QAbstractItemView {{
+    background: {PALETTE["card_bg"]};
+    color: {PALETTE["text"]};
+    border: 1px solid {PALETTE["border_strong"]};
+    selection-background-color: {PALETTE["accent_soft"]};
+    selection-color: {PALETTE["text"]};
+    outline: 0;
 }}
 """
 

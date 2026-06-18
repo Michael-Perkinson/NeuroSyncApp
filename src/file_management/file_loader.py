@@ -5,6 +5,28 @@ import pandas as pd
 import re
 import os
 
+PREFERRED_SIGNAL_COLUMNS = ("dfof_465", "dfof_470", "490df/f")
+
+
+def _normalise_column_name(column) -> str:
+    return str(column).strip().lower()
+
+
+def select_preferred_signal_column(dataframe: pd.DataFrame):
+    """Return the best default signal column for plotting."""
+    if len(dataframe.columns) < 2:
+        raise ValueError("Loaded data must contain at least two columns.")
+
+    normalised_columns = {
+        _normalise_column_name(column): column for column in dataframe.columns
+    }
+    for preferred_column in PREFERRED_SIGNAL_COLUMNS:
+        if preferred_column in normalised_columns:
+            return normalised_columns[preferred_column]
+
+    return dataframe.columns[1]
+
+
 def load_data_file(file_path: str) -> pd.DataFrame:
     """
     Loads a CSV or Excel file into a DataFrame.
@@ -74,9 +96,7 @@ def process_loaded_data(dataframe):
     dataframe = check_and_convert_time_column(dataframe, target_unit="minutes")
     column_titles = get_column_titles(dataframe)
 
-    preferred_columns = ["dFoF_465", "490DF/F"]
-    selected_column = next(
-        (col for col in preferred_columns if col in dataframe.columns), column_titles[1])
+    selected_column = select_preferred_signal_column(dataframe)
 
     is_time_based = is_time_data(dataframe)
 
