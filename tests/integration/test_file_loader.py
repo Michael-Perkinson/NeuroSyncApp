@@ -65,6 +65,28 @@ class TestProcessLoadedData:
         result = process_loaded_data(df)
         assert result["selected_column"] == "dFoF_465"
 
+    def test_photometry_csv_selects_dfof_470_when_465_absent(self):
+        df = pd.DataFrame(
+            {
+                "Time (min)": [0.0, 0.1, 0.2],
+                "dfof_470": [0.2, 0.3, 0.4],
+                "Other": [1.0, 1.1, 1.2],
+            }
+        )
+        result = process_loaded_data(df)
+        assert result["selected_column"] == "dfof_470"
+
+    def test_photometry_csv_selects_dfof_470_case_insensitive(self):
+        df = pd.DataFrame(
+            {
+                "Time (min)": [0.0, 0.1, 0.2],
+                "DFOF_470": [0.2, 0.3, 0.4],
+                "Other": [1.0, 1.1, 1.2],
+            }
+        )
+        result = process_loaded_data(df)
+        assert result["selected_column"] == "DFOF_470"
+
     def test_photometry_csv_is_time_based(self):
         df = load_data_file(str(PHOTOMETRY_CSV))
         result = process_loaded_data(df)

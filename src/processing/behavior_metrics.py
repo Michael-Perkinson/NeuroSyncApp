@@ -71,11 +71,18 @@ def calculate_duration_metrics(
     mean_duration, sem_duration
         Both in minutes. Returns ``(nan, nan)`` when no valid durations exist.
     """
-    durations = [
-        (end - start) / 60.0
-        for start, end in zip(start_times, end_times)
-        if end is not None
-    ]
+    durations = []
+    for start, end in zip(start_times, end_times):
+        if start is None or end is None:
+            continue
+        try:
+            start_value = float(start)
+            end_value = float(end)
+        except (TypeError, ValueError):
+            continue
+        if not np.isfinite(start_value) or not np.isfinite(end_value):
+            continue
+        durations.append((end_value - start_value) / 60.0)
     if not durations:
         return float("nan"), float("nan")
 

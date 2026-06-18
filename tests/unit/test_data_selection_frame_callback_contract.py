@@ -49,3 +49,16 @@ def test_on_select_file_passes_expected_callback_arguments(monkeypatch):
         dataframe,
         True,
     )
+
+
+def test_column_selection_change_does_not_redraw_during_file_load():
+    frame = DataSelectionFrame.__new__(DataSelectionFrame)
+    frame.settings_manager = Mock()
+    frame.selected_column = _DummyVar("dFoF_470")
+    frame.handle_figure_display_selection = Mock()
+    frame._suppress_column_redraw = True
+
+    DataSelectionFrame.on_column_selection_changed(frame)
+
+    assert frame.settings_manager.selected_column_name == "dFoF_470"
+    frame.handle_figure_display_selection.assert_not_called()

@@ -46,9 +46,12 @@ def handle_figure_display_selection(app, event=None) -> None:
 
     if hasattr(app, "figure_canvas") and app.figure_canvas is not None:
         destroy_embedded_figure(app.figure_canvas, app.toolbar)
+        app.figure_canvas = None
+        app.toolbar = None
 
     app.fig, ax = create_styled_figure()
     app.ax = ax
+    app.bar_items = []
 
     if selected_option == "Z-scored data" and app.checkbox_state:
         plot_z_scored_data(app, ax)
@@ -363,7 +366,7 @@ def plot_mean_and_sem_trace(app, ax) -> None:
         y_max = app.graph_settings_container_instance.y_axis_max_var.get()
         ax.set_ylim(float(y_min), float(y_max))
 
-    if hasattr(app, "bar_items") and app.bar_items:
+    if getattr(app, "figure_canvas", None) is not None and app.bar_items:
         update_duration_box(app, ax, mean_sem_df)
     else:
         add_duration_box(app, ax, mean_sem_df)
@@ -444,7 +447,7 @@ def update_duration_box(app, ax=None, mean_sem_df=None) -> None:
     if not app.graph_settings_container_instance.display_duration_box_var.get():
         return
 
-    ax = app.fig.gca()
+    ax = ax if ax is not None else app.fig.gca()
 
     if hasattr(app, "bar_items"):
         for item in app.bar_items:
@@ -458,7 +461,7 @@ def update_duration_box(app, ax=None, mean_sem_df=None) -> None:
 
     try:
         cached_data = app.duration_data_cache[app.current_cache_key]
-        mean_sem_df = cached_data["mean_sem_df"]
+        mean_sem_df = mean_sem_df if mean_sem_df is not None else cached_data["mean_sem_df"]
     except KeyError:
         add_duration_box(app, ax, mean_sem_df)
         return
@@ -486,7 +489,9 @@ def update_duration_box(app, ax=None, mean_sem_df=None) -> None:
     new_items = set(ax.get_children())
     app.bar_items = list(new_items - old_items)
 
-    app.figure_canvas.draw_idle()
+    figure_canvas = getattr(app, "figure_canvas", None)
+    if figure_canvas is not None:
+        figure_canvas.draw_idle()
 
 
 def save_and_close_axis_range(app, popup=None, close: bool = True) -> None:

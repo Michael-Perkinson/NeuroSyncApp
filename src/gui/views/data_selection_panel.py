@@ -20,7 +20,11 @@ from PySide6.QtWidgets import (
 import pandas as pd
 
 from src.core.app_settings_manager import AppSettingsManager
-from src.file_management.file_loader import load_data_file, process_loaded_data
+from src.file_management.file_loader import (
+    load_data_file,
+    process_loaded_data,
+    select_preferred_signal_column,
+)
 from src.gui.shared.qt_bindings import CheckBoxControl, ComboBoxControl, LineEditControl, ObservableValue
 from src.gui.shared.qt_view_styles import (
     apply_button_role,
@@ -77,6 +81,7 @@ class DataSelectionPanel(QFrame):
         self.figure_canvas = None
         self.warning_shown = False
         self.checkbox_state = False
+        self._suppress_column_redraw = False
 
         self._build_ui()
         self.use_baseline_var.trace_add("write", self.toggle_baseline_entries)
@@ -171,6 +176,7 @@ class DataSelectionPanel(QFrame):
         if not file_path:
             return
 
+        self._suppress_column_redraw = True
         try:
             file_path_var.set(file_path)
             dataframe = load_data_file(file_path)
@@ -186,22 +192,26 @@ class DataSelectionPanel(QFrame):
             logger.warning("Failed to load data file %s: %s", file_path, exc)
             file_path_var.set("")
             QMessageBox.critical(self, "File Load Error", f"Could not load that file.\n\n{exc}")
+            self._suppress_column_redraw = False
             return
 
-        self._update_ui_after_file_selection(
-            dataframe, column_titles, self.selected_column
-        )
-        mouse_name = self._get_mouse_name(file_path)
-
-        if self.new_data_file_callback:
-            self.new_data_file_callback(
-                self.file_path_var,
-                self.selected_column,
-                self.column_dropdown,
-                mouse_name,
-                dataframe,
-                is_time_based,
+        try:
+            self._update_ui_after_file_selection(
+                dataframe, column_titles, self.selected_column
             )
+            mouse_name = self._get_mouse_name(file_path)
+
+            if self.new_data_file_callback:
+                self.new_data_file_callback(
+                    self.file_path_var,
+                    self.selected_column,
+                    self.column_dropdown,
+                    mouse_name,
+                    dataframe,
+                    is_time_based,
+                )
+        finally:
+            self._suppress_column_redraw = False
 
     def _prompt_file_selection(self) -> str:
         initial_dir = getattr(self.settings_manager, "default_data_folder_path", None) or ""
@@ -220,11 +230,7 @@ class DataSelectionPanel(QFrame):
         selected_column: ObservableValue[str],
     ) -> None:
         self.column_titles = column_titles
-        preferred_columns = ["dFoF_465", "490DF/F"]
-        preferred = next(
-            (column for column in preferred_columns if column in dataframe.columns),
-            dataframe.columns[1],
-        )
+        preferred = select_preferred_signal_column(dataframe)
         self.column_dropdown.set_options(column_titles)
         self.column_dropdown["state"] = "normal"
         # set_options resets the dropdown to index 0; force it to show the preferred column.
@@ -258,6 +264,8 @@ class DataSelectionPanel(QFrame):
 
     def on_column_selection_changed(self) -> None:
         self.settings_manager.selected_column_name = self.selected_column.get()
+        if getattr(self, "_suppress_column_redraw", False):
+            return
         if self.handle_figure_display_selection:
             self.handle_figure_display_selection(None)
 

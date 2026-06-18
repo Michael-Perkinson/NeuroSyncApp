@@ -8,7 +8,7 @@ from src.excel_ops.behaviour_exporter import (
     create_df_for_behaviours,
     process_and_bin_data,
 )
-from src.processing.behaviour_parser import extract_behaviour_results
+from src.processing.behaviour_parser import extract_behaviour_results, read_behaviour_csv
 
 
 def _build_photometry_frame(time_seconds: np.ndarray) -> pd.DataFrame:
@@ -65,6 +65,33 @@ def _exported_behaviour_frame(
     return df_list[0][0]
 
 
+def test_read_behaviour_csv_infers_blank_common_column_mappings(monkeypatch):
+    source = pd.DataFrame(
+        {
+            "Start": [1.0],
+            "End": [2.0],
+            "Onset": ["0:00:01"],
+            "Offset": ["0:00:02"],
+            "Behaviour": ["Explore"],
+        }
+    )
+    monkeypatch.setattr(
+        "src.processing.behaviour_parser.pd.read_csv",
+        lambda _file_path: source.copy(),
+    )
+
+    df, column_names = read_behaviour_csv(
+        "behaviour.csv",
+        {"Behaviours/events": "", "Start Time": "", "End Time": ""},
+        "seconds",
+    )
+
+    assert column_names["Behaviours/events"] == "behaviour"
+    assert column_names["Start Time"] == "start"
+    assert column_names["End Time"] == "end"
+    assert df.loc[0, "behaviour"] == "Explore"
+
+
 def test_export_time_axis_uses_actual_3_33hz_sample_rate():
     behaviour_name = "Explore"
     time_seconds = np.round(np.arange(0.0, 30.0, 0.3), 3)
@@ -82,6 +109,27 @@ def test_export_time_axis_uses_actual_3_33hz_sample_rate():
     expected_time = np.round(np.arange(-3.0, 3.0, 0.3), 3)
     np.testing.assert_allclose(exported["Time (s)"].to_numpy(), expected_time)
     assert np.median(np.diff(exported["Time (s)"])) == pytest.approx(0.3)
+
+
+def test_export_time_axis_rezeros_off_sample_onset_to_clean_zero():
+    behaviour_name = "Explore"
+    time_seconds = np.round(np.arange(0.0, 30.0, 0.3), 3)
+    dataframe = _build_photometry_frame(time_seconds)
+
+    behaviours_results, time_ranges = _extract_single_behaviour(
+        dataframe,
+        behaviour_name,
+        behaviour_start_time=9.016,
+        pre_time=3.0,
+        post_time=3.0,
+    )
+    exported = _exported_behaviour_frame(behaviours_results, time_ranges, behaviour_name)
+
+    assert exported["Time (s)"].iloc[0] == pytest.approx(-3.0)
+    assert 0.0 in exported["Time (s)"].to_numpy()
+    assert exported["Time (s)"].iloc[:5].to_list() == pytest.approx(
+        [-3.0, -2.7, -2.4, -2.1, -1.8]
+    )
 
 
 @pytest.mark.parametrize("sample_interval", [0.1, 0.3])
