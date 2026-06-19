@@ -127,6 +127,12 @@ jobs:
             --hidden-import=openpyxl \
             --hidden-import=h5py
 
+      - name: Sign macOS app
+        run: |
+          codesign --force --deep --sign - --timestamp=none "dist/NeuroSyncApp.app"
+          codesign --verify --deep --strict --verbose=4 "dist/NeuroSyncApp.app"
+          spctl --assess --type execute --verbose=4 "dist/NeuroSyncApp.app" || true
+
       - name: Prepare macOS DMG contents
         run: |
           mkdir -p "dist/dmg-root"
@@ -143,6 +149,18 @@ jobs:
           echo "Bundled executable:"
           /usr/bin/file "./NeuroSyncApp.app/Contents/MacOS/NeuroSyncApp" || true
           echo
+          echo "Quarantine attributes:"
+          /usr/bin/xattr -lr "./NeuroSyncApp.app" 2>/dev/null | /usr/bin/sed -n '1,80p' || true
+          echo
+          echo "Code signature:"
+          /usr/bin/codesign -dv --verbose=4 "./NeuroSyncApp.app" 2>&1 || true
+          echo
+          echo "Code signature verification:"
+          /usr/bin/codesign --verify --deep --strict --verbose=4 "./NeuroSyncApp.app" 2>&1 || true
+          echo
+          echo "Gatekeeper assessment:"
+          /usr/sbin/spctl --assess --type execute --verbose=4 "./NeuroSyncApp.app" 2>&1 || true
+          echo
           echo "Application output:"
           echo "-------------------"
           "./NeuroSyncApp.app/Contents/MacOS/NeuroSyncApp"
@@ -150,6 +168,11 @@ jobs:
           echo "-------------------"
           echo
           echo "NeuroSyncApp exited with status $status"
+          if [ "$status" -eq 137 ] || [ "$status" -eq 9 ]; then
+            echo
+            echo "Recent macOS log entries that may explain the kill:"
+            /usr/bin/log show --last 5m --style compact --predicate 'eventMessage CONTAINS[c] "NeuroSyncApp" OR eventMessage CONTAINS[c] "code signature" OR eventMessage CONTAINS[c] "killed" OR process CONTAINS[c] "syspolicyd"' 2>/dev/null | /usr/bin/tail -n 120 || true
+          fi
           echo "Copy the output above when reporting a startup crash."
           echo
           read -r -p "Press Return to close this window."
