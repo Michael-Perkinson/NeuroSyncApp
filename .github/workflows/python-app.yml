@@ -63,7 +63,18 @@ jobs:
           path: dist\NeuroSyncApp_${{ github.ref_name }}.exe
 
   build-macos:
-    runs-on: macos-latest
+    name: build-macos (${{ matrix.label }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Apple Silicon
+            runner: macos-15
+            suffix: macos-arm64
+          - label: Intel
+            runner: macos-15-intel
+            suffix: macos-intel
 
     steps:
       - uses: actions/checkout@v4
@@ -116,18 +127,49 @@ jobs:
             --hidden-import=openpyxl \
             --hidden-import=h5py
 
+      - name: Prepare macOS DMG contents
+        run: |
+          mkdir -p "dist/dmg-root"
+          cp -R "dist/NeuroSyncApp.app" "dist/dmg-root/"
+          cat > "dist/dmg-root/NeuroSyncApp Debug.command" <<'EOF'
+          #!/bin/bash
+          cd "$(dirname "$0")" || exit 1
+
+          echo "Launching NeuroSyncApp debug runner"
+          echo "macOS: $(sw_vers -productVersion)"
+          echo "Machine: $(uname -m)"
+          echo "Build: ${{ matrix.label }}"
+          echo
+          echo "Bundled executable:"
+          /usr/bin/file "./NeuroSyncApp.app/Contents/MacOS/NeuroSyncApp" || true
+          echo
+          echo "Application output:"
+          echo "-------------------"
+          "./NeuroSyncApp.app/Contents/MacOS/NeuroSyncApp"
+          status=$?
+          echo "-------------------"
+          echo
+          echo "NeuroSyncApp exited with status $status"
+          echo "Copy the output above when reporting a startup crash."
+          echo
+          read -r -p "Press Return to close this window."
+          exit "$status"
+          EOF
+          chmod +x "dist/dmg-root/NeuroSyncApp Debug.command"
+          /usr/bin/file "dist/dmg-root/NeuroSyncApp.app/Contents/MacOS/NeuroSyncApp"
+
       - name: Create .dmg
         run: |
           hdiutil create -volname "NeuroSyncApp" \
-            -srcfolder "dist/NeuroSyncApp.app" \
+            -srcfolder "dist/dmg-root" \
             -ov -format UDZO \
-            "dist/NeuroSyncApp_${{ github.ref_name }}.dmg"
+            "dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}.dmg"
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg
-          path: dist/NeuroSyncApp_${{ github.ref_name }}.dmg
+          name: macos-dmg-${{ matrix.suffix }}
+          path: dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}.dmg
 
   release:
     needs: [build-windows, build-macos]
@@ -140,11 +182,12 @@ jobs:
           name: windows-exe
           path: artifacts
 
-      - name: Download macOS artifact
+      - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
-          name: macos-dmg
+          pattern: macos-dmg-*
           path: artifacts
+          merge-multiple: true
 
       - name: Create GitHub Release
         env:
@@ -152,7 +195,8 @@ jobs:
         run: |
           gh release create ${{ github.ref_name }} \
             artifacts/NeuroSyncApp_${{ github.ref_name }}.exe \
-            artifacts/NeuroSyncApp_${{ github.ref_name }}.dmg \
+            artifacts/NeuroSyncApp_${{ github.ref_name }}_macos-arm64.dmg \
+            artifacts/NeuroSyncApp_${{ github.ref_name }}_macos-intel.dmg \
             --repo ${{ github.repository }} \
             --title "NeuroSyncApp ${{ github.ref_name }}" \
             --notes "Release ${{ github.ref_name }}"
