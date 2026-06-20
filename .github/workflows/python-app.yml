@@ -139,11 +139,11 @@ jobs:
           codesign --verify --deep --strict --verbose=4 "dist/NeuroSyncApp.app"
           spctl --assess --type execute --verbose=4 "dist/NeuroSyncApp.app" || true
 
-      - name: Prepare macOS DMG contents
+      - name: Prepare macOS app ZIP contents
         run: |
-          mkdir -p "dist/dmg-root"
-          cp -R "dist/NeuroSyncApp.app" "dist/dmg-root/"
-          cat > "dist/dmg-root/NeuroSyncApp Debug.command" <<'EOF'
+          mkdir -p "dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}"
+          cp -R "dist/NeuroSyncApp.app" "dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}/"
+          cat > "dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}/NeuroSyncApp Debug.command" <<'EOF'
           #!/bin/bash
           cd "$(dirname "$0")" || exit 1
 
@@ -184,21 +184,21 @@ jobs:
           read -r -p "Press Return to close this window."
           exit "$status"
           EOF
-          chmod +x "dist/dmg-root/NeuroSyncApp Debug.command"
-          /usr/bin/file "dist/dmg-root/NeuroSyncApp.app/Contents/MacOS/NeuroSyncApp"
+          chmod +x "dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}/NeuroSyncApp Debug.command"
+          /usr/bin/file "dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}/NeuroSyncApp.app/Contents/MacOS/NeuroSyncApp"
 
-      - name: Create .dmg
+      - name: Create macOS app .zip
         run: |
-          hdiutil create -volname "NeuroSyncApp" \
-            -srcfolder "dist/dmg-root" \
-            -ov -format UDZO \
-            "dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}.dmg"
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent \
+            "NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}" \
+            "NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}.zip"
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg-${{ matrix.suffix }}
-          path: dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}.dmg
+          name: macos-app-${{ matrix.suffix }}
+          path: dist/NeuroSyncApp_${{ github.ref_name }}_${{ matrix.suffix }}.zip
 
   release:
     needs: [build-windows, build-macos]
@@ -214,7 +214,7 @@ jobs:
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: macos-dmg-*
+          pattern: macos-app-*
           path: artifacts
           merge-multiple: true
 
@@ -224,8 +224,8 @@ jobs:
         run: |
           gh release create ${{ github.ref_name }} \
             artifacts/NeuroSyncApp_${{ github.ref_name }}.exe \
-            artifacts/NeuroSyncApp_${{ github.ref_name }}_macos-arm64.dmg \
-            artifacts/NeuroSyncApp_${{ github.ref_name }}_macos-intel.dmg \
+            artifacts/NeuroSyncApp_${{ github.ref_name }}_macos-arm64.zip \
+            artifacts/NeuroSyncApp_${{ github.ref_name }}_macos-intel.zip \
             --repo ${{ github.repository }} \
             --title "NeuroSyncApp ${{ github.ref_name }}" \
             --notes "Release ${{ github.ref_name }}"
