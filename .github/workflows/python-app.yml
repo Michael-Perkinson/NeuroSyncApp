@@ -42,12 +42,15 @@ jobs:
             --icon icon\icon.ico ^
             --add-data "src\gui\shared\assets\arrow_down.svg;src\gui\shared\assets" ^
             --distpath "dist" ^
-            --collect-all PySide6 ^
+            --hidden-import=PySide6.QtCore ^
+            --hidden-import=PySide6.QtGui ^
+            --hidden-import=PySide6.QtWidgets ^
+            --hidden-import=PySide6.QtSvg ^
+            --hidden-import=PySide6.QtSvgWidgets ^
             --hidden-import=matplotlib.backends.backend_qtagg ^
             --hidden-import=matplotlib.backends.backend_svg ^
             --hidden-import=matplotlib.backends.backend_ps ^
-            --hidden-import=openpyxl ^
-            --hidden-import=h5py
+            --hidden-import=openpyxl
 
       - name: Verify .exe exists
         shell: powershell
@@ -120,12 +123,15 @@ jobs:
             --icon icon/icon.icns \
             --add-data "src/gui/shared/assets/arrow_down.svg:src/gui/shared/assets" \
             --distpath "dist" \
-            --collect-all PySide6 \
+            --hidden-import=PySide6.QtCore \
+            --hidden-import=PySide6.QtGui \
+            --hidden-import=PySide6.QtWidgets \
+            --hidden-import=PySide6.QtSvg \
+            --hidden-import=PySide6.QtSvgWidgets \
             --hidden-import=matplotlib.backends.backend_qtagg \
             --hidden-import=matplotlib.backends.backend_svg \
             --hidden-import=matplotlib.backends.backend_ps \
-            --hidden-import=openpyxl \
-            --hidden-import=h5py
+            --hidden-import=openpyxl
 
       - name: Sign macOS app
         run: |
