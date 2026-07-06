@@ -49,6 +49,17 @@ def run_dashboard() -> int:
 def run_tool_window(tool_id: str) -> int:
     from PySide6.QtWidgets import QMainWindow
 
+    class ToolWindow(QMainWindow):
+        def closeEvent(self, event) -> None:  # pragma: no cover - Qt lifecycle
+            widget = self.centralWidget()
+            prepare_for_unload = getattr(widget, "prepare_for_unload", None)
+            if callable(prepare_for_unload):
+                result = prepare_for_unload()
+                if result is not None and not result:
+                    event.ignore()
+                    return
+            super().closeEvent(event)
+
     definition = get_app_definition(tool_id)
     if not definition.qt_supported:
         raise NotImplementedError(
@@ -56,7 +67,7 @@ def run_tool_window(tool_id: str) -> int:
         )
 
     app = _create_qapplication()
-    window = QMainWindow()
+    window = ToolWindow()
     widget_class = definition.load_widget_class()
     widget = widget_class(window)
     window.setCentralWidget(widget)

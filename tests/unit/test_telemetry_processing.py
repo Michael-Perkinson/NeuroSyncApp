@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 from src.processing.telemetry_processing import (
+    AmbiguousTelemetryAlignmentError,
     apply_cluster_binning,
     build_aligned_photometry_cluster_data,
     calculate_mean_and_sem,
@@ -13,6 +14,7 @@ from src.processing.telemetry_processing import (
     calculate_stim_timings,
     create_universal_time_axis,
     extract_and_trim_data,
+    extract_data_for_date_and_offset,
     extract_data_with_buffer,
     process_photometry_data,
     trim_data_to_minimum_length,
@@ -79,6 +81,174 @@ def test_extract_and_trim_data_builds_relative_time_axis():
 
     assert trimmed["Data"].tolist() == [2, 3, 4]
     assert trimmed["Time (min)"].tolist() == [0.0, pytest.approx(1 / 6), pytest.approx(2 / 6)]
+
+
+def test_extract_and_trim_data_uses_absolute_alignment_timestamp():
+    dataframe = pd.DataFrame(
+        {
+            "Date Time": pd.to_datetime(
+                [
+                    "2024-01-01 08:00:00",
+                    "2024-01-01 08:01:00",
+                    "2024-01-02 08:00:00",
+                    "2024-01-02 08:01:00",
+                ]
+            ),
+            "Data": [1, 2, 3, 4],
+        }
+    )
+
+    trimmed = extract_and_trim_data(
+        dataframe,
+        previous_time=pd.Timestamp("2024-01-02 08:00:00"),
+        offset=0,
+        duration=2,
+        sample_rate=60,
+    )
+
+    assert trimmed["Data"].tolist() == [3, 4]
+
+
+def test_extract_data_for_date_and_offset_can_choose_previous_day_for_long_recording(monkeypatch):
+    import src.processing.telemetry_processing as telemetry_processing
+
+    telemetry = pd.DataFrame(
+        {
+            "Date Time": pd.to_datetime(
+                [
+                    "2024-01-01 20:00:00",
+                    "2024-01-02 20:00:00",
+                    "2024-01-03 02:00:00",
+                ]
+            ),
+            "Data": [1.0, 2.0, 3.0],
+        }
+    )
+    monkeypatch.setattr(
+        telemetry_processing,
+        "_extract_sheet_table",
+        lambda *_args, **_kwargs: telemetry,
+    )
+
+    date_data, offset, previous_time = extract_data_for_date_and_offset(
+        "telemetry.xlsx",
+        "M1",
+        "01/02/2024",
+        "20:00:00",
+        duration=25 * 60,
+    )
+
+    assert offset == pytest.approx(0.0)
+    assert previous_time == pd.Timestamp("2024-01-01 20:00:00")
+    assert date_data["Date Time"].iloc[0] == pd.Timestamp("2024-01-01 20:00:00")
+
+
+def test_extract_data_for_date_and_offset_prefers_target_day_when_duration_fits(monkeypatch):
+    import src.processing.telemetry_processing as telemetry_processing
+
+    telemetry = pd.DataFrame(
+        {
+            "Date Time": pd.to_datetime(
+                [
+                    "2024-01-01 20:01:00",
+                    "2024-01-02 20:00:00",
+                    "2024-01-02 22:00:00",
+                ]
+            ),
+            "Data": [1.0, 2.0, 3.0],
+        }
+    )
+    monkeypatch.setattr(
+        telemetry_processing,
+        "_extract_sheet_table",
+        lambda *_args, **_kwargs: telemetry,
+    )
+
+    date_data, offset, previous_time = extract_data_for_date_and_offset(
+        "telemetry.xlsx",
+        "M1",
+        "01/02/2024",
+        "20:00:00",
+        duration=60,
+    )
+
+    assert offset == pytest.approx(0.0)
+    assert previous_time == pd.Timestamp("2024-01-02 20:00:00")
+    assert date_data["Date Time"].iloc[0] == pd.Timestamp("2024-01-02 20:00:00")
+
+
+def test_extract_data_for_date_and_offset_raises_when_multiple_dates_cover_duration(monkeypatch):
+    import src.processing.telemetry_processing as telemetry_processing
+
+    telemetry = pd.DataFrame(
+        {
+            "Date Time": pd.to_datetime(
+                [
+                    "2024-01-01 20:00:00",
+                    "2024-01-02 20:00:00",
+                    "2024-01-03 20:00:00",
+                    "2024-01-04 22:00:00",
+                ]
+            ),
+            "Data": [1.0, 2.0, 3.0, 4.0],
+        }
+    )
+    monkeypatch.setattr(
+        telemetry_processing,
+        "_extract_sheet_table",
+        lambda *_args, **_kwargs: telemetry,
+    )
+
+    with pytest.raises(AmbiguousTelemetryAlignmentError) as exc_info:
+        extract_data_for_date_and_offset(
+            "telemetry.xlsx",
+            "M1",
+            "01/02/2024",
+            "20:00:00",
+            duration=60,
+        )
+
+    candidate_dates = [
+        candidate["target_datetime"] for candidate in exc_info.value.candidates
+    ]
+    assert pd.Timestamp("2024-01-02 20:00:00") in candidate_dates
+    assert pd.Timestamp("2024-01-01 20:00:00") in candidate_dates
+
+
+def test_extract_data_for_date_and_offset_uses_selected_ambiguous_date(monkeypatch):
+    import src.processing.telemetry_processing as telemetry_processing
+
+    telemetry = pd.DataFrame(
+        {
+            "Date Time": pd.to_datetime(
+                [
+                    "2024-01-01 20:00:00",
+                    "2024-01-02 20:00:00",
+                    "2024-01-03 20:00:00",
+                    "2024-01-04 22:00:00",
+                ]
+            ),
+            "Data": [1.0, 2.0, 3.0, 4.0],
+        }
+    )
+    monkeypatch.setattr(
+        telemetry_processing,
+        "_extract_sheet_table",
+        lambda *_args, **_kwargs: telemetry,
+    )
+
+    date_data, offset, previous_time = extract_data_for_date_and_offset(
+        "telemetry.xlsx",
+        "M1",
+        "01/02/2024",
+        "20:00:00",
+        duration=60,
+        selected_alignment_datetime=pd.Timestamp("2024-01-01 20:00:00"),
+    )
+
+    assert offset == pytest.approx(0.0)
+    assert previous_time == pd.Timestamp("2024-01-01 20:00:00")
+    assert date_data["Date Time"].iloc[0] == pd.Timestamp("2024-01-01 20:00:00")
 
 
 def test_extract_data_with_buffer_uses_existing_offset_column():

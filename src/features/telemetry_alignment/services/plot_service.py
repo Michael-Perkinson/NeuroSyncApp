@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import logging
 import math
 import re
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QInputDialog, QMessageBox
 
 from src.processing.telemetry_processing import (
+    AmbiguousTelemetryAlignmentError,
     calculate_nighttime_periods,
     calculate_stim_timings as _calculate_stim_timings,
     extract_and_trim_data as _extract_and_trim_data,
@@ -21,6 +23,9 @@ from src.processing.telemetry_processing import (
     parse_recording_date,
     upsample_telemetry_data,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class TelemetryPlotService:
@@ -45,7 +50,7 @@ class TelemetryPlotService:
             recording_date,
             start_time_str,
             lights_off_time_str,
-            self.app.duration_main_data,
+            self.app.duration_main_data + self._get_display_time_offset_minutes(),
         )
         self.app.settings_manager.light_off_time_var = lights_off_time_str
         self.app.settings_manager.save_variables()
@@ -98,12 +103,269 @@ class TelemetryPlotService:
             return start_time_str
         return str(self.app.start_time_timedelta or "").strip()
 
+    @staticmethod
+    def _format_alignment_candidate(candidate: dict) -> str:
+        target_datetime = pd.Timestamp(candidate["target_datetime"])
+        previous_timestamp = pd.Timestamp(candidate["previous_timestamp"])
+        available_minutes = float(candidate.get("available_minutes", 0) or 0)
+        offset_minutes = float(candidate.get("offset", 0) or 0)
+        return (
+            f"{target_datetime:%Y-%m-%d %H:%M:%S} "
+            f"(covers {available_minutes:.1f} min; "
+            f"sample {previous_timestamp:%Y-%m-%d %H:%M:%S}, "
+            f"offset {offset_minutes:.2f} min)"
+        )
+
+    def _prompt_for_alignment_candidate(
+        self,
+        candidates: list[dict],
+    ) -> pd.Timestamp | None:
+        choices = [
+            self._format_alignment_candidate(candidate)
+            for candidate in candidates
+        ]
+        selected_label, accepted = QInputDialog.getItem(
+            self.app,
+            "Select Telemetry Alignment Date",
+            (
+                "More than one telemetry date can cover this recording.\n"
+                "Choose the actual plug-in/alignment date and time:"
+            ),
+            choices,
+            0,
+            False,
+        )
+        if not accepted:
+            return None
+
+        selected_index = choices.index(selected_label)
+        return pd.Timestamp(candidates[selected_index]["target_datetime"])
+
+    def _extract_data_with_alignment_choice(
+        self,
+        file_path,
+        sheet_name,
+        target_date,
+        target_time,
+        duration,
+        selected_alignment_datetime=None,
+    ):
+        try:
+            return (
+                self.extract_data_for_date_and_offset(
+                    file_path,
+                    sheet_name,
+                    target_date,
+                    target_time,
+                    duration,
+                    selected_alignment_datetime,
+                ),
+                selected_alignment_datetime,
+            )
+        except AmbiguousTelemetryAlignmentError as exc:
+            selected_alignment_datetime = self._prompt_for_alignment_candidate(
+                exc.candidates
+            )
+            if selected_alignment_datetime is None:
+                return None, None
+            return (
+                self.extract_data_for_date_and_offset(
+                    file_path,
+                    sheet_name,
+                    target_date,
+                    target_time,
+                    duration,
+                    selected_alignment_datetime,
+                ),
+                selected_alignment_datetime,
+            )
+
+    def _extract_overlay_dataframe(
+        self,
+        file_path,
+        sheet_name,
+        target_date,
+        target_time,
+        extraction_duration,
+        extended_duration,
+        selected_alignment_datetime,
+        label,
+        data_type,
+    ):
+        result, selected_alignment_datetime = self._extract_data_with_alignment_choice(
+            file_path,
+            sheet_name,
+            target_date,
+            target_time,
+            extraction_duration,
+            selected_alignment_datetime,
+        )
+        if result is None:
+            return None, selected_alignment_datetime
+
+        telemetry_data, offset, previous_time = result
+        logger.info(
+            "%s telemetry selected anchor %s with %.3f minute offset.",
+            label,
+            previous_time,
+            offset,
+        )
+        timestamps_5_to_10 = telemetry_data["Date Time"].iloc[4:10].tolist()
+        sample_rate = self.app.calculate_sample_rate(timestamps_5_to_10)
+        trimmed_df = self.extract_and_trim_data(
+            telemetry_data,
+            previous_time,
+            offset,
+            extraction_duration,
+            sample_rate,
+            data_type,
+        )
+        extended_df = self.extract_data_with_buffer(
+            telemetry_data,
+            previous_time,
+            offset,
+            extended_duration,
+            sample_rate,
+        )
+        return (
+            {
+                "source_data": telemetry_data,
+                "sample_rate": sample_rate,
+                "trimmed": trimmed_df,
+                "extended": extended_df,
+            },
+            selected_alignment_datetime,
+        )
+
     def _get_display_time_offset_minutes(self) -> float:
         if getattr(self.app, "data_type", None) != "photometry":
             return 0.0
         if not self.app.graph_settings_container_instance.remove_first_60_minutes_var.get():
             return 0.0
         return float(getattr(self.app, "seconds_removed", 0) or 0) / 60.0
+
+    def _get_full_photometry_duration_minutes(self) -> float:
+        full_dataframe = getattr(self.app, "full_dataframe", None)
+        if full_dataframe is None or full_dataframe.empty:
+            return float(getattr(self.app, "duration_main_data", 0) or 0)
+        time_column = pd.to_numeric(full_dataframe.iloc[:, 0], errors="coerce").dropna()
+        if time_column.empty:
+            return float(getattr(self.app, "duration_main_data", 0) or 0)
+        return float(time_column.iloc[-1] - time_column.iloc[0])
+
+    def _get_full_baseline_reference_column(self, data_column_name: str | None):
+        full_dataframe = getattr(self.app, "full_dataframe", None)
+        if (
+            full_dataframe is None
+            or full_dataframe.empty
+            or data_column_name not in full_dataframe.columns
+        ):
+            return None
+        return full_dataframe[data_column_name]
+
+    def _get_selected_baseline_reference_column(self):
+        data_selection_frame = getattr(self.app, "data_selection_frame", None)
+        selected_column_var = getattr(data_selection_frame, "selected_column_var", None)
+        if selected_column_var is None:
+            return None
+        return self._get_full_baseline_reference_column(selected_column_var.get())
+
+    def _shift_overlay_time_axis(
+        self, dataframe: pd.DataFrame | None, minutes: float
+    ) -> pd.DataFrame | None:
+        if dataframe is None:
+            return None
+        if dataframe.empty or minutes == 0:
+            return dataframe.copy()
+
+        time_column_name = self.find_time_column(dataframe)
+        if time_column_name is None:
+            return dataframe.copy()
+
+        shifted = dataframe.copy()
+        shifted[time_column_name] = (
+            pd.to_numeric(shifted[time_column_name], errors="coerce") - minutes
+        )
+        return shifted
+
+    def _has_cached_raw_telemetry(self) -> bool:
+        return (
+            getattr(self.app, "raw_aligned_temp_data", None) is not None
+            or getattr(self.app, "raw_aligned_act_data", None) is not None
+        )
+
+    def apply_cached_telemetry_for_current_display(self) -> None:
+        display_offset_minutes = self._get_display_time_offset_minutes()
+        self.app.temp_data = self._shift_overlay_time_axis(
+            getattr(self.app, "raw_aligned_temp_data", None),
+            display_offset_minutes,
+        )
+        self.app.act_data = self._shift_overlay_time_axis(
+            getattr(self.app, "raw_aligned_act_data", None),
+            display_offset_minutes,
+        )
+        self.app.extended_temp_data = self._shift_overlay_time_axis(
+            getattr(self.app, "raw_extended_temp_data", None),
+            display_offset_minutes,
+        )
+        self.app.extended_act_data = self._shift_overlay_time_axis(
+            getattr(self.app, "raw_extended_act_data", None),
+            display_offset_minutes,
+        )
+
+    def _update_current_photometry_state(self) -> None:
+        (
+            self.app.time_column,
+            self.app.data_column,
+            self.app.detected_peaks,
+            self.app.clusters_final,
+            self.app.grouped_clusters,
+        ) = self.get_current_photometry_data()
+
+        time_values = pd.to_numeric(self.app.time_column, errors="coerce").dropna()
+        if not time_values.empty:
+            self.app.duration_main_data = float(time_values.iloc[-1] - time_values.iloc[0])
+
+    def _refresh_cluster_static_data(self) -> None:
+        static_settings_store = getattr(self.app, "static_settings_store", None)
+        if static_settings_store is not None:
+            static_settings_store.populate_data_dict(replace_existing=True)
+
+        cluster_table_panel = getattr(self.app, "cluster_table_panel", None)
+        if cluster_table_panel is not None:
+            cluster_table_panel.populate_table()
+
+        populate_dropdown = getattr(self.app, "populate_static_input_dropdown", None)
+        if callable(populate_dropdown):
+            populate_dropdown()
+
+    def _invalidate_cluster_precompute(self) -> None:
+        self.app.mean_cluster_data = {}
+
+    def refresh_after_trim_toggle(self) -> None:
+        if self.app.data_type != "photometry":
+            self.redraw_graph()
+            return
+
+        self._update_current_photometry_state()
+        if self._has_cached_raw_telemetry():
+            self.apply_cached_telemetry_for_current_display()
+
+        self.calculate_nighttime_period()
+        self._refresh_cluster_static_data()
+        self.app.annotate_clusters_with_time_period()
+        self._invalidate_cluster_precompute()
+        self.visualize_photometry_data_with_overlays(
+            self.app.time_column,
+            self.app.data_column,
+            self.app.detected_peaks,
+            self.app.clusters_final,
+            self.app.graph_canvas,
+            self.app.temp_data,
+            self.app.act_data,
+            show_nighttime=True,
+        )
+        self.app.settings_manager.save_variables()
 
     @staticmethod
     def _time_of_day_interval_minutes(span_minutes: float) -> int:
@@ -191,6 +453,48 @@ class TelemetryPlotService:
             return numeric_column.nlargest(5).mean()
         return numeric_column.mean()
 
+    @staticmethod
+    def _finite_series(values) -> pd.Series:
+        numeric_values = pd.to_numeric(values, errors="coerce")
+        return numeric_values[np.isfinite(numeric_values)]
+
+    def _overlay_columns_are_usable(
+        self, dataframe: pd.DataFrame | None, value_column: str, label: str
+    ) -> bool:
+        if dataframe is None or dataframe.empty:
+            logger.warning("%s overlay skipped because no rows were available.", label)
+            return False
+
+        time_column_name = self.find_time_column(dataframe)
+        if time_column_name is None:
+            logger.warning("%s overlay skipped because no time column was found.", label)
+            return False
+        if value_column not in dataframe.columns:
+            logger.warning(
+                "%s overlay skipped because column '%s' was not found.",
+                label,
+                value_column,
+            )
+            return False
+
+        time_values = self._finite_series(dataframe[time_column_name])
+        data_values = self._finite_series(dataframe[value_column])
+        if time_values.empty or data_values.empty:
+            logger.warning(
+                "%s overlay skipped because the selected telemetry window has no finite values.",
+                label,
+            )
+            return False
+        return True
+
+    @staticmethod
+    def _positive_float(value, fallback: float) -> float:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return fallback
+        return number if np.isfinite(number) and number > 0 else fallback
+
     def calculate_dynamic_bins(self, n, b_ref=600, t_ref=1200, k=5):
         bins = int(b_ref * math.log(1 + (n * k / t_ref)))
         return min(n, bins)
@@ -198,9 +502,22 @@ class TelemetryPlotService:
     def find_offset_for_previous_time(self, dataframe, target_time_str):
         return _find_offset_for_previous_time(dataframe, target_time_str)
 
-    def extract_data_for_date_and_offset(self, file_path, sheet_name, target_date, target_time):
+    def extract_data_for_date_and_offset(
+        self,
+        file_path,
+        sheet_name,
+        target_date,
+        target_time,
+        duration=None,
+        selected_alignment_datetime=None,
+    ):
         return _extract_data_for_date_and_offset(
-            file_path, sheet_name, target_date, target_time
+            file_path,
+            sheet_name,
+            target_date,
+            target_time,
+            duration,
+            selected_alignment_datetime,
         )
 
     def extract_and_trim_data(self, dataframe, previous_time, offset, duration, sample_rate, data_type):
@@ -267,8 +584,11 @@ class TelemetryPlotService:
             linewidth=self.app.settings_manager.selected_photometry_line_width,
         )
 
-        median_value = data_column.median()
-        mean_value = data_column.mean()
+        baseline_reference_column = self._get_selected_baseline_reference_column()
+        if baseline_reference_column is None:
+            baseline_reference_column = data_column
+        median_value = baseline_reference_column.median()
+        mean_value = baseline_reference_column.mean()
         baseline_value = mean_value if median_value == 0 else median_value
         baseline_multiplier = float(self.app.baseline_multiplier.get().strip() or 1) - 1
         baseline = baseline_value + (baseline_multiplier * abs(baseline_value))
@@ -337,13 +657,27 @@ class TelemetryPlotService:
         return ax
 
     def overlay_temp_on_figure(self, ax, trimmed_temp_df, sem_temp_data=None, left_axis=True):
+        value_column = "Mean" if sem_temp_data is not None else "Data"
+        if not self._overlay_columns_are_usable(trimmed_temp_df, value_column, "Temperature"):
+            return None
+
         time_column_name = self.find_time_column(trimmed_temp_df)
-        time_data = trimmed_temp_df[time_column_name].copy()
+        time_data = pd.to_numeric(trimmed_temp_df[time_column_name], errors="coerce")
         if "s" in time_column_name.lower():
             time_data = time_data / 60
 
-        time_column = self.app.scale_time_column(time_data)
-        temp_values = trimmed_temp_df["Mean"] if sem_temp_data is not None else trimmed_temp_df["Data"]
+        time_column = self.app.scale_time_column(time_data).reset_index(drop=True)
+        temp_values = pd.to_numeric(
+            trimmed_temp_df[value_column], errors="coerce"
+        ).reset_index(drop=True)
+        finite_mask = np.isfinite(time_column) & np.isfinite(temp_values)
+        time_column = time_column[finite_mask]
+        temp_values = temp_values[finite_mask]
+        if time_column.empty or temp_values.empty:
+            logger.warning(
+                "Temperature overlay skipped because the selected telemetry window has no finite values."
+            )
+            return None
 
         if left_axis:
             ax_temp = ax.twinx()
@@ -365,18 +699,26 @@ class TelemetryPlotService:
         )
 
         if sem_temp_data is not None:
-            sem_values = sem_temp_data.iloc[:, 0].values if isinstance(sem_temp_data, pd.DataFrame) else sem_temp_data.values
-            temp_values = np.array(temp_values, dtype=float)
-            sem_values = np.array(sem_values, dtype=float)
-            lower_bound = temp_values - sem_values
-            upper_bound = temp_values + sem_values
-            ax_temp.fill_between(
-                time_column,
-                lower_bound,
-                upper_bound,
-                color=self.app.settings_manager.selected_temp_sem_color,
-                alpha=float(self.app.settings_manager.selected_temp_sem_line_alpha),
+            sem_series = (
+                sem_temp_data.iloc[:, 0]
+                if isinstance(sem_temp_data, pd.DataFrame)
+                else sem_temp_data
             )
+            sem_values = pd.to_numeric(sem_series, errors="coerce")
+            sem_values = sem_values.reset_index(drop=True)[finite_mask]
+            sem_mask = np.isfinite(sem_values)
+            if sem_mask.any():
+                temp_array = np.array(temp_values[sem_mask], dtype=float)
+                sem_array = np.array(sem_values[sem_mask], dtype=float)
+                lower_bound = temp_array - sem_array
+                upper_bound = temp_array + sem_array
+                ax_temp.fill_between(
+                    time_column[sem_mask],
+                    lower_bound,
+                    upper_bound,
+                    color=self.app.settings_manager.selected_temp_sem_color,
+                    alpha=float(self.app.settings_manager.selected_temp_sem_line_alpha),
+                )
 
         ax_temp.set_ylabel(
             "Temperature (\N{DEGREE SIGN}C)",
@@ -384,18 +726,54 @@ class TelemetryPlotService:
         )
         ax_temp.tick_params(axis="y", labelcolor=self.app.settings_manager.selected_temp_sem_color)
 
-        if sem_temp_data is not None and "SEM" in trimmed_temp_df.columns:
-            sem_min = trimmed_temp_df["SEM"].min()
-            sem_max = trimmed_temp_df["SEM"].max()
-            actual_temp_min = min(trimmed_temp_df["Mean"].min() - sem_min, trimmed_temp_df["Mean"].min())
-            actual_temp_max = max(trimmed_temp_df["Mean"].max() + sem_max, trimmed_temp_df["Mean"].max())
+        if sem_temp_data is not None:
+            sem_series = (
+                sem_temp_data.iloc[:, 0]
+                if isinstance(sem_temp_data, pd.DataFrame)
+                else sem_temp_data
+            )
+            sem_values_for_limits = pd.to_numeric(
+                sem_series, errors="coerce"
+            ).reset_index(drop=True)[finite_mask]
+            sem_values_for_limits = sem_values_for_limits[np.isfinite(sem_values_for_limits)]
+            if sem_values_for_limits.empty:
+                actual_temp_min = temp_values.min()
+                actual_temp_max = temp_values.max()
+            else:
+                aligned_temp_values = temp_values.loc[sem_values_for_limits.index]
+                actual_temp_min = min(
+                    (aligned_temp_values - sem_values_for_limits).min(),
+                    aligned_temp_values.min(),
+                )
+                actual_temp_max = max(
+                    (aligned_temp_values + sem_values_for_limits).max(),
+                    aligned_temp_values.max(),
+                )
         else:
-            actual_temp_min = trimmed_temp_df["Data"].min()
-            actual_temp_max = trimmed_temp_df["Data"].max()
+            actual_temp_min = temp_values.min()
+            actual_temp_max = temp_values.max()
+
+        if not np.isfinite(actual_temp_min) or not np.isfinite(actual_temp_max):
+            logger.warning("Temperature overlay skipped because axis limits were not finite.")
+            ax_temp.remove()
+            return None
+
+        if actual_temp_min == actual_temp_max:
+            padding = max(abs(float(actual_temp_min)) * 0.01, 0.5)
+            actual_temp_min -= padding
+            actual_temp_max += padding
 
         temp_difference = actual_temp_max - actual_temp_min
-        temp_desired_scale = float(self.app.settings_manager.selected_temp_desired_scale)
-        temp_position_factor = float(self.app.settings_manager.selected_temp_desired_offset)
+        temp_desired_scale = self._positive_float(
+            self.app.settings_manager.selected_temp_desired_scale,
+            1.0,
+        )
+        try:
+            temp_position_factor = float(self.app.settings_manager.selected_temp_desired_offset)
+        except (TypeError, ValueError):
+            temp_position_factor = 0.5
+        if not np.isfinite(temp_position_factor):
+            temp_position_factor = 0.5
         scaled_temp_difference = temp_difference / temp_desired_scale
         total_padding = scaled_temp_difference - temp_difference
         bottom_padding = total_padding * temp_position_factor
@@ -405,25 +783,46 @@ class TelemetryPlotService:
 
         ax_temp.set_ylim(temp_desired_range_min, temp_desired_range_max)
         ax_temp.spines["top"].set_visible(False)
+        return ax_temp
 
     def overlay_act_on_figure(self, ax, act_data, ymin_photometry, ymax_photometry, sem_act_data=None):
+        value_column = "Mean" if sem_act_data is not None else "Data"
+        if not self._overlay_columns_are_usable(act_data, value_column, "Activity"):
+            return None
+
         time_column_name = self.find_time_column(act_data)
-        time_data = act_data[time_column_name].copy()
+        time_data = pd.to_numeric(act_data[time_column_name], errors="coerce")
         if "s" in time_column_name.lower():
             time_data = time_data / 60
 
-        time_column = self.app.scale_time_column(time_data)
-        act_values = act_data["Mean"] if sem_act_data is not None else act_data["Data"]
+        time_column = self.app.scale_time_column(time_data).reset_index(drop=True)
+        act_values = pd.to_numeric(
+            act_data[value_column], errors="coerce"
+        ).reset_index(drop=True)
+        finite_mask = np.isfinite(time_column) & np.isfinite(act_values)
+        time_column = time_column[finite_mask]
+        act_values = act_values[finite_mask]
+        if time_column.empty or act_values.empty:
+            logger.warning(
+                "Activity overlay skipped because the selected telemetry window has no finite values."
+            )
+            return None
+
         ax_act = ax.twinx()
 
-        max_act_modifier = float(self.app.settings_manager.selected_activity_desired_scale)
+        max_act_modifier = self._positive_float(
+            self.app.settings_manager.selected_activity_desired_scale,
+            1.0,
+        )
         baseline_modifier = max_act_modifier * 0
         desired_baseline = ymin_photometry - baseline_modifier
 
         if sem_act_data is not None:
-            histogram_height = self.mean_of_top_five(act_data["Mean"]) / max_act_modifier
+            histogram_height = self.mean_of_top_five(act_values) / max_act_modifier
         else:
-            histogram_height = self.mean_of_top_five(act_data["Data"]) / max_act_modifier
+            histogram_height = self.mean_of_top_five(act_values) / max_act_modifier
+        if not np.isfinite(histogram_height):
+            histogram_height = 1.0
 
         act_ymax_with_offset = desired_baseline + histogram_height
         ax.set_ylim((ymin_photometry - baseline_modifier), ymax_photometry + (0.05 * ymax_photometry))
@@ -438,6 +837,7 @@ class TelemetryPlotService:
             num_bins = self.calculate_dynamic_bins(len(time_column))
         else:
             num_bins = int(num_bins)
+        num_bins = max(1, int(num_bins))
 
         ax_act.hist(
             time_column,
@@ -453,6 +853,8 @@ class TelemetryPlotService:
         ax_act.tick_params(axis="y", labelcolor=self.app.settings_manager.selected_activity_mean_bar_color, labelright=True)
         ax_act.spines["left"].set_visible(False)
         ax_act.spines["top"].set_visible(False)
+        if not np.isfinite(act_ymax_with_offset) or act_ymax_with_offset <= 0:
+            act_ymax_with_offset = max(1.0, float(np.nanmax(act_values)) if len(act_values) else 1.0)
         ax_act.set_ylim(0, act_ymax_with_offset)
         return ax_act
 
@@ -461,14 +863,19 @@ class TelemetryPlotService:
         act_present = act_data is not None and self.app.graph_settings_container_instance.activity_data_var.get()
 
         if temp_present and act_present:
-            ax.yaxis.set_visible(False)
-            self.overlay_temp_on_figure(ax, temp_data, left_axis=True)
+            ax_temp = self.overlay_temp_on_figure(ax, temp_data, left_axis=True)
+            if ax_temp is not None:
+                ax.yaxis.set_visible(False)
             ax_act = self.overlay_act_on_figure(ax, act_data, ymin, ymax)
+            if ax_act is None:
+                ax_act = ax
         elif temp_present:
             self.overlay_temp_on_figure(ax, temp_data, left_axis=False)
             ax_act = ax
         elif act_present:
             ax_act = self.overlay_act_on_figure(ax, act_data, ymin, ymax)
+            if ax_act is None:
+                ax_act = ax
         else:
             ax_act = ax
 
@@ -580,8 +987,14 @@ class TelemetryPlotService:
             self.app.dataframe = self.app.full_dataframe.copy()
 
         detected_peaks = self.app.detect_peaks_with_optimal_prominence(self.app.dataframe[data_column_name])
+        baseline_reference_column = self._get_full_baseline_reference_column(
+            data_column_name
+        )
         clusters_final, self.app.cluster_dict = self.app.identify_clusters(
-            self.app.dataframe.iloc[:, 0], self.app.dataframe[data_column_name], detected_peaks
+            self.app.dataframe.iloc[:, 0],
+            self.app.dataframe[data_column_name],
+            detected_peaks,
+            baseline_reference_column=baseline_reference_column,
         )
         grouped_clusters = self.app.group_clusters_by_peak_count(self.app.cluster_dict)
         return (
@@ -596,8 +1009,16 @@ class TelemetryPlotService:
         target_date = self.app.date
         act_file_path = self.app.act_file_path
         temp_file_path = self.app.temp_file_path
-        duration_main_data = self.app.duration_main_data
-        extended_duration = duration_main_data + 60
+        full_duration = self._get_full_photometry_duration_minutes()
+        display_offset_minutes = self._get_display_time_offset_minutes()
+        extraction_duration = full_duration
+        extended_duration = full_duration + 60
+        act_data = None
+        temp_data = None
+        self.app.raw_aligned_act_data = None
+        self.app.raw_extended_act_data = None
+        self.app.raw_aligned_temp_data = None
+        self.app.raw_extended_temp_data = None
         self.app.display_dropdown.configure(state="normal")
 
         parsed_date = self.custom_date_parser(target_date)
@@ -615,70 +1036,94 @@ class TelemetryPlotService:
         else:
             target_time = self.app.temp_and_act_start_time_var.get().strip()
 
-        seconds_removed = getattr(self.app, "seconds_removed", 0) or 0
-        if (
-            seconds_removed
-            and getattr(self.app, "graph_settings_container_instance", None) is not None
-            and getattr(
-                self.app.graph_settings_container_instance,
-                "remove_first_60_minutes_var",
-                None,
-            ) is not None
-            and self.app.graph_settings_container_instance.remove_first_60_minutes_var.get()
-        ):
-            dummy_base = pd.Timestamp(f"2000-01-01 {target_time}")
-            adjusted = dummy_base + pd.Timedelta(seconds=float(seconds_removed))
-            target_time = adjusted.strftime("%H:%M:%S")
-            if adjusted.day > dummy_base.day:
-                parsed_date = parsed_date + timedelta(days=1)
-                formatted_date = parsed_date.strftime("%m/%d/%Y")
+        logger.info(
+            "Telemetry extraction requested for %s %s over %.3f raw minutes; "
+            "display offset is %.3f minutes.",
+            formatted_date,
+            target_time,
+            extraction_duration,
+            display_offset_minutes,
+        )
 
+        selected_alignment_datetime = None
+        act_overlay = None
+        temp_overlay = None
         if act_file_path is not None:
-            act_data, act_offset, act_previous_time = self.extract_data_for_date_and_offset(
-                act_file_path, self.app.mouse_name, formatted_date, target_time
+            act_overlay, selected_alignment_datetime = self._extract_overlay_dataframe(
+                act_file_path,
+                self.app.mouse_name,
+                formatted_date,
+                target_time,
+                extraction_duration,
+                extended_duration,
+                selected_alignment_datetime,
+                "Activity",
+                "act",
             )
-            act_timestamps_5_to_10 = act_data["Date Time"].iloc[4:10].tolist()
-            act_sample_rate = self.app.calculate_sample_rate(act_timestamps_5_to_10)
-            self.app.act_sample_rate = act_sample_rate
-            trimmed_act_df = self.extract_and_trim_data(
-                act_data, act_previous_time, act_offset, duration_main_data, act_sample_rate, "act"
-            )
-            self.app.extended_act_data = self.extract_data_with_buffer(
-                act_data, act_previous_time, act_offset, extended_duration, act_sample_rate
-            )
-            self.app.act_data = trimmed_act_df
+            if act_overlay is None:
+                return None, None
 
         if temp_file_path is not None:
-            temp_data, temp_offset, temp_previous_time = self.extract_data_for_date_and_offset(
-                temp_file_path, self.app.mouse_name, formatted_date, target_time
+            selected_before_temp = selected_alignment_datetime
+            temp_overlay, selected_alignment_datetime = self._extract_overlay_dataframe(
+                temp_file_path,
+                self.app.mouse_name,
+                formatted_date,
+                target_time,
+                extraction_duration,
+                extended_duration,
+                selected_alignment_datetime,
+                "Temperature",
+                "temp",
             )
-            temp_timestamps_5_to_10 = temp_data["Date Time"].iloc[4:10].tolist()
-            temp_sample_rate = self.app.calculate_sample_rate(temp_timestamps_5_to_10)
-            self.app.temp_sample_rate = temp_sample_rate
-            trimmed_temp_df = self.extract_and_trim_data(
-                temp_data, temp_previous_time, temp_offset, duration_main_data, temp_sample_rate, "temp"
-            )
-            self.app.extended_temp_data = self.extract_data_with_buffer(
-                temp_data, temp_previous_time, temp_offset, extended_duration, temp_sample_rate
-            )
-            self.app.temp_data = trimmed_temp_df
+            if temp_overlay is None:
+                return None, None
 
-        if self.app.data_type == "photometry":
+            if (
+                selected_before_temp is None
+                and selected_alignment_datetime is not None
+                and act_file_path is not None
+            ):
+                act_overlay, _ = self._extract_overlay_dataframe(
+                    act_file_path,
+                    self.app.mouse_name,
+                    formatted_date,
+                    target_time,
+                    extraction_duration,
+                    extended_duration,
+                    selected_alignment_datetime,
+                    "Activity",
+                    "act",
+                )
+                if act_overlay is None:
+                    return None, None
+
+        if act_overlay is not None:
+            act_data = act_overlay["source_data"]
+            self.app.act_sample_rate = act_overlay["sample_rate"]
+            self.app.raw_extended_act_data = act_overlay["extended"]
+            self.app.raw_aligned_act_data = act_overlay["trimmed"]
+
+        if temp_overlay is not None:
+            temp_data = temp_overlay["source_data"]
+            self.app.temp_sample_rate = temp_overlay["sample_rate"]
+            self.app.raw_extended_temp_data = temp_overlay["extended"]
+            self.app.raw_aligned_temp_data = temp_overlay["trimmed"]
+
+        if self.app.data_type == "photometry" and temp_data is not None:
             temp_data = self.upsample_data(temp_data)
             temp_sample_rate = 0.1
 
-        self.calculate_nighttime_period()
+        self.apply_cached_telemetry_for_current_display()
+        trimmed_temp_df = self.app.temp_data
+        trimmed_act_df = self.app.act_data
 
         if self.app.data_type == "photometry":
-            (
-                self.app.time_column,
-                self.app.data_column,
-                self.app.detected_peaks,
-                self.app.clusters_final,
-                self.app.grouped_clusters,
-            ) = self.get_current_photometry_data()
+            self._update_current_photometry_state()
+            self.calculate_nighttime_period()
+            self._refresh_cluster_static_data()
             self.app.annotate_clusters_with_time_period()
-            self.app.precompute_all_clusters()
+            self._invalidate_cluster_precompute()
             self.visualize_photometry_data_with_overlays(
                 self.app.time_column,
                 self.app.data_column,
@@ -694,19 +1139,24 @@ class TelemetryPlotService:
             self.app.static_settings_store.populate_data_dict()
             self.app.cluster_table_panel.populate_table()
             self.app.populate_static_input_dropdown()
+            self.calculate_nighttime_period()
             self.app.annotate_clusters_with_time_period()
             self.app.precompute_all_clusters()
             self.visualize_opto_data_with_overlays(show_nighttime=True)
 
     def redraw_graph(self):
         if self.app.data_type == "photometry":
-            time_column, data_column, detected_peaks, clusters_final, _ = self.get_current_photometry_data()
-            if self.app.act_data is not None and self.app.temp_data is not None:
+            self._update_current_photometry_state()
+            if self._has_cached_raw_telemetry():
+                self.apply_cached_telemetry_for_current_display()
+            self.calculate_nighttime_period()
+
+            if self.app.act_data is not None or self.app.temp_data is not None:
                 self.visualize_photometry_data_with_overlays(
-                    time_column,
-                    data_column,
-                    detected_peaks,
-                    clusters_final,
+                    self.app.time_column,
+                    self.app.data_column,
+                    self.app.detected_peaks,
+                    self.app.clusters_final,
                     self.app.graph_canvas,
                     self.app.temp_data,
                     self.app.act_data,
@@ -714,7 +1164,11 @@ class TelemetryPlotService:
                 )
             else:
                 self.visualize_photometry_data_with_overlays(
-                    time_column, data_column, detected_peaks, clusters_final, self.app.graph_canvas
+                    self.app.time_column,
+                    self.app.data_column,
+                    self.app.detected_peaks,
+                    self.app.clusters_final,
+                    self.app.graph_canvas,
                 )
         elif self.app.data_type == "optogenetics":
             self.visualize_opto_data_with_overlays(show_nighttime=True)

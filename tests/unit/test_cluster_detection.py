@@ -30,6 +30,27 @@ def test_identify_clusters_merges_nearby_clusters_when_requested():
     assert cluster_dict[(1, 4, 2)]["name"] == "2 Peaks in Cluster_1"
 
 
+def test_identify_clusters_can_use_full_trace_baseline_reference():
+    time_column = pd.Series(range(7), dtype=float)
+    trimmed_data = pd.Series([0.0, 0.0, 5.0, 4.0, 5.0, 0.0, 0.0])
+    full_trace_reference = pd.Series([4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0])
+
+    _, current_baseline_clusters = identify_clusters(
+        time_column,
+        trimmed_data,
+        peak_indices=[2, 4],
+    )
+    _, full_baseline_clusters = identify_clusters(
+        time_column,
+        trimmed_data,
+        peak_indices=[2, 4],
+        baseline_reference_column=full_trace_reference,
+    )
+
+    assert list(current_baseline_clusters) == [(2, 5, 2)]
+    assert list(full_baseline_clusters) == [(2, 3, 1), (4, 5, 1)]
+
+
 def test_process_cluster_window_aligns_temp_and_act_to_peak_time():
     cluster_data = {
         "name": "1 Peak in Cluster_1",

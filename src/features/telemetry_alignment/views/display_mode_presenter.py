@@ -175,7 +175,19 @@ class TelemetryDisplayPresenter:
         cluster_count = int(re.search(r"(\d+)", selected_cluster_string).group(1))
         is_peak = "peak" in selected_cluster_string.lower()
 
-        cluster_data = self.app.mean_cluster_data[cluster_count][period]
+        cluster_data_by_period = self.app.mean_cluster_data.get(cluster_count)
+        if cluster_data_by_period is None:
+            if is_peak:
+                self.app.compute_data_for_cluster(cluster_count)
+            else:
+                self.app.compute_data_for_stim_cluster(cluster_count)
+            cluster_data_by_period = self.app.mean_cluster_data.get(cluster_count)
+
+        if cluster_data_by_period is None or period not in cluster_data_by_period:
+            self.display_no_data_figure()
+            return
+
+        cluster_data = cluster_data_by_period[period]
         photometry_data = cluster_data.get("photometry_cluster_data")
 
         if is_peak and photometry_data is None:

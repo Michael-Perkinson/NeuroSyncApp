@@ -168,15 +168,31 @@ class ExportOptionsPanel(QFrame):
             logging.Formatter("%(levelname)s | %(name)s | %(message)s")
         )
         logging.getLogger().addHandler(self.log_handler)
+        # closeEvent only fires for top-level windows; when this panel is
+        # destroyed as a child of a closing/switching tool the handler would
+        # otherwise stay registered on the root logger and later crash on a
+        # deleted widget. Deregister as soon as the log widget is destroyed.
+        self.log_output.destroyed.connect(self._detach_log_handler)
 
-    def clear_log_output(self) -> None:
-        self.log_output.clear()
-
-    def closeEvent(self, event) -> None:  # pragma: no cover - GUI lifecycle
+    def _detach_log_handler(self) -> None:
         if self.log_handler is not None:
             logging.getLogger().removeHandler(self.log_handler)
+            self.log_handler.close()
             self.log_handler = None
+
+    def clear_log_output(self) -> None:
+        try:
+            self.log_output.clear()
+        except RuntimeError:
+            self._detach_log_handler()
+
+    def closeEvent(self, event) -> None:  # pragma: no cover - GUI lifecycle
+        self.prepare_for_unload()
         super().closeEvent(event)
+
+    def prepare_for_unload(self) -> bool:
+        self._detach_log_handler()
+        return True
 
     def open_font_settings_popup(self) -> None:
         popup = QDialog(self)

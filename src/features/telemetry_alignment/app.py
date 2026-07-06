@@ -173,6 +173,10 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
                 "temp_data": None,
                 "extended_temp_data": None,
                 "extended_act_data": None,
+                "raw_aligned_act_data": None,
+                "raw_aligned_temp_data": None,
+                "raw_extended_act_data": None,
+                "raw_extended_temp_data": None,
                 "seconds_removed": 0,
                 "figure_cache": {},
                 "act_file_path": None,
@@ -503,6 +507,20 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
     def precompute_all_clusters(self, updated_clusters=None):
         self.cluster_service.precompute_all_clusters(updated_clusters)
 
+    def ensure_all_mean_cluster_data(self):
+        """Populate all mean-cluster data when an export needs it."""
+        if self.extended_temp_data is None or self.extended_act_data is None:
+            return
+
+        expected_cluster_numbers = set(self.get_peak_counts()) | set(self.get_stim_counts())
+        missing_cluster_numbers = [
+            cluster_number
+            for cluster_number in expected_cluster_numbers
+            if cluster_number not in self.mean_cluster_data
+        ]
+        if missing_cluster_numbers:
+            self.precompute_all_clusters()
+
     def compute_data_for_stim_cluster(self, selected_stim_count, changed_static_inputs=None):
         """
         Compute data for the specified stim cluster and store the processed data for each period.
@@ -718,21 +736,20 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         Returns:
             float: The calculated sample rate.
         """
-        if isinstance(timestamps[0], datetime):
-            times = [timestamp.time() for timestamp in timestamps]
-
-            # Calculate differences in seconds between successive timestamps
-            time_diffs = [
-                self.time_to_seconds(times[i + 1]) -
-                self.time_to_seconds(times[i])
-                for i in range(len(times) - 1)
-            ]
+        if isinstance(timestamps[0], (datetime, pd.Timestamp, np.datetime64)):
+            parsed_timestamps = pd.to_datetime(pd.Series(timestamps), errors="coerce")
+            time_diffs = (
+                parsed_timestamps.diff().dt.total_seconds().dropna().tolist()
+            )
         else:
             time_diffs = [
                 timestamps[i + 1] - timestamps[i]
                 for i in range(len(timestamps) - 1)
             ]
 
+        time_diffs = [diff for diff in time_diffs if diff > 0]
+        if not time_diffs:
+            raise ValueError("Could not calculate a positive telemetry sample interval.")
         return sum(time_diffs) / len(time_diffs)
 
     def separate_clusters_by_time_period(self):
@@ -1325,13 +1342,20 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
 
         return sub_threshold_peaks
 
-    def identify_clusters(self, time_column, data_column, peak_indices):
+    def identify_clusters(
+        self,
+        time_column,
+        data_column,
+        peak_indices,
+        baseline_reference_column=None,
+    ):
         return _identify_clusters(
             time_column,
             data_column,
             peak_indices,
             self.view_state.baseline_multiplier,
             self.view_state.adjust_clustering,
+            baseline_reference_column=baseline_reference_column,
         )
 
     def reset_clusters_based_on_user_input(self):
@@ -1474,9 +1498,22 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             dataframe, previous_time, offset, duration, sample_rate, data_type
         )
 
-    def extract_data_for_date_and_offset(self, file_path, sheet_name, target_date, target_time):
+    def extract_data_for_date_and_offset(
+        self,
+        file_path,
+        sheet_name,
+        target_date,
+        target_time,
+        duration=None,
+        selected_alignment_datetime=None,
+    ):
         return self.plot_service.extract_data_for_date_and_offset(
-            file_path, sheet_name, target_date, target_time
+            file_path,
+            sheet_name,
+            target_date,
+            target_time,
+            duration,
+            selected_alignment_datetime,
         )
 
     def extract_data_with_buffer(self, dataframe, previous_time, offset, duration, sample_rate):
@@ -1743,6 +1780,17 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         self.figure_canvas = None
         self.toolbar = None
 
+    def prepare_for_unload(self) -> bool:
+        export_options = getattr(self, "export_options_container", None)
+        if export_options is not None:
+            export_options.prepare_for_unload()
+        self.delete_current_figure()
+        return True
+
+    def closeEvent(self, event) -> None:  # pragma: no cover - Qt lifecycle
+        self.prepare_for_unload()
+        super().closeEvent(event)
+
     def save_and_close_label_settings(self, popup):
         self.label_settings_dialog.save_and_close_label_settings(popup)
 
@@ -1893,6 +1941,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         - file_path_var: Variable containing the file path.
         """
         if self.export_options_container.use_binned_data_var.get() == 1:
+            self.ensure_all_mean_cluster_data()
             self.bin_all_cluster_data()
             file_path = self._get_current_file_path()
             original_file_name = os.path.splitext(
@@ -1934,6 +1983,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
 
     def bin_all_cluster_data(self):
         """Bin all mean-cluster data using the persisted per-cluster bin sizes."""
+        self.ensure_all_mean_cluster_data()
         file_data = list(self.data_dict.values())[0]
         _apply_cluster_binning(self.mean_cluster_data, file_data)
 

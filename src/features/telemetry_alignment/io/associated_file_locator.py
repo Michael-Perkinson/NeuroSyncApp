@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from pathlib import Path
 import re
@@ -13,6 +13,62 @@ from PySide6.QtWidgets import QFileDialog
 from src.gui.shared.qt_bindings import ObservableValue
 
 logger = logging.getLogger(__name__)
+
+
+def _date_name_variants(date: str | None) -> set[str]:
+    match = re.fullmatch(r"(\d+)-(\d+)-(\d+)", str(date or "").strip())
+    if match is None:
+        return {str(date or "").strip()}
+
+    year, month, day = match.groups()
+    return {
+        f"{year}-{int(month)}-{int(day)}",
+        f"{year}-{int(month):02d}-{int(day):02d}",
+    }
+
+
+def _filename_matches_date(file_name: str, date: str | None) -> bool:
+    file_name_lower = file_name.lower()
+    for variant in _date_name_variants(date):
+        if not variant:
+            continue
+        pattern = rf"(?<!\d){re.escape(variant.lower())}(?!\d)"
+        if re.search(pattern, file_name_lower):
+            return True
+    return False
+
+
+def _shift_date_name(date: str | None, days: int) -> str | None:
+    match = re.fullmatch(r"(\d+)-(\d+)-(\d+)", str(date or "").strip())
+    if match is None:
+        return None
+
+    year, month, day = match.groups()
+    full_year = int(year) if len(year) == 4 else 2000 + int(year)
+    shifted = datetime(full_year, int(month), int(day)) + timedelta(days=days)
+    output_year = f"{shifted.year:04d}" if len(year) == 4 else shifted.strftime("%y")
+    return f"{output_year}-{shifted.month}-{shifted.day}"
+
+
+def _matching_files_for_date(file_names: list[str], label: str, date: str | None) -> list[str]:
+    exact_matches = [
+        file_name
+        for file_name in file_names
+        if label in file_name.lower() and _filename_matches_date(file_name, date)
+    ]
+    if exact_matches:
+        return exact_matches
+
+    previous_date = _shift_date_name(date, -1)
+    if previous_date is None:
+        return []
+
+    return [
+        file_name
+        for file_name in file_names
+        if label in file_name.lower()
+        and _filename_matches_date(file_name, previous_date)
+    ]
 
 
 class TelemetryAssociatedFileLocator:
@@ -34,16 +90,13 @@ class TelemetryAssociatedFileLocator:
         folder_path = Path(folder_path_str)
         self.app.settings_manager.telemetry_folder_path = str(folder_path)
 
-        temp_files = [
+        folder_files = [
             file.name
             for file in folder_path.iterdir()
-            if file.is_file() and "temp" in file.name.lower() and date in file.name
+            if file.is_file() and not file.name.startswith("._")
         ]
-        act_files = [
-            file.name
-            for file in folder_path.iterdir()
-            if file.is_file() and "act" in file.name.lower() and date in file.name
-        ]
+        temp_files = _matching_files_for_date(folder_files, "temp", date)
+        act_files = _matching_files_for_date(folder_files, "act", date)
 
         temp_file_path = str(folder_path / temp_files[0]) if temp_files else None
         act_file_path = str(folder_path / act_files[0]) if act_files else None
@@ -141,23 +194,14 @@ class TelemetryAssociatedFileLocator:
         if not main_file_directory.exists():
             return None, None
 
-        date_pattern = re.compile(rf"\b{date}\b")
         all_files = [
             file.name
             for file in main_file_directory.iterdir()
             if file.is_file() and not file.name.startswith("._")
         ]
 
-        temp_files = [
-            file_name
-            for file_name in all_files
-            if "temp" in file_name.lower() and date_pattern.search(file_name)
-        ]
-        act_files = [
-            file_name
-            for file_name in all_files
-            if "act" in file_name.lower() and date_pattern.search(file_name)
-        ]
+        temp_files = _matching_files_for_date(all_files, "temp", date)
+        act_files = _matching_files_for_date(all_files, "act", date)
 
         temp_file_path = (
             str(main_file_directory / temp_files[0]) if temp_files else None
@@ -169,22 +213,26 @@ class TelemetryAssociatedFileLocator:
             telemetry_directory = Path(telemetry_folder_path)
             if telemetry_directory.exists():
                 if not temp_file_path:
-                    temp_files = [
+                    telemetry_files = [
                         file.name
                         for file in telemetry_directory.iterdir()
-                        if file.is_file()
-                        and "temp" in file.name.lower()
-                        and date in file.name
+                        if file.is_file() and not file.name.startswith("._")
                     ]
+                    temp_files = _matching_files_for_date(
+                        telemetry_files, "temp", date
+                    )
                     temp_file_path = (
                         str(telemetry_directory / temp_files[0]) if temp_files else None
                     )
                 if not act_file_path:
-                    act_files = [
+                    telemetry_files = [
                         file.name
                         for file in telemetry_directory.iterdir()
-                        if file.is_file() and "act" in file.name.lower() and date in file.name
+                        if file.is_file() and not file.name.startswith("._")
                     ]
+                    act_files = _matching_files_for_date(
+                        telemetry_files, "act", date
+                    )
                     act_file_path = (
                         str(telemetry_directory / act_files[0]) if act_files else None
                     )

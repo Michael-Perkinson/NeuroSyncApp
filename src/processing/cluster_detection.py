@@ -26,10 +26,16 @@ def identify_clusters(
     peak_indices,
     baseline_multiplier=1,
     adjust_clustering_seconds=None,
+    baseline_reference_column=None,
 ) -> tuple[list[tuple[int, int]], dict]:
     """Identify valid clusters and return both spans and cluster metadata."""
-    median_value = data_column.median()
-    mean_value = data_column.mean()
+    reference_column = (
+        data_column
+        if baseline_reference_column is None
+        else pd.Series(baseline_reference_column)
+    )
+    median_value = reference_column.median()
+    mean_value = reference_column.mean()
     baseline_value = mean_value if median_value == 0 else median_value
 
     resolved_baseline_multiplier = (_parse_optional_float(baseline_multiplier) or 1.0) - 1.0

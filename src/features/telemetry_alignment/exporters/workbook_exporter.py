@@ -38,6 +38,12 @@ class TelemetryWorkbookExporter:
         self.app = app
 
     def create_sheets_for_clusters(self, writer):
+        ensure_all_mean_cluster_data = getattr(
+            self.app, "ensure_all_mean_cluster_data", None
+        )
+        if callable(ensure_all_mean_cluster_data):
+            ensure_all_mean_cluster_data()
+
         unique_cluster_numbers = self.app.mean_cluster_data.keys()
         sorted_cluster_numbers = sorted(unique_cluster_numbers)
 
