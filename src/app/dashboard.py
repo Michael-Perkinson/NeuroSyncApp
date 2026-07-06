@@ -116,16 +116,30 @@ class QtDashboard(QMainWindow):
 
         self.sidebar_layout.addStretch(1)
 
-    def _clear_content(self) -> None:
+    def _prepare_widget_for_unload(self, widget: QWidget) -> bool:
+        prepare_for_unload = getattr(widget, "prepare_for_unload", None)
+        if callable(prepare_for_unload):
+            result = prepare_for_unload()
+            return True if result is None else bool(result)
+        return True
+
+    def _clear_content(self) -> bool:
         while self.content_layout and self.content_layout.count():
+            item = self.content_layout.itemAt(0)
+            widget = item.widget()
+            if widget is not None and not self._prepare_widget_for_unload(widget):
+                return False
+
             item = self.content_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
+        return True
 
     def load_app(self, app_id: str) -> None:
         definition = get_app_definition(app_id)
-        self._clear_content()
+        if not self._clear_content():
+            return
         save_state(app_id)
         self._hide_sidebar()
 
@@ -184,3 +198,9 @@ class QtDashboard(QMainWindow):
             definition = get_app_definition(DEFAULT_APP_ID)
 
         self.load_app(definition.app_id)
+
+    def closeEvent(self, event) -> None:  # pragma: no cover - Qt lifecycle
+        if not self._clear_content():
+            event.ignore()
+            return
+        super().closeEvent(event)

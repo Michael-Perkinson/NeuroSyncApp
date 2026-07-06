@@ -47,7 +47,10 @@ def create_telemetry_graph_settings_panel(parent, app) -> GraphSettingsPanel:
 
         def _on_trim_toggled():
             if app.act_file_path and app.temp_file_path:
-                app.plot_service.overlay_temp_and_act()
+                if app.plot_service._has_cached_raw_telemetry():
+                    app.plot_service.refresh_after_trim_toggle()
+                else:
+                    app.plot_service.overlay_temp_and_act()
             else:
                 app.redraw_graph()
 

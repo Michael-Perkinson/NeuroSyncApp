@@ -300,7 +300,15 @@ class GraphPanel(QWidget):
             item = self._layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
-                widget.close()
+                if isinstance(widget, FigureCanvasQTAgg):
+                    widget._draw_pending = False
+                    widget._is_drawing = False
+                    try:
+                        widget.figure.clear()
+                    except Exception:
+                        pass
+                widget.hide()
+                widget.setParent(None)
                 widget.deleteLater()
         self.canvas = None
         self.toolbar = None
@@ -403,6 +411,7 @@ class RawPhotometryProcessingQt(QWidget):
         self._log_handler_loggers: list[logging.Logger] = []
         self._log_signal_connected = False
         self._log_edit: QPlainTextEdit | None = None
+        self._unloading = False
         self._build_ui()
 
     # ── UI construction ────────────────────────────────────────────────────
@@ -820,10 +829,17 @@ QPlainTextEdit {{
             self._teardown_log_handler()
 
     def closeEvent(self, event) -> None:  # pragma: no cover - Qt lifecycle
-        if not self._shutdown_for_close():
+        if not self.prepare_for_unload():
             event.ignore()
             return
         super().closeEvent(event)
+
+    def prepare_for_unload(self) -> bool:
+        self._unloading = True
+        if not self._shutdown_for_close():
+            self._unloading = False
+            return False
+        return True
 
     def _shutdown_for_close(self) -> bool:
         self._teardown_log_handler()
@@ -836,6 +852,7 @@ QPlainTextEdit {{
                     "Analysis is still finishing. Close the window again when it is done.",
                 )
                 return False
+            QApplication.processEvents()
         while QApplication.overrideCursor() is not None:
             QApplication.restoreOverrideCursor()
         for panel in (
@@ -1219,6 +1236,8 @@ QPlainTextEdit {{
         )
 
     def _options_done(self, data: object) -> None:
+        if self._unloading:
+            return
         self._set_busy(False)
         self._options_data = data
         try:
@@ -1230,6 +1249,8 @@ QPlainTextEdit {{
             QMessageBox.critical(self, "Plot error", str(exc))
 
     def _options_failed(self, message: str) -> None:
+        if self._unloading:
+            return
         self._set_busy(False)
         QMessageBox.critical(self, "DFer options error", message)
 
@@ -1360,6 +1381,8 @@ QPlainTextEdit {{
         )
 
     def _run_final_done(self, out_csv: object) -> None:
+        if self._unloading:
+            return
         self._set_busy(False)
         self._dfer_result_csv = str(out_csv) if out_csv else None
         self._dfer_result_frame = None
@@ -1383,6 +1406,8 @@ QPlainTextEdit {{
             self._dfer_result_label.setText("Analysis complete — no output path returned.")
 
     def _run_final_failed(self, message: str) -> None:
+        if self._unloading:
+            return
         self._set_busy(False)
         QMessageBox.critical(self, "DFer error", message)
 
@@ -1408,6 +1433,8 @@ QPlainTextEdit {{
         )
 
     def _pfer_done(self, out_csv: object) -> None:
+        if self._unloading:
+            return
         self._set_busy(False)
         if not out_csv:
             QMessageBox.information(self, "PFer complete", "Peak finding complete.")
@@ -1425,5 +1452,7 @@ QPlainTextEdit {{
             )
 
     def _pfer_failed(self, message: str) -> None:
+        if self._unloading:
+            return
         self._set_busy(False)
         QMessageBox.critical(self, "PFer error", message)
