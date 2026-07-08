@@ -56,19 +56,16 @@ from src.processing.behavior_metrics import (
 from src.processing.cluster_detection import (
     group_clusters_by_time_period as _group_clusters_by_time_period,
     identify_clusters as _identify_clusters,
-    process_cluster_window as _process_cluster_window,
     process_data_for_clusters as _process_data_for_clusters,
     select_stim_clusters as _select_stim_clusters,
 )
 from src.processing.telemetry_processing import (
     apply_cluster_binning as _apply_cluster_binning,
-    get_universal_times as _get_universal_times,
     align_and_concatenate_data as _align_and_concatenate_data,
     calculate_mean_and_sem as _calculate_mean_and_sem,
     compute_photometry_mean as _compute_photometry_mean,
     bin_data_dynamic as _bin_data_dynamic,
     create_universal_time_axis as _create_universal_time_axis,
-    process_photometry_data as _process_photometry_data,
     trim_data_to_minimum_length as _trim_data_to_minimum_length,
 )
 from src.processing.image_export import build_image_export_request
@@ -776,16 +773,6 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
 
         return all_clusters, daytime_clusters, nighttime_clusters
 
-    def process_cluster_data(self, cluster_data, longest_pre_peak, longest_post_peak, is_stim=False):
-        return _process_cluster_window(
-            cluster_data,
-            longest_pre_peak,
-            longest_post_peak,
-            self.extended_temp_data,
-            self.extended_act_data,
-            is_stim=is_stim,
-        )
-
     def process_data_for_clusters(self, clusters, longest_pre_peak, longest_post_peak, is_stim=False):
         return _process_data_for_clusters(
             clusters,
@@ -805,11 +792,6 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
     def create_universal_time_axis(self, axis_time_start, axis_time_end, sample_rate):
         return _create_universal_time_axis(axis_time_start, axis_time_end, sample_rate)
 
-    def extract_and_prepare_temp_and_act_data(self, longest_pre_peak, longest_post_peak, cluster_number):
-        return self.cluster_service.extract_and_prepare_temp_and_act_data(
-            longest_pre_peak, longest_post_peak, cluster_number
-        )
-
     def is_valid_cluster(self, cluster_name, cluster_number):
         """
         Check if the cluster name is valid based on the cluster number.
@@ -823,19 +805,8 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         """
         return f"{cluster_number} Peak" in cluster_name or f"{cluster_number} Peaks" in cluster_name
 
-    def get_universal_times(self, peak_time, longest_pre_peak, longest_post_peak):
-        return _get_universal_times(peak_time, longest_pre_peak, longest_post_peak)
-
     def align_and_concatenate_data(self, all_data, universal_time_axis):
         return _align_and_concatenate_data(all_data, universal_time_axis)
-
-    def extract_and_prepare_photometry_data(self, longest_pre_peak, longest_post_peak, cluster_number):
-        return self.cluster_service.extract_and_prepare_photometry_data(
-            longest_pre_peak, longest_post_peak, cluster_number
-        )
-
-    def process_photometry_data(self, truncated_data):
-        return _process_photometry_data(truncated_data)
 
     def create_linear_time_index(self, start, end, step):
         """

@@ -37,6 +37,7 @@ ehthumbs.db
 *.tmp
 tmp_pytest/
 tmp_*/
+pytest-cache-files-*/
 *.pstats
 
 # Generated analysis output
@@ -49,7 +50,11 @@ PeakF_Results/
 *.json
 !default_settings.json
 app_state.pkl
+src/*settings.json
+src/column_names.json
+src/app_state.pkl
 src/gui/shared/.neurosync/
+.neurosync_config/
 
 # Local planning notes
 MAC_COMPAT_PLAN.md
