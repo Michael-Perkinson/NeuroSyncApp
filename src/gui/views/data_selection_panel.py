@@ -25,7 +25,12 @@ from src.file_management.file_loader import (
     process_loaded_data,
     select_preferred_signal_column,
 )
-from src.gui.shared.qt_bindings import CheckBoxControl, ComboBoxControl, LineEditControl, ObservableValue
+from src.gui.shared.checkable_column_selector import CheckableColumnSelector
+from src.shared.persistence.column_selection_memory import (
+    recall_selection,
+    remember_selection,
+)
+from src.gui.shared.qt_bindings import CheckBoxControl, LineEditControl, ObservableValue
 from src.gui.shared.qt_view_styles import (
     apply_button_role,
     panel_stylesheet,
@@ -66,6 +71,7 @@ class DataSelectionPanel(QFrame):
         self.file_path_var = ObservableValue("")
         self.selected_column = ObservableValue("")
         self.selected_column_var = self.selected_column
+        self.selected_columns_var = ObservableValue([])
         self.use_baseline_var = ObservableValue(False)
         self.file_path_var.trace_add(
             "write", lambda: setattr(self.view_state, "file_path", self.file_path_var.get() or "")
@@ -133,12 +139,11 @@ class DataSelectionPanel(QFrame):
         self.column_label = QLabel("Column Title", file_card)
         file_layout.addWidget(self.column_label, 1, 0)
 
-        self.column_dropdown = ComboBoxControl(self.selected_column, file_card)
-        self.column_dropdown.setEnabled(False)
-        self.column_dropdown.currentTextChanged.connect(
-            lambda *_args: self.on_column_selection_changed()
-        )
-        file_layout.addWidget(self.column_dropdown, 1, 1, 1, 3)
+        self.column_selector = CheckableColumnSelector(file_card)
+        self.column_selector.setEnabled(False)
+        self.column_selector.selectionChanged.connect(self._on_columns_changed)
+        self.column_dropdown = self.column_selector
+        file_layout.addWidget(self.column_selector, 1, 1, 1, 3)
 
         self.baseline_note_frame = QFrame(self)
         self.baseline_note_frame.setObjectName("dataSelectionSectionAlt")
@@ -231,14 +236,16 @@ class DataSelectionPanel(QFrame):
     ) -> None:
         self.column_titles = column_titles
         preferred = select_preferred_signal_column(dataframe)
-        self.column_dropdown.set_options(column_titles)
-        self.column_dropdown["state"] = "normal"
-        # set_options resets the dropdown to index 0; force it to show the preferred column.
-        # selected_column.set() may be a no-op if the value didn't change, so also
-        # directly update the combobox text.
-        selected_column.set(preferred)
-        if self.column_dropdown.currentText() != preferred:
-            self.column_dropdown.setCurrentText(preferred)
+        # If the user previously ticked columns for a file with this same set
+        # of columns, restore that selection (dual-signal users batch many
+        # identically-laid-out files). Otherwise fall back to the single
+        # auto-detected preferred column.
+        remembered = recall_selection(column_titles)
+        checked = remembered if remembered else ([preferred] if preferred else [])
+        self.column_selector.set_columns(column_titles, checked)
+        primary = checked[0] if checked else preferred
+        selected_column.set(primary)
+        self.selected_columns_var.set(checked)
         self.baseline_button_pressed = False
 
     def _get_mouse_name(self, file_path: str) -> str:
@@ -268,6 +275,16 @@ class DataSelectionPanel(QFrame):
             return
         if self.handle_figure_display_selection:
             self.handle_figure_display_selection(None)
+
+    def _on_columns_changed(self, columns: list[str]) -> None:
+        primary = columns[0] if columns else ""
+        self.selected_columns_var.set(columns)
+        if columns and getattr(self, "column_titles", None):
+            remember_selection(self.column_titles, columns)
+        if self.selected_column.get() != primary:
+            self.selected_column.set(primary)
+        else:
+            self.on_column_selection_changed()
 
     def _on_save_baseline(self) -> None:
         self.save_baseline_values(self.figure_display_dropdown)

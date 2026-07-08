@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neurosyncapp"
+version = "3.0.0"
+description = "Photometry, behaviour, and telemetry alignment tool."
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+license = { text = "GPL-3.0-or-later" }
+authors = [
+    { name = "Michael Perkinson" },
+]
+dependencies = [
+    "PySide6>=6.11,<7",
+    "matplotlib>=3.10,<4",
+    "numpy>=2.4,<3",
+    "openpyxl>=3.1.5,<4",
+    "pandas>=3.0,<4",
+    "platformdirs>=4.3.6,<5",
+    "scipy>=1.17,<2",
+    "XlsxWriter>=3.1.9,<4",
+]
+
+[project.optional-dependencies]
+build = [
+    "Pillow>=12,<13",
+    "pyinstaller>=6.16,<7",
+]
+dev = [
+    "coverage>=7.6,<8",
+    "pytest>=8.3,<9",
+    "pytest-cov>=5,<7",
+]
+
+[project.scripts]
+neurosyncapp = "src.app.main:main"
+
+[tool.setuptools.packages.find]
+include = ["src*"]

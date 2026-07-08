@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import logging
+import re
 import numpy as np
 import pandas as pd
 from PySide6.QtWidgets import QMessageBox
 
-from src.processing.behavior_metrics import calculate_auc, calculate_max_amp, calculate_mean_dff
-from src.processing.behaviour_parser import create_extraction_folder, extract_behaviour_results
+from src.processing.behavior_metrics import (
+    calculate_auc,
+    calculate_max_amp,
+    calculate_mean_dff,
+    zscore_column_key,
+)
+from src.processing.behaviour_parser import (
+    create_extraction_folder,
+    extract_behaviour_results,
+    truncate_sheet_title,
+)
 from src.excel_ops.behaviour_exporter import (
     build_output_file_name,
     create_df_for_behaviours,
@@ -17,6 +27,35 @@ from src.excel_ops.behaviour_exporter import (
 )
 
 logger = logging.getLogger(__name__)
+
+_INVALID_SHEET_CHARS = re.compile(r'[\\/*?:"<>|]')
+
+
+def _unique_sheet_name(name: str, used_names: set[str], suffix: str = "") -> str:
+    """Build a <=31-char Excel sheet name unique within *used_names*.
+
+    Truncates *name* to leave room for *suffix* (e.g. "_dFoF_465") so two
+    differently-named behaviours can't collapse to the same truncated
+    prefix. If a collision still occurs — two behaviours can be identical
+    up to the truncation point — disambiguates with a numeric tag rather
+    than silently overwriting one sheet's data with another's.
+    """
+    max_base_length = max(31 - len(suffix), 1)
+    candidate = _INVALID_SHEET_CHARS.sub("_", truncate_sheet_title(name, max_base_length) + suffix)[:31]
+    if candidate not in used_names:
+        used_names.add(candidate)
+        return candidate
+
+    for tag_index in range(2, 1000):
+        tag = f"~{tag_index}"
+        max_base_length = max(31 - len(suffix) - len(tag), 1)
+        candidate = _INVALID_SHEET_CHARS.sub(
+            "_", truncate_sheet_title(name, max_base_length) + tag + suffix
+        )[:31]
+        if candidate not in used_names:
+            used_names.add(candidate)
+            return candidate
+    raise RuntimeError(f"Could not generate a unique sheet name for {name!r}")
 
 
 class AlignedBehaviourExporter:
@@ -41,17 +80,27 @@ class AlignedBehaviourExporter:
             columns=["Behavior", "Mean Duration (s)", "SEM (s)", "Number of Instances"],
         ).sort_values(by="Behavior")
 
-    def _handle_zscore_checkbox_export(self, duration_df: pd.DataFrame):
-        z_scored_data = self.app.dataframe["baselined_z_score"]
-        z_scored_time = self.app.dataframe["z_scored_time"]
+    def _handle_zscore_checkbox_export(
+        self, duration_df: pd.DataFrame, columns: list[str]
+    ) -> pd.DataFrame:
+        """Append baseline mean/std for every baselined column to the duration sheet.
+
+        ``app.baseline_data_mean``/``baseline_data_std`` are dicts keyed by
+        column name (one entry per selected column, all computed from the
+        same baseline window — see ``BehaviourDataService.calculate_z_score``).
+        """
+        duration_df = duration_df.copy()
         duration_df[""] = [np.nan] * len(duration_df)
-        duration_df["Mean df/f for baseline"] = [self.app.baseline_data_mean] + [
-            np.nan
-        ] * (len(duration_df) - 1)
-        duration_df["STD for baseline"] = [self.app.baseline_data_std] + [np.nan] * (
-            len(duration_df) - 1
-        )
-        return z_scored_data, z_scored_time, duration_df
+        baseline_means = self.app.baseline_data_mean or {}
+        baseline_stds = self.app.baseline_data_std or {}
+        multi_column = len(columns) > 1
+        for column in columns:
+            mean_label = "Mean df/f for baseline" + (f" ({column})" if multi_column else "")
+            std_label = "STD for baseline" + (f" ({column})" if multi_column else "")
+            padding = [np.nan] * (len(duration_df) - 1)
+            duration_df[mean_label] = [baseline_means.get(column)] + padding
+            duration_df[std_label] = [baseline_stds.get(column)] + padding
+        return duration_df
 
     def _get_metric_functions(self) -> dict:
         return {
@@ -82,7 +131,7 @@ class AlignedBehaviourExporter:
         params: dict,
         file_path: str,
         folder_path: str,
-        df_list: list[tuple[pd.DataFrame, str]],
+        detail_df_list: list[tuple[pd.DataFrame, str]],
         duration_df: pd.DataFrame,
     ) -> None:
         df_summary = generate_summary_data(
@@ -92,7 +141,13 @@ class AlignedBehaviourExporter:
             self._get_metric_functions(),
             time_ranges,
         )
-        df_list.insert(0, (duration_df, "Event Duration"))
+        # Sheet order: a single "Summary Results" (prepended by
+        # export_combined_csv) then "Event Duration" at the front, followed by
+        # every per-behaviour detail sheet. There is one summary only — extra
+        # signal columns add their own behaviour detail sheets, not a second
+        # summary.
+        df_list = [(duration_df, "Event Duration")]
+        df_list.extend(detail_df_list)
 
         output_file_name = self._get_output_file_name(file_path, folder_path)
         export_combined_csv(df_summary, df_list, output_file_name, behaviours_results)
@@ -102,39 +157,64 @@ class AlignedBehaviourExporter:
         folder_path = create_extraction_folder(file_path)
         behaviours_to_export = params.get("behaviours_to_export", [])
 
+        selected_columns = (
+            self.app.selected_columns_var.get() or [self.app.selected_column_var.get()]
+        )
+        multi_column = len(selected_columns) > 1
+
         duration_df = self._extract_duration_data()
-        z_scored_data = None
         if self.app.checkbox_state:
-            z_scored_data, _, duration_df = self._handle_zscore_checkbox_export(duration_df)
+            duration_df = self._handle_zscore_checkbox_export(duration_df, selected_columns)
 
-        behaviours_results, time_ranges = extract_behaviour_results(
-            behaviours_to_export,
-            params,
-            self.app.dataframe,
-            self.app.checkbox_state,
-            self.app.selected_column_var.get(),
-            z_scored_data,
-        )
-        sorted_behaviours = sorted(behaviours_results.keys())
+        detail_df_list: list[tuple[pd.DataFrame, str]] = []
+        primary_behaviours_results: dict = {}
+        primary_time_ranges: dict = {}
+        used_sheet_names: set[str] = {"Event Duration", "Summary Results"}
 
-        df_list = create_df_for_behaviours(
-            behaviours_results,
-            sorted_behaviours,
-            time_ranges,
-            True,
-            self.app.selected_column_var.get(),
-            self.app.checkbox_state,
-            folder_path,
-        )
+        for index, column in enumerate(selected_columns):
+            use_zscore = self.app.checkbox_state
+            column_z_data = (
+                self.app.dataframe[zscore_column_key(column)] if use_zscore else None
+            )
+            suffix = f"_{column}" if multi_column else ""
+
+            behaviours_results, time_ranges = extract_behaviour_results(
+                behaviours_to_export,
+                params,
+                self.app.dataframe,
+                use_zscore,
+                column,
+                column_z_data,
+            )
+            sorted_behaviours = sorted(behaviours_results.keys())
+
+            if index == 0:
+                primary_behaviours_results = behaviours_results
+                primary_time_ranges = time_ranges
+
+            df_list = create_df_for_behaviours(
+                behaviours_results,
+                sorted_behaviours,
+                time_ranges,
+                True,
+                column,
+                use_zscore,
+                folder_path,
+            )
+            df_list = [
+                (df, _unique_sheet_name(behaviour_name, used_sheet_names, suffix))
+                for (df, _sheet), behaviour_name in zip(df_list, sorted_behaviours)
+            ]
+            detail_df_list.extend(df_list)
 
         self._export_binned_data(
-            sorted_behaviours,
-            behaviours_results,
-            time_ranges,
+            sorted(primary_behaviours_results.keys()),
+            primary_behaviours_results,
+            primary_time_ranges,
             params,
             file_path,
             folder_path,
-            df_list,
+            detail_df_list,
             duration_df,
         )
 

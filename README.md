@@ -1,192 +1,252 @@
-
 # NeuroSyncApp
 
-**NeuroSyncApp**: A Photometry, Behavior, and Telemetry Alignment Tool
+NeuroSyncApp is a PySide6 desktop app for processing raw photometry recordings and aligning photometry with coded behaviour, telemetry, and optogenetic recordings.
 
-NeuroSyncApp is a Python tool designed for neuroscientists and researchers to align and analyze photometry, behavioral, and telemetry data in a single interface. This application facilitates visualization, AUC calculations, and data export, making it versatile for studies involving optogenetics, temperature recordings, and more.
+The app opens to a dashboard. The default first tool is **Analyse Raw Data**.
 
----
+## Active Tools
 
-## Table of Contents
+| Tool | App ID | Purpose |
+| --- | --- | --- |
+| Analyse Raw Data | `raw_analysis` | Inspect raw photometry CSVs, choose an analysis window, preview DFer options, run DFer, and run PFer peak finding. |
+| Align Photometry and Behaviour | `single_animal` | Align a photometry trace with coded behaviour events, plot full/single-row/mean-SEM views, and export aligned metrics. |
+| Align Telemetry Data | `telemetry_photom_opto` | Align telemetry, photometry, and optogenetic recordings; detect clusters; export workbook summaries. |
 
-- [NeuroSyncApp](#neurosyncapp)
-  - [Table of Contents](#table-of-contents)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-    - [End users (Windows / macOS)](#end-users-windows--macos)
-    - [Developers (running from source)](#developers-running-from-source)
-  - [Quick Start](#quick-start)
-  - [Features](#features)
-  - [How to Use](#how-to-use)
-    - [Loading Data](#loading-data)
-    - [Aligning Photometry and Behavior](#aligning-photometry-and-behavior)
-    - [Visualizing Data](#visualizing-data)
-    - [Exporting Results](#exporting-results)
-  - [Configuration Options](#configuration-options)
-  - [Common Tasks](#common-tasks)
-  - [Example Use Cases](#example-use-cases)
-    - [Use Case 1: Aligning Photometry with Nesting Behavior](#use-case-1-aligning-photometry-with-nesting-behavior)
-    - [Use Case 2: Photometry with Telemetry Data Analysis](#use-case-2-photometry-with-telemetry-data-analysis)
-  - [Future Additions](#future-additions)
-  - [Contributing](#contributing)
-  - [License](#license)
+`combine_data` is still listed in the dashboard as a placeholder and has not been ported to Qt yet.
 
----
+## Install
 
-## Prerequisites
+### End Users
 
-- Windows OS (macOS/Linux support in progress).
-- Python 3.10 or higher, `pip` or `conda` for dependency management.
+Use the GitHub Releases page.
 
-## Installation
+- Windows: download the `.exe`.
+- macOS: download the `.zip`, unzip it, and run `NeuroSyncApp.app`.
+- The macOS zip also includes `NeuroSyncApp Debug.command`, which prints useful diagnostic output if macOS blocks or kills the app.
 
-### End users (Windows / macOS)
+No Python install is needed for release builds.
 
-1. Go to the [Releases](../../releases) page.
-2. Download the latest `.exe` (Windows) or `.dmg` (macOS).
-3. Run it — no Python or extra setup required.
+### Developers
 
-### Developers (running from source)
+`pyproject.toml` is the source of truth for dependencies. `requirements.txt` is no longer used.
 
-**venv:**
+Use Python 3.14 for the current tested dependency set. The package metadata allows Python 3.12 through 3.14, but release builds and package snapshots target Python 3.14.
 
-```bash
-python -m venv venv
-venv\Scripts\activate        # Windows
-source venv/bin/activate     # macOS / Linux
-pip install -r requirements.txt
+Windows:
+
+```powershell
+py -3.14 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
 python main.py
 ```
 
-**Conda:**
+macOS:
 
 ```bash
-conda create -n neuro_env python=3.12
-conda activate neuro_env
-pip install -r requirements.txt
+python3.14 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
 python main.py
 ```
 
-## Quick Start
+Build dependencies are separate:
 
-1. **Activate the Environment**:
+```bash
+python -m pip install -e ".[build]"
+```
 
-   ```bash
-   conda activate neuro_env  # or use neuro_env\Scripts\activate
-   ```
+## Tested Package Snapshots
 
-2. **Run the App**:
+The `requirements/` folder contains resolved pip-list snapshots for Python 3.14:
 
-   ```bash
-   python main.py
-   ```
+- `requirements/windows-py314.txt`
+- `requirements/macos-py314.txt`
 
----
+These are not the primary install path. Use them only when you need to recreate the tested package set exactly:
 
-## Features
+```bash
+python -m pip install -r requirements/windows-py314.txt
+```
 
-This app provides several powerful features designed to help you synchronize and analyze your fiber photometry and behavioral data:
+The snapshots were validated with pip wheel resolution for:
 
-| Feature                | Description                                                    |
-|------------------------|----------------------------------------------------------------|
-| **Data Loading**       | Supports CSV and XLSX formats                                  |
-| **Behavior Synchronization** | Aligns photometry data with behaviors and can export custom time windows |
-| **Binned AUC Analysis** | Calculates Area Under the Curve (AUC) in user-defined bins    |
-| **Graph Customization** | Adjustable axis limits, trace colors, and gridlines           |
-| **Export Options**     | Export aligned data as Excel files and images                  |
-| **Advanced Plotting**  | Visualize fiber photometry data in sync with behavioral data   |
-| **Configurable Settings** | Automatically saves and loads custom visualization and behavior settings that you can share with others for consistent formatting    |
+- Windows: `win_amd64`
+- macOS Apple Silicon: `macosx_14_0_arm64`
+- macOS Intel: `macosx_14_0_x86_64`
 
----
+## Run
 
-## How to Use
+Launch the dashboard:
 
-### Loading Data
+```bash
+python main.py
+```
 
-When you first launch the app, you'll be presented with an intuitive dashboard for aligning fibre photometry data with behavior. To get started:
+Launch one tool directly:
 
-1. In the **Data Selection** section, use the **Select File** button to choose your fiber photometry data file. Supported formats include `.csv` and `.xlsx`.
-2. Select the column from the loaded data that contains the photometry trace you want to analyze.
-3. Load a behavior coding file containing behavioral event times (e.g., actions like nest building, licking pups).
+```bash
+python main.py --tool raw_analysis
+python main.py --tool single_animal
+python main.py --tool telemetry_photom_opto
+```
 
-### Aligning Photometry and Behavior
+The dashboard remembers the last active supported tool and opens it next time.
 
-1. Select the `.csv` file containing the behaviour data times to align with the photometry data in the **Behavior Input** section - *Note* you need to input the column names that contain the behavior, start time and end time on first use.
-2. Specify the **Pre-Behavior** and **Post-Behavior** windows to define how much data to visualize before and after each event.
-3. The app will automatically visualize the photometry data with behavior time points overlaid.
+## First App: Analyse Raw Data
 
-### Visualizing Data
+This is the default first screen.
 
-In the **Graph Settings** tab, you can:
+1. Optional: click **Select Folder** to remember a default data folder.
+2. Click **Raw Photometry File** and choose a raw photometry CSV.
+3. The raw trace appears in the **Raw Data** tab.
+4. Set the analysis window:
+   - `start`, `min`, or blank means the start of the recording.
+   - `end`, `max`, or blank means the end of the recording.
+   - Numeric values are seconds.
+5. Click **Apply** to update the red/blue window markers and regenerate DFer option previews.
+6. Open the **DFer Options** graph tab to inspect options 1-4.
+7. In **DFer Settings**, select the final DFer option and click **Run final analysis**.
+8. Use **DFer Results** to view dF/F or Z-score output and save plots.
+9. For PFer, select a DFer output CSV in the PFer settings, choose baseline/prominence settings, then click **Run peak finder**.
 
-- Adjust X and Y axis limits to focus on specific time ranges.
-- Enable/disable gridlines for easier interpretation.
-- Select graph types (full trace, single row, behavior mean and SEM).
-- Customize trace colors, SEM colors, and bar graph properties.
+DFer/PFer outputs are written beside the selected recording or into the app-created output folders. The app log panel shows progress and saved paths.
 
-### Exporting Results
+## Align Photometry and Behaviour
 
-The **Export Options** tab provides choices for exporting data and visualizations:
+Use this tool when you already have a processed photometry trace and a behaviour coding CSV.
 
-- Export aligned data as Excel files and images in `.png`, `.svg`, `.jpg`, or `.tiff`.
-- Choose metrics to export (AUC, max amplitude, mean dF/F).
-- All data is exported into an xlsx with a summary page and raw data.
+1. Open **Align Photometry and Behaviour** from the dashboard.
+2. In **Data Selection**, choose the photometry file.
+3. Select one or more signal columns.
+4. Optionally set and save a baseline window for z-scoring.
+5. In **Behaviour Input**, import the behaviour CSV.
+6. On first use, map the behaviour, start-time, and end-time columns from your CSV.
+7. Use **Static Inputs** to set pre-behaviour time, post-behaviour time, and bin size.
+8. In the graph view, choose:
+   - Full Trace Display
+   - Single Row Display
+   - Behaviour Mean and SEM
+9. Use **Graph Settings** for colours, line width, axis limits, duration bars, time units, and zeroing the x-axis to a selected behaviour.
+10. Use **Export Options** to export aligned data and save figures.
 
-## Configuration Options
+Exports include workbook outputs with metric sheets such as AUC, max amplitude, mean dF/F, binned data, and raw aligned traces depending on the selected options.
 
-The app offers configuration options to adapt to different experimental setups:
+## Align Telemetry Data
 
-- **Behavior Settings**: Customize behavior codes, colors, and sync points.
-- **Graph Settings**: Adjust visualization properties such as line thickness, opacity, and axis limits.
-- **Binning**: Define bin sizes (in seconds) for AUC and other metrics.
-- **Time Synchronization**: Zero the X-axis relative to specific behaviors.
+Use this tool for telemetry, photometry, and optogenetic alignment workflows.
 
-All configurations can be saved and loaded with the **App Settings Manager**.
+1. Open **Align Telemetry Data** from the dashboard.
+2. Select the main recording file.
+3. Add or confirm associated temperature and activity files.
+4. Enter the light-off/start time values needed for alignment.
+5. Configure pre/post cluster windows and bin sizes in **Static Inputs**.
+6. Generate or refresh cluster displays from the graph controls.
+7. Use cluster checkboxes, colours, peak alignment, and graph settings to refine the display.
+8. Use **Export Options** to create the telemetry workbook export and save figures.
 
-## Common Tasks
+The telemetry exporter writes Excel workbooks with summary, cluster, signal, and raw sheets.
 
-- **Configuring Graphs**: Set axis ranges, trace colors, and SEM display options.
-- **Visualizing Data**: Customize trace displays for full, single row, or behavior-focused views.
-- **Exporting Results**: Save as Excel files or image formats.
+## Tests
 
----
+Run the test suite from an activated environment:
 
-## Example Use Cases
+Windows:
 
-### Use Case 1: Aligning Photometry with Nesting Behavior
+```powershell
+$env:QT_QPA_PLATFORM = "offscreen"
+python -m pytest -q
+```
 
-If studying maternal behavior, align the photometry signal with pup-orientated behavior. Load photometry and behavior data, then set pre- and post-behavior windows to examine signal fluctuations.
+macOS:
 
-![Pup-orientated Behavior Example](docs/readme_images/main_app_view.png)
+```bash
+QT_QPA_PLATFORM=offscreen python -m pytest -q
+```
 
-### Use Case 2: Photometry with Telemetry Data Analysis
+Useful focused checks:
 
-Adapt the app to align photometry with telemetry physiological recordings. Files are detected automatically and are aligned using the time of day that you started the recording.
+```bash
+python -m pytest -q tests/unit/test_qt_lifecycle.py
+python -m pytest -q tests/unit/test_raw_qt_app.py tests/unit/test_behaviour_qt_app.py tests/unit/test_telemetry_qt_app.py
+```
 
-![Telemetry and photeomtry alignemnt Example](docs/readme_images/telemetry_photometry_view.png)
+## Release Builds
 
----
+Tagged pushes (`v*`) run `.github/workflows/python-app.yml`.
 
-## Future Additions
+The workflow builds:
 
-- **Expanded Analysis Options:** Adding more analytical tools to provide deeper insights into synchronized photometry and behavior data for each recording.
+- Windows executable
+- macOS Apple Silicon zip
+- macOS Intel zip
 
-- **Multi-Mouse Data Alignment:** A full-featured app for aligning data from multiple mice simultaneously, ideal for generating peri-event histograms and comparing across subjects.
+The workflow installs from `pyproject.toml` with:
 
-- **Integrated SQLite Database for Organized Storage and Search:** Process raw files directly through the app and automatically save them in a well-organized, searchable database, while still generating `.csv` files for manual storage.
+```bash
+python -m pip install -e ".[build]"
+```
 
-## Contributing
+## Configuration
 
-I welcome contributions! To contribute:
+User settings are stored outside the repo using platform-specific config directories via `platformdirs`. You can override the config location for tests or debugging:
 
-1. Fork the repository on GitHub.
-2. Make your changes in a new branch.
-3. Submit a pull request with detailed information about your changes.
+```bash
+NEUROSYNCAPP_CONFIG_DIR=/path/to/config python main.py
+```
 
-Please ensure all code follows PEP8 guidelines and includes documentation.
+On Windows PowerShell:
 
----
+```powershell
+$env:NEUROSYNCAPP_CONFIG_DIR = "C:\path\to\config"
+python main.py
+```
+
+## Example Data
+
+Example input files live in `example_data/`:
+
+- `example_data/photometry_behaviour`
+- `example_data/menopause_photometry`
+- `example_data/menopause_stim`
+
+These are useful for smoke-testing the UI and export flows.
+
+## Dependency Notes
+
+Direct runtime dependencies are kept intentionally small:
+
+- PySide6
+- matplotlib
+- numpy
+- pandas
+- scipy
+- openpyxl
+- XlsxWriter
+- platformdirs
+
+Test and packaging tools live in optional extras:
+
+- `.[dev]`: pytest and coverage tools
+- `.[build]`: PyInstaller and Pillow for release packaging
+
+Do not add transitive packages to `pyproject.toml` unless the app imports them directly.
+
+## Attribution
+
+The DFer/PFer raw photometry analysis workflow in NeuroSyncApp was ported from
+the Argotech/Tussock Innovation DFer_v1.4 + PFer_2.4 analysis scripts and README
+(OCT-2024), distributed through the Argotech fibre photometry resources:
+https://www.argotech.co.nz/fibre-photometry
+
+The DFer/PFer workflow is based on analysis methods from GuPPy:
+
+Sherathiya, V. N., Schaid, M. D., Seiler, J. L., Lopez, G. C., & Lerner, T. N.
+GuPPy, a Python toolbox for the analysis of fiber photometry data.
+Scientific Reports 11, 24212 (2021). https://doi.org/10.1038/s41598-021-03626-9
 
 ## License
 
-NeuroSyncApp is licensed under the GNU General Public License v3.0. © 2024 Michael Perkinson.
+NeuroSyncApp is licensed under the GNU General Public License v3.0.

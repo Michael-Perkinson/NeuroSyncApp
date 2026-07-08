@@ -27,7 +27,47 @@ from src.processing.behaviour_plotting import (
     select_single_row_window,
 )
 from src.processing.image_export import build_image_export_request
-from src.processing.behavior_metrics import generate_mean_sem_df
+from src.processing.behavior_metrics import generate_mean_sem_df, zscore_column_key
+
+_EXTRA_TRACE_COLORS = [
+    "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2",
+]
+
+
+def _selected_columns(app) -> list[str]:
+    """Columns ticked in the multi-select; falls back to the primary column.
+
+    Returns an empty list if nothing is selected at all (e.g. the user
+    unchecked every column) so callers can bail out instead of indexing
+    into an empty list or looking up an empty-string dataframe column.
+    """
+    columns = app.selected_columns_var.get() if hasattr(app, "selected_columns_var") else None
+    if columns:
+        return columns
+    primary = app.selected_column_var.get()
+    return [primary] if primary else []
+
+
+def _column_colors(app, column_labels: list[str]) -> list[str]:
+    """Resolve a display colour per column (by original column name, not z-score key).
+
+    The primary column keeps the user's chosen trace colour. Extra columns
+    use whatever the user picked for them in the colour popup
+    (app.column_colors), falling back to auto-cycling a palette for any
+    column that hasn't been customised yet.
+    """
+    primary_color = app.settings_manager.selected_trace_color
+    overrides = getattr(app, "column_colors", None) or {}
+    extras = [color for color in _EXTRA_TRACE_COLORS if color != primary_color]
+    colors = [primary_color]
+    extra_index = 0
+    for column in column_labels[1:]:
+        if column in overrides:
+            colors.append(overrides[column])
+        else:
+            colors.append(extras[extra_index % len(extras)])
+            extra_index += 1
+    return colors
 
 
 def handle_figure_display_selection(app, event=None) -> None:
@@ -99,19 +139,29 @@ def handle_figure_display_selection(app, event=None) -> None:
 
 
 def plot_z_scored_data(app, ax) -> None:
-    """Plot the z-scored trace mode."""
+    """Plot the z-scored trace mode.
+
+    Every selected column is baselined over the same window (see
+    BehaviourDataService.calculate_z_score) and overlaid here with its own
+    colour + legend entry when more than one column is selected.
+    """
     if not app.data_selection_frame.baseline_button_pressed:
         app.data_service.calculate_z_score()
 
-    if (
-        "baselined_z_score" not in app.dataframe
-        or "z_scored_time" not in app.dataframe
-    ):
+    selected_columns = _selected_columns(app)
+    if not selected_columns or "z_scored_time" not in app.dataframe:
         print("Required data columns are missing in the dataframe.")
         return
 
-    z_scored_data = app.dataframe["baselined_z_score"]
+    zscore_keys = [zscore_column_key(column) for column in selected_columns]
+    if not all(key in app.dataframe for key in zscore_keys):
+        print("Required data columns are missing in the dataframe.")
+        return
+
+    z_scored_data = app.dataframe[zscore_keys[0]]
     z_scored_time = app.dataframe["z_scored_time"]
+    multi_column = len(selected_columns) > 1
+    colors = _column_colors(app, selected_columns)
 
     converted_time_data, x_label = app.graph_helper_service.convert_and_retrieve_time(
         z_scored_time.copy(), return_label=True
@@ -160,12 +210,17 @@ def plot_z_scored_data(app, ax) -> None:
                 else end_times_min
             )
 
-    ax.plot(
-        adjusted_time,
-        z_scored_data,
-        color=app.settings_manager.selected_trace_color,
-        linewidth=float(app.graph_settings_container_instance.line_width_entry.get()),
-    )
+    line_width = float(app.graph_settings_container_instance.line_width_entry.get())
+    for column, zscore_key, color in zip(selected_columns, zscore_keys, colors):
+        ax.plot(
+            adjusted_time,
+            app.dataframe[zscore_key],
+            color=color,
+            linewidth=line_width,
+            label=column if multi_column else None,
+        )
+    if multi_column:
+        ax.legend(loc="upper left")
     ax.set_ylabel("Z-score")
 
     app.xlim_min = adjusted_time.min()
@@ -186,9 +241,11 @@ def plot_z_scored_data(app, ax) -> None:
 
 def plot_full_trace(app, ax) -> None:
     """Plot the full trace mode."""
-    selected_column = app.selected_column_var.get()
+    selected_columns = _selected_columns(app)
+    if not selected_columns:
+        return
     time = app.dataframe.iloc[:, 0].copy()
-    data = app.dataframe[selected_column]
+    data = app.dataframe[selected_columns[0]]
 
     behaviours, _, _, start_times_min, end_times_min = (
         app.graph_helper_service.retrieve_and_process_behaviour_data()
@@ -215,15 +272,22 @@ def plot_full_trace(app, ax) -> None:
         adjusted_end_times_min = app.original_end_times_min
         adjusted_time = converted_time_data
 
-    draw_trace(
-        ax,
-        adjusted_time,
-        data,
-        app.settings_manager.selected_trace_color,
-        float(app.graph_settings_container_instance.line_width_entry.get()),
-        x_label,
-        selected_column,
-    )
+    line_width = float(app.graph_settings_container_instance.line_width_entry.get())
+    colors = _column_colors(app, selected_columns)
+    y_label = selected_columns[0] if len(selected_columns) == 1 else "df/F"
+    for column, color in zip(selected_columns, colors):
+        draw_trace(
+            ax,
+            adjusted_time,
+            app.dataframe[column],
+            color,
+            line_width,
+            x_label,
+            y_label,
+            label=column if len(selected_columns) > 1 else None,
+        )
+    if len(selected_columns) > 1:
+        ax.legend(loc="upper left")
 
     app.xlim_min = adjusted_time.min()
     app.xlim_max = adjusted_time.max()
@@ -242,14 +306,21 @@ def plot_full_trace(app, ax) -> None:
 
 
 def plot_single_row(app, ax) -> None:
-    """Plot the currently selected single-row window."""
+    """Plot the currently selected single-row window.
+
+    In baseline mode every selected column has its own z-scored series
+    (see calculate_z_score) overlaid here, just like the raw-trace case.
+    """
     if not hasattr(app, "start_time") or not hasattr(app, "pre_behaviour_time"):
+        return
+    column_labels = _selected_columns(app)
+    if not column_labels:
         return
     if app.checkbox_state:
         app.data_service.calculate_z_score()
-        selected_column = "baselined_z_score"
+        selected_columns = [zscore_column_key(column) for column in column_labels]
     else:
-        selected_column = app.selected_column_var.get()
+        selected_columns = column_labels
 
     selected_data_to_plot, start_point, end_point = select_single_row_window(
         app.dataframe,
@@ -267,15 +338,23 @@ def plot_single_row(app, ax) -> None:
     )
 
     onset_line_style = app.graph_settings_container_instance.onset_line_style_combobox.get()
-    draw_trace(
-        ax,
-        converted_time_data,
-        selected_data_to_plot[selected_column],
-        app.settings_manager.selected_trace_color,
-        float(app.graph_settings_container_instance.line_width_entry.get()),
-        x_label,
-        selected_column,
-    )
+    line_width = float(app.graph_settings_container_instance.line_width_entry.get())
+    colors = _column_colors(app, column_labels)
+    multi_column = len(selected_columns) > 1
+    y_label = column_labels[0] if not multi_column else "df/F"
+    for column, label, color in zip(selected_columns, column_labels, colors):
+        draw_trace(
+            ax,
+            converted_time_data,
+            selected_data_to_plot[column],
+            color,
+            line_width,
+            x_label,
+            y_label,
+            label=label if multi_column else None,
+        )
+    if multi_column:
+        ax.legend(loc="upper left")
     draw_onset_line(
         ax,
         app.settings_manager.selected_line_color,
@@ -289,7 +368,7 @@ def plot_single_row(app, ax) -> None:
     row_behaviour_name = app.table_treeview.item(item)["values"][2]
     app.graph_helper_service.add_transparent_boxes(
         ax,
-        selected_data_to_plot[selected_column],
+        selected_data_to_plot[selected_columns[0]],
         [row_behaviour_name],
         start_times_min,
         end_times_min,
@@ -299,10 +378,18 @@ def plot_single_row(app, ax) -> None:
 
 
 def plot_mean_and_sem_trace(app, ax) -> None:
-    """Plot behaviour mean and SEM mode."""
+    """Plot behaviour mean and SEM mode.
+
+    Every ticked column is overlaid on the same axes (own colour + legend
+    entry), using the primary column's mean/SEM for the duration box and
+    instance count — those reflect the behaviour occurrences, not the
+    signal, so they're identical across columns. In baseline mode each
+    column uses its own z-scored series (see calculate_z_score), all
+    baselined over the same window.
+    """
     (
         behaviour_occurrences,
-        column_used,
+        _column_used,
         pre_behaviour_times,
         post_behaviour_times,
     ) = app.graph_helper_service.fetch_behaviour_data()
@@ -315,31 +402,56 @@ def plot_mean_and_sem_trace(app, ax) -> None:
     app.current_start_times = start_times
     app.current_end_times = end_times
 
-    behaviour_data_by_instance, time_points, _, _ = (
-        app.graph_helper_service.process_behaviour_data(
-            behaviour_occurrences, column_used
-        )
+    column_labels = _selected_columns(app)
+    if not column_labels:
+        return
+    columns_to_plot = (
+        [zscore_column_key(column) for column in column_labels]
+        if app.checkbox_state
+        else column_labels
     )
+    multi_column = len(columns_to_plot) > 1
+    colors = _column_colors(app, column_labels)
+    y_label = "df/F" if multi_column else None
 
-    mean_sem_df = generate_behaviour_graph(
-        ax,
-        app,
-        behaviour_data_by_instance,
-        time_points,
-        start_time_adjusted,
-        end_time_adjusted,
-    )
+    primary_mean_sem_df = None
+    primary_behaviour_data = None
+    for index, (column, label, color) in enumerate(
+        zip(columns_to_plot, column_labels, colors)
+    ):
+        behaviour_data_by_instance, time_points, _, _ = (
+            app.graph_helper_service.process_behaviour_data(
+                behaviour_occurrences, column
+            )
+        )
+        mean_sem_df = generate_behaviour_graph(
+            ax,
+            app,
+            behaviour_data_by_instance,
+            time_points,
+            start_time_adjusted,
+            end_time_adjusted,
+            color=color if multi_column else None,
+            label=label if multi_column else None,
+            y_label=y_label,
+        )
+        if index == 0:
+            primary_mean_sem_df = mean_sem_df
+            primary_behaviour_data = behaviour_data_by_instance
+
+    if multi_column:
+        ax.legend(loc="upper left")
 
     current_behavior = app.behaviour_choice_graph.get()
     if current_behavior in app.duration_data_cache:
-        app.duration_data_cache[current_behavior]["mean_sem_df"] = mean_sem_df
+        app.duration_data_cache[current_behavior]["mean_sem_df"] = primary_mean_sem_df
     else:
         print(
             f"Warning: Behavior '{current_behavior}' not found in cache to update mean_sem_df."
         )
 
     if app.graph_settings_container_instance.num_instances_box_var.get():
-        num_instances = len(behaviour_data_by_instance)
+        num_instances = len(primary_behaviour_data)
         ax.text(
             0.95,
             0.95,
@@ -367,9 +479,9 @@ def plot_mean_and_sem_trace(app, ax) -> None:
         ax.set_ylim(float(y_min), float(y_max))
 
     if getattr(app, "figure_canvas", None) is not None and app.bar_items:
-        update_duration_box(app, ax, mean_sem_df)
+        update_duration_box(app, ax, primary_mean_sem_df)
     else:
-        add_duration_box(app, ax, mean_sem_df)
+        add_duration_box(app, ax, primary_mean_sem_df)
 
 
 def generate_behaviour_graph(
@@ -379,6 +491,9 @@ def generate_behaviour_graph(
     time_points,
     start_time_adjusted,
     end_time_adjusted,
+    color: str | None = None,
+    label: str | None = None,
+    y_label: str | None = None,
 ):
     """Plot mean and SEM trace and return the mean/SEM dataframe."""
     mean_sem_df = generate_mean_sem_df(
@@ -392,12 +507,17 @@ def generate_behaviour_graph(
         mean_sem_df["Time"].copy(), return_label=True
     )
     ax.set_xlabel(x_label)
-    ax.set_ylabel(getattr(app, "column_used", app.selected_column_var.get()))
+    ax.set_ylabel(
+        y_label
+        if y_label is not None
+        else getattr(app, "column_used", app.selected_column_var.get())
+    )
+    trace_color = color or app.settings_manager.selected_trace_color
     ax.plot(
         converted_time_data,
         mean_sem_df["Mean"],
-        color=app.settings_manager.selected_trace_color,
-        label="Mean",
+        color=trace_color,
+        label=label or "Mean",
         linewidth=float(app.graph_settings_container_instance.line_width_entry.get()),
     )
     draw_sem_band(
@@ -405,7 +525,11 @@ def generate_behaviour_graph(
         converted_time_data,
         mean_sem_df["Mean"],
         mean_sem_df["SEM"],
-        app.settings_manager.selected_sem_color,
+        color or app.settings_manager.selected_sem_color,
+        # Single column keeps the "SEM" legend entry; when overlaying multiple
+        # columns the per-column trace label is enough, so keep the band out
+        # of the legend to avoid repeated "SEM" entries.
+        label="SEM" if label is None else None,
     )
     return mean_sem_df
 
