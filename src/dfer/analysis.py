@@ -12,11 +12,15 @@ def run_analysis(
     w_start: str = "",
     w_end: str = "",
     analysis_path: str = "1",
-    make_plots: bool = True,
+    make_plots: bool = False,
     mode: str = "full",
     plot_stage: str = "all",
 ) -> str:
-    """Run DFer on a single or dual photometry CSV."""
+    """Run DFer on a single or dual photometry CSV.
+
+    Set ``make_plots=True`` only when the optional ``html-plots`` extra is
+    installed; the Qt app renders matplotlib figures inline instead.
+    """
     if mode not in {"full", "options_only"}:
         raise ValueError("mode must be 'full' or 'options_only'")
     if plot_stage not in {"preview", "final", "all", "none"}:

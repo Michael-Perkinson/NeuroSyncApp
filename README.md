@@ -231,6 +231,7 @@ Test and packaging tools live in optional extras:
 
 - `.[dev]`: pytest and coverage tools
 - `.[build]`: PyInstaller and Pillow for release packaging
+- `.[html-plots]`: Bokeh support for the legacy DFer/PFer HTML plot exports
 
 Do not add transitive packages to `pyproject.toml` unless the app imports them directly.
 

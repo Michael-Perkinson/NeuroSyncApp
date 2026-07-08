@@ -393,12 +393,14 @@ def run_pfer(
     w_end: str = "",
     prominence: float = DEFAULT_PROMINENCE,
     artifact_threshold: int = DEFAULT_ART_THRESHOLD,
-    make_plots: bool = True,
+    make_plots: bool = False,
 ) -> str:
     """Run peak-finding (PFer) on a DFer output CSV.
 
     Single-channel DFer outputs keep the legacy single stats filename.
     Dual-channel DFer outputs write one stats/waveform pair per signal.
+    Set ``make_plots=True`` only when the optional ``html-plots`` extra is
+    installed; the Qt app renders matplotlib figures inline instead.
     """
     csv_path = str(Path(csv_path).expanduser().resolve())
     filename = Path(csv_path).name
