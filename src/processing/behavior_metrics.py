@@ -217,6 +217,19 @@ def calculate_metrics_for_bins(
 # Z-score
 # ---------------------------------------------------------------------------
 
+PRIMARY_ZSCORE_COLUMN = "baselined_z_score"
+
+
+def zscore_column_key(column: str) -> str:
+    """Dataframe key under which a column's baselined z-score series is stored.
+
+    Each selected signal column gets its own z-scored series (computed over
+    the same baseline window) so dual-column recordings can be baselined
+    independently rather than only the primary column.
+    """
+    return f"{PRIMARY_ZSCORE_COLUMN}::{column}"
+
+
 def compute_z_score(
     dataframe: pd.DataFrame,
     selected_column: str,

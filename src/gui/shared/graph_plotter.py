@@ -243,9 +243,10 @@ def draw_trace(
     line_width: float,
     x_label: str,
     y_label: str,
+    label: str | None = None,
 ) -> None:
     """Plot a single trace on *ax*."""
-    ax.plot(time, data, color=trace_color, linewidth=line_width)
+    ax.plot(time, data, color=trace_color, linewidth=line_width, label=label)
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
 
@@ -256,10 +257,19 @@ def draw_sem_band(
     mean: pd.Series | np.ndarray,
     sem: pd.Series | np.ndarray,
     sem_color: str,
+    label: str | None = "SEM",
 ) -> None:
-    """Fill ±SEM band around *mean* if any SEM values are non-zero."""
+    """Fill ±SEM band around *mean* if any SEM values are non-zero.
+
+    Pass ``label=None`` to keep the band out of the legend — used when
+    overlaying multiple columns, where each column's trace already carries
+    its own legend entry and a per-column "SEM" entry would just be noise.
+    """
     if not pd.Series(sem).eq(0).all():
-        ax.fill_between(time, mean - sem, mean + sem, color=sem_color, alpha=0.5, label="SEM")
+        ax.fill_between(
+            time, mean - sem, mean + sem, color=sem_color, alpha=0.5,
+            label=label if label is not None else "_nolegend_",
+        )
 
 
 def draw_onset_line(

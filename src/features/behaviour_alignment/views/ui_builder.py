@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QColorDialog,
+    QDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
+    QLabel,
     QPushButton,
     QTabWidget,
     QVBoxLayout,
@@ -16,6 +19,7 @@ from src.gui.shared.qt_bindings import ComboBoxControl, ObservableValue
 from src.gui.shared.qt_view_styles import panel_stylesheet
 from src.gui.views.export_options_panel import ExportOptionsPanel
 from src.shared.ui.graph_settings_panel import GraphSettingsPanel
+from src.features.behaviour_alignment.services.plot_service import _selected_columns
 
 
 class BehaviourUiBuilder:
@@ -101,27 +105,12 @@ class BehaviourUiBuilder:
         toolbar_layout = QHBoxLayout()
         container_layout.addLayout(toolbar_layout)
 
-        self.app.trace_color_button = QPushButton(
-            text="Main Trace Colour",
+        self.app.trace_colors_button = QPushButton(
+            text="Trace Colours",
             parent=graphs_container_frame,
         )
-        self.app.trace_color_button.clicked.connect(self.handle_trace_color_selection)
-        self._style_color_button(
-            self.app.trace_color_button,
-            self.app.settings_manager.selected_trace_color,
-        )
-        toolbar_layout.addWidget(self.app.trace_color_button)
-
-        self.app.sem_color_button = QPushButton(
-            text="SEM Colour",
-            parent=graphs_container_frame,
-        )
-        self.app.sem_color_button.clicked.connect(self.handle_sem_color_selection)
-        self._style_color_button(
-            self.app.sem_color_button,
-            self.app.settings_manager.selected_sem_color,
-        )
-        toolbar_layout.addWidget(self.app.sem_color_button)
+        self.app.trace_colors_button.clicked.connect(self.open_trace_colors_popup)
+        toolbar_layout.addWidget(self.app.trace_colors_button)
 
         self.app.selected_behaviour = ObservableValue("Choose behaviour to plot")
 
@@ -166,18 +155,74 @@ class BehaviourUiBuilder:
         self._ensure_layout(self.app.graph_canvas)
         container_layout.addWidget(self.app.graph_canvas, 1)
 
-    def handle_sem_color_selection(self) -> None:
-        new_color = QColorDialog.getColor(parent=self.app.graph_canvas)
-        if new_color.isValid():
-            self.app.settings_manager.selected_sem_color = new_color.name()
-            self._style_color_button(self.app.sem_color_button, new_color.name())
-            self.app.plot_service.handle_figure_display_selection(None)
+    def open_trace_colors_popup(self) -> None:
+        """Open a colour-picker popup, one row per currently selected column.
 
-    def handle_trace_color_selection(self) -> None:
+        The primary column keeps its existing separate trace/SEM colours;
+        every additional ticked column gets its own single swatch (used for
+        both its trace line and SEM band).
+        """
+        popup = QDialog(self.app.graph_canvas)
+        popup.setWindowTitle("Trace Colours")
+        layout = QGridLayout(popup)
+        layout.setHorizontalSpacing(10)
+        layout.setVerticalSpacing(8)
+
+        row = 0
+        layout.addWidget(QLabel("Primary Trace Colour:", popup), row, 0)
+        primary_trace_button = QPushButton(popup)
+        self._style_color_button(
+            primary_trace_button, self.app.settings_manager.selected_trace_color
+        )
+        primary_trace_button.clicked.connect(
+            lambda: self._pick_color(primary_trace_button, self._set_primary_trace_color)
+        )
+        layout.addWidget(primary_trace_button, row, 1)
+        row += 1
+
+        layout.addWidget(QLabel("Primary SEM Colour:", popup), row, 0)
+        primary_sem_button = QPushButton(popup)
+        self._style_color_button(
+            primary_sem_button, self.app.settings_manager.selected_sem_color
+        )
+        primary_sem_button.clicked.connect(
+            lambda: self._pick_color(primary_sem_button, self._set_primary_sem_color)
+        )
+        layout.addWidget(primary_sem_button, row, 1)
+        row += 1
+
+        for column in _selected_columns(self.app)[1:]:
+            layout.addWidget(QLabel(f"{column} Colour:", popup), row, 0)
+            button = QPushButton(popup)
+            current_color = self.app.column_colors.get(
+                column, self.app.settings_manager.selected_trace_color
+            )
+            self._style_color_button(button, current_color)
+            button.clicked.connect(
+                lambda _checked=False, col=column, btn=button: self._pick_color(
+                    btn, lambda color: self.app.column_colors.update({col: color})
+                )
+            )
+            layout.addWidget(button, row, 1)
+            row += 1
+
+        close_button = QPushButton("Close", popup)
+        close_button.clicked.connect(popup.accept)
+        layout.addWidget(close_button, row, 0, 1, 2)
+
+        popup.exec()
+
+    def _set_primary_trace_color(self, color: str) -> None:
+        self.app.settings_manager.selected_trace_color = color
+
+    def _set_primary_sem_color(self, color: str) -> None:
+        self.app.settings_manager.selected_sem_color = color
+
+    def _pick_color(self, button: QPushButton, apply_color) -> None:
         new_color = QColorDialog.getColor(parent=self.app.graph_canvas)
         if new_color.isValid():
-            self.app.settings_manager.selected_trace_color = new_color.name()
-            self._style_color_button(self.app.trace_color_button, new_color.name())
+            apply_color(new_color.name())
+            self._style_color_button(button, new_color.name())
             self.app.plot_service.handle_figure_display_selection(None)
 
     @staticmethod

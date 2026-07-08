@@ -367,10 +367,17 @@ def _prepare_signal_and_time_columns(
     column: str,
     z_scored_data=None,
 ) -> tuple[pd.DataFrame, pd.Series]:
-    """Return a positional working frame and the time column used for slicing."""
+    """Return a positional working frame and the time column used for slicing.
+
+    When *z_scored_data* is provided, it's written into *working[column]*
+    (whatever that column's name is — z-scoring isn't tied to one literal
+    column name, so multiple signal columns can each carry their own
+    z-scored series) and the z-scored time axis is used instead of the
+    dataframe's native time column.
+    """
     working = df.copy().reset_index(drop=True)
-    if column == "baselined_z_score" and z_scored_data is not None:
-        working["baselined_z_score"] = pd.Series(z_scored_data).reset_index(drop=True)
+    if z_scored_data is not None:
+        working[column] = pd.Series(z_scored_data).reset_index(drop=True)
         time_col = working["z_scored_time"]
     else:
         time_col = working.iloc[:, 0]
@@ -436,15 +443,15 @@ def extract_data_slice_with_time(
     ----------
     df:
         Full recording DataFrame; first column is the time axis (minutes),
-        unless *column* is ``"baselined_z_score"`` in which case
+        unless *z_scored_data* is provided, in which case
         ``df["z_scored_time"]`` is used.
     start_time_min, behaviour_time_min, end_time_min:
         Window boundaries in minutes.
     column:
         Column to slice from *df*.
     z_scored_data:
-        If *column* is ``"baselined_z_score"``, pass the z-scored series so
-        the function can write it into the temporary column before slicing.
+        Pre-computed z-scored series for *column*; pass this to slice
+        z-scored data instead of the raw signal in *column*.
 
     Returns
     -------
@@ -524,12 +531,14 @@ def extract_behaviour_results(
     df:
         Full recording DataFrame.
     checkbox_state:
-        If ``True``, slices the z-scored column.
+        If ``True`` and *z_scored_data* is provided, slices the z-scored
+        series instead of the raw signal in *selected_column*.
     selected_column:
-        Signal column used when *checkbox_state* is ``False``.
+        Signal column to slice. When z-scoring, this is also the name
+        *z_scored_data* gets written under in the working frame.
     z_scored_data:
-        Pre-computed z-scored Series; required when *checkbox_state* is
-        ``True``.
+        Pre-computed z-scored Series for *selected_column*; pass this to
+        slice z-scored data when *checkbox_state* is ``True``.
 
     Returns
     -------
@@ -569,7 +578,7 @@ def extract_behaviour_results(
             ) - baseline_start_time_min
 
             use_zscore = checkbox_state and z_scored_data is not None
-            column = "baselined_z_score" if use_zscore else selected_column
+            column = selected_column
             start_data, end_data, time_range = extract_data_slice_with_time(
                 df,
                 start_time_min,

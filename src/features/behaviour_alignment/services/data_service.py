@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QMessageBox
 
-from src.processing.behavior_metrics import compute_z_score
+from src.processing.behavior_metrics import (
+    PRIMARY_ZSCORE_COLUMN,
+    compute_z_score,
+    zscore_column_key,
+)
 from src.processing.behaviour_parser import build_params_from_df
 
 
@@ -14,8 +18,29 @@ class BehaviourDataService:
     def __init__(self, app):
         self.app = app
 
+    def _selected_columns(self) -> list[str]:
+        columns = getattr(self.app, "selected_columns_var", None)
+        columns = columns.get() if columns is not None else None
+        if columns:
+            return columns
+        primary = self.app.selected_column_var.get()
+        return [primary] if primary else []
+
     def calculate_z_score(self):
-        selected_column = self.app.selected_column_var.get()
+        """Baseline-normalise every selected column over the same window.
+
+        Every ticked signal column gets its own z-scored series (stored
+        under ``zscore_column_key(column)``), all computed from the same
+        baseline start/end — a dual-wavelength recording is baselined
+        against one shared baseline period, not two independent ones. The
+        first selected column is also kept under the legacy
+        ``"baselined_z_score"`` key for the single-column display paths.
+        """
+        columns = self._selected_columns()
+        if not columns:
+            return
+        primary_column = columns[0]
+
         if self.app.figure_display_dropdown.get() != "Z-scored data":
             self.app.figure_display_dropdown.set("Z-scored data")
 
@@ -35,27 +60,41 @@ class BehaviourDataService:
             self.app.z_score_computed
             and self.app.previous_baseline_start == current_baseline_start
             and self.app.previous_baseline_end == current_baseline_end
+            and getattr(self.app, "z_scored_columns", None) == columns
         ):
             return (
-                self.app.dataframe["baselined_z_score"],
+                self.app.dataframe[PRIMARY_ZSCORE_COLUMN],
                 self.app.dataframe["z_scored_time"],
             )
 
-        z_scored_data, z_scored_time, baseline_mean, baseline_std = compute_z_score(
-            self.app.dataframe,
-            selected_column,
-            current_baseline_start,
-            current_baseline_end,
-        )
+        baseline_means: dict[str, float] = {}
+        baseline_stds: dict[str, float] = {}
+        primary_z_scored_data = None
+        primary_z_scored_time = None
 
-        self.app.baseline_data_mean = baseline_mean
-        self.app.baseline_data_std = baseline_std
-        self.app.dataframe["baselined_z_score"] = z_scored_data
-        self.app.dataframe["z_scored_time"] = z_scored_time
+        for column in columns:
+            z_scored_data, z_scored_time, baseline_mean, baseline_std = compute_z_score(
+                self.app.dataframe,
+                column,
+                current_baseline_start,
+                current_baseline_end,
+            )
+            self.app.dataframe[zscore_column_key(column)] = z_scored_data
+            baseline_means[column] = baseline_mean
+            baseline_stds[column] = baseline_std
+            if column == primary_column:
+                primary_z_scored_data = z_scored_data
+                primary_z_scored_time = z_scored_time
+
+        self.app.dataframe["z_scored_time"] = primary_z_scored_time
+        self.app.dataframe[PRIMARY_ZSCORE_COLUMN] = primary_z_scored_data
+        self.app.baseline_data_mean = baseline_means
+        self.app.baseline_data_std = baseline_stds
         self.app.z_score_computed = True
+        self.app.z_scored_columns = columns
         self.app.previous_baseline_start = current_baseline_start
         self.app.previous_baseline_end = current_baseline_end
-        return z_scored_data, z_scored_time
+        return primary_z_scored_data, primary_z_scored_time
 
     def check_and_prepare_parameters(self, table_key):
         if table_key not in self.app.tables:

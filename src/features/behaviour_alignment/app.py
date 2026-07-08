@@ -28,6 +28,7 @@ from src.features.behaviour_alignment.services.static_inputs_service import (
 from src.features.behaviour_alignment.views.table_panel import BehaviourTablePanel
 from src.features.behaviour_alignment.views.ui_builder import BehaviourUiBuilder
 from src.gui.shared.qt_bindings import ObservableValue
+from src.gui.shared.qt_graph_canvas import destroy_embedded_figure
 from src.gui.shared.qt_view_styles import APP_TABS_STYLESHEET, PALETTE
 from src.gui.views.behaviour_event_input_frame import BehaviourInputFrame
 from src.gui.views.data_selection_panel import DataSelectionPanel
@@ -177,6 +178,8 @@ class DataProcessingSingleInstance(QWidget):
         )
         self.selected_column_var = ObservableValue("")
         self._bind_state_var(self.selected_column_var, "selected_column")
+        self.selected_columns_var = ObservableValue([])
+        self.column_colors: dict[str, str] = {}
 
     def init_behaviour_vars(self):
         """Initialize behaviour-related variables."""
@@ -263,6 +266,7 @@ class DataProcessingSingleInstance(QWidget):
         self.main_frame_layout.addWidget(self.data_selection_frame, 0, 0)
         self.file_path_var = self.data_selection_frame.file_path_var
         self.selected_column_var = self.data_selection_frame.selected_column_var
+        self.selected_columns_var = self.data_selection_frame.selected_columns_var
         self.data_selection_frame.use_baseline_var.trace_add(
             "write",
             lambda: setattr(
@@ -328,3 +332,19 @@ class DataProcessingSingleInstance(QWidget):
         notebook_settings.addTab(export_options_tab, "Export Options")
 
         return graph_settings_tab, export_options_tab
+
+    def prepare_for_unload(self) -> bool:
+        export_options = getattr(self, "export_options_container", None)
+        if export_options is not None:
+            export_options.prepare_for_unload()
+
+        figure_canvas = getattr(self, "figure_canvas", None)
+        if figure_canvas is not None:
+            destroy_embedded_figure(figure_canvas, getattr(self, "toolbar", None))
+            self.figure_canvas = None
+            self.toolbar = None
+        return True
+
+    def closeEvent(self, event) -> None:  # pragma: no cover - Qt lifecycle
+        self.prepare_for_unload()
+        super().closeEvent(event)
