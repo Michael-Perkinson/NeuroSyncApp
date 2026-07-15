@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 import matplotlib.cm as cm
@@ -10,6 +11,9 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QVBoxLayout, QWi
 
 from src.gui.shared.qt_bindings import ComboBoxControl, ObservableValue
 from src.gui.shared.qt_view_styles import apply_button_role, panel_stylesheet
+
+
+logger = logging.getLogger(__name__)
 
 
 class TelemetryDisplayPresenter:
@@ -342,7 +346,7 @@ class TelemetryDisplayPresenter:
         )
 
         if matching_key is None:
-            print(f"No matching key found for {cluster_dropdown_value}.")
+            logger.warning("No display key matched %s.", cluster_dropdown_value)
             return
 
         cluster_data = self.app.data_dict[file_path_str][matching_key]

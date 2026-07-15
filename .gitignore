@@ -61,3 +61,8 @@ MAC_COMPAT_PLAN.md
 
 # Example/raw data outputs
 example_data/*
+!example_data/photometry_behaviour/
+example_data/photometry_behaviour/*
+!example_data/photometry_behaviour/example_Data ST5435_NeuroBehaviorSync/
+example_data/photometry_behaviour/example_Data ST5435_NeuroBehaviorSync/*
+!example_data/photometry_behaviour/example_Data ST5435_NeuroBehaviorSync/example_Data ST5435_dFoF_465.xlsx

@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Optional
 
 from src.shared.persistence.app_paths import config_file_path, legacy_repo_file_path
+
+
+logger = logging.getLogger(__name__)
 
 
 def state_file_path() -> Path:
@@ -30,6 +34,7 @@ def save_state(app_name: str) -> None:
         with file_path.open("w", encoding="utf-8") as handle:
             json.dump({"last_app": app_name}, handle)
     except IOError:
+        logger.exception("Could not save dashboard state to %s", file_path)
         return
 
 
@@ -42,6 +47,7 @@ def load_state() -> Optional[str]:
             with file_path.open("r", encoding="utf-8") as handle:
                 state = json.load(handle)
         except (json.JSONDecodeError, IOError):
+            logger.warning("Could not load dashboard state from %s", file_path, exc_info=True)
             return None
         return state.get("last_app")
     return None

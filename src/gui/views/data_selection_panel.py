@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
     QLabel,
-    QMessageBox,
     QPushButton,
     QSizePolicy,
     QWidget,
@@ -26,6 +25,7 @@ from src.file_management.file_loader import (
     select_preferred_signal_column,
 )
 from src.gui.shared.checkable_column_selector import CheckableColumnSelector
+from src.gui.shared.messages_and_errors import show_action_error
 from src.shared.persistence.column_selection_memory import (
     recall_selection,
     remember_selection,
@@ -196,7 +196,13 @@ class DataSelectionPanel(QFrame):
         except Exception as exc:
             logger.warning("Failed to load data file %s: %s", file_path, exc)
             file_path_var.set("")
-            QMessageBox.critical(self, "File Load Error", f"Could not load that file.\n\n{exc}")
+            show_action_error(
+                "Data file not recognised",
+                "NeuroSyncApp could not load the selected data file",
+                exc,
+                self,
+                "Choose a CSV or Excel data file with a time column and at least one numeric signal column.",
+            )
             self._suppress_column_redraw = False
             return
 

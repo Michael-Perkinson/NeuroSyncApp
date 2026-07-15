@@ -40,8 +40,13 @@ from PySide6.QtWidgets import (
 from src import default_dirs
 from src.core.app_settings_manager import AppSettingsManager
 from src.dfer import compute_options, run_analysis, run_pfer
-from src.dfer.df_common import detect_photometry_file_type
+from src.dfer.df_common import (
+    detect_photometry_file_type,
+    validate_dual_df,
+    validate_single_df,
+)
 from src.dfer.df_plots import mpl_pfer_figure
+from src.gui.shared.messages_and_errors import format_action_error, show_action_error
 from src.gui.shared.qt_view_styles import (
     APP_TABS_STYLESHEET,
     PALETTE,
@@ -320,7 +325,7 @@ class GraphPanel(QWidget):
 
 class _Worker(QObject):
     finished = Signal(object)
-    failed = Signal(str)
+    failed = Signal(object)
 
     def __init__(self, fn, kwargs: dict) -> None:
         super().__init__()
@@ -331,7 +336,8 @@ class _Worker(QObject):
         try:
             result = self._fn(**self._kwargs)
         except Exception as exc:
-            self.failed.emit(str(exc))
+            logging.getLogger(__name__).exception("Background analysis failed")
+            self.failed.emit(exc)
         else:
             self.finished.emit(result)
 
@@ -1023,7 +1029,13 @@ QPlainTextEdit {{
             Path(path).mkdir(parents=True, exist_ok=True)
             _open_path(path)
         except Exception as exc:
-            QMessageBox.critical(self, "Open folder failed", str(exc))
+            show_action_error(
+                "Folder could not be opened",
+                f"NeuroSyncApp could not open the {label.lower()}",
+                exc,
+                self,
+                "Check that the folder is available and that you have permission to access it.",
+            )
 
     def _open_current_output_folder(self, label: str) -> None:
         if self._output_folder is None:
@@ -1061,7 +1073,13 @@ QPlainTextEdit {{
         try:
             self._draw_raw_graph(file_path)
         except Exception as exc:
-            QMessageBox.critical(self, "Load Error", str(exc))
+            show_action_error(
+                "Photometry file not recognised",
+                "NeuroSyncApp could not load the selected photometry file",
+                exc,
+                self,
+                "Select the original raw photometry CSV rather than a processed DFer or PFer output file.",
+            )
             return
         file_type, _ = detect_photometry_file_type(file_path)
         self._selected_file = file_path
@@ -1089,6 +1107,7 @@ QPlainTextEdit {{
         file_type, skiprows = detect_photometry_file_type(file_path)
         if file_type == "single":
             df = pd.read_csv(file_path, index_col=False, low_memory=False)
+            validate_single_df(df)
             t = df["#time(seconds)"][1:].to_numpy(dtype=float)
             y405 = df["405nm"][1:].to_numpy(dtype=float)
             y465_col = "465nm" if "465nm" in df.columns else "490nm"
@@ -1096,6 +1115,7 @@ QPlainTextEdit {{
             self._draw_single_raw(t, y405, y465)
         else:
             df = pd.read_csv(file_path, skiprows=skiprows, index_col=False, low_memory=False)
+            validate_dual_df(df)
             t = df["TimeStamp"].astype(float).to_numpy() / 1000.0
             y470 = df["CH1-470"].astype(float).to_numpy()
             y560 = df["CH1-560"].astype(float).to_numpy()
@@ -1246,13 +1266,28 @@ QPlainTextEdit {{
             self._render_option(self._option_preview_combo.currentIndex())
             self._append_log("INFO  [DFer] Preview complete. Choose option 1-4, then run final.")
         except Exception as exc:
-            QMessageBox.critical(self, "Plot error", str(exc))
+            show_action_error(
+                "DFer preview could not be displayed",
+                "DFer generated preview data but NeuroSyncApp could not draw the plot",
+                exc,
+                self,
+                "Try regenerating the preview. If the problem continues, check the application log.",
+            )
 
-    def _options_failed(self, message: str) -> None:
+    def _options_failed(self, error: object) -> None:
         if self._unloading:
             return
         self._set_busy(False)
-        QMessageBox.critical(self, "DFer options error", message)
+        exc = error if isinstance(error, BaseException) else RuntimeError(str(error))
+        QMessageBox.critical(
+            self,
+            "DFer preview failed",
+            format_action_error(
+                "DFer could not generate the option preview",
+                exc,
+                "Check the CSV format and ensure the analysis window contains at least 120 seconds of numeric data.",
+            ),
+        )
 
     def _render_option(self, idx: int) -> None:
         if self._options_data is None:
@@ -1351,7 +1386,13 @@ QPlainTextEdit {{
         try:
             panel.canvas.figure.savefig(path, dpi=150, bbox_inches="tight")
         except Exception as exc:
-            QMessageBox.critical(self, "Save error", str(exc))
+            show_action_error(
+                "Plot image could not be saved",
+                "NeuroSyncApp could not save the plot image",
+                exc,
+                self,
+                "Check the output-folder permissions and available disk space, then try again.",
+            )
             return
         self._append_log(f"INFO  [Plot] Saved image: {path}")
 
@@ -1399,17 +1440,31 @@ QPlainTextEdit {{
                 self.notebook_graphs.setCurrentIndex(2)
             except Exception as exc:
                 QMessageBox.warning(
-                    self, "Plot warning",
-                    f"Analysis complete but plot failed:\n{exc}"
+                    self,
+                    "DFer result plot unavailable",
+                    format_action_error(
+                        "DFer completed and saved its output, but the result plot could not be displayed",
+                        exc,
+                        "The CSV result is still available in the DFer output folder.",
+                    ),
                 )
         else:
             self._dfer_result_label.setText("Analysis complete — no output path returned.")
 
-    def _run_final_failed(self, message: str) -> None:
+    def _run_final_failed(self, error: object) -> None:
         if self._unloading:
             return
         self._set_busy(False)
-        QMessageBox.critical(self, "DFer error", message)
+        exc = error if isinstance(error, BaseException) else RuntimeError(str(error))
+        QMessageBox.critical(
+            self,
+            "DFer analysis failed",
+            format_action_error(
+                "DFer could not complete the analysis",
+                exc,
+                "Check the selected raw CSV, analysis window, and output-folder permissions, then try again.",
+            ),
+        )
 
     # ── PFer ───────────────────────────────────────────────────────────────
 
@@ -1447,12 +1502,26 @@ QPlainTextEdit {{
             self.notebook_graphs.setCurrentIndex(3)
         except Exception as exc:
             QMessageBox.warning(
-                self, "Plot warning",
-                f"Peak finding complete but plot failed:\n{exc}"
+                self,
+                "PFer result plot unavailable",
+                format_action_error(
+                    "PFer completed and saved its output, but the peak plot could not be displayed",
+                    exc,
+                    "The PFer statistics CSV is still available in the output folder.",
+                ),
             )
 
-    def _pfer_failed(self, message: str) -> None:
+    def _pfer_failed(self, error: object) -> None:
         if self._unloading:
             return
         self._set_busy(False)
-        QMessageBox.critical(self, "PFer error", message)
+        exc = error if isinstance(error, BaseException) else RuntimeError(str(error))
+        QMessageBox.critical(
+            self,
+            "PFer analysis failed",
+            format_action_error(
+                "PFer could not complete peak finding",
+                exc,
+                "Select a DFer result CSV and check the baseline and peak settings before retrying.",
+            ),
+        )

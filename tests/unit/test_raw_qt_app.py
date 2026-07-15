@@ -242,6 +242,37 @@ def test_raw_qt_dual_file_selection_exports_above_session_folder(monkeypatch):
     widget.deleteLater()
 
 
+def test_raw_qt_wrong_dual_file_reports_required_schema(tmp_path, monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    wrong_file = tmp_path / "processed.csv"
+    wrong_file.write_text(
+        "TimeStamp,CH1-410,CH1-560\n0,1,1\n1000,1,1\n2000,1,1\n",
+        encoding="utf-8",
+    )
+    captured = {}
+    monkeypatch.setattr(
+        raw_app,
+        "show_action_error",
+        lambda title, summary, error, parent, recovery: captured.update(
+            {
+                "title": title,
+                "summary": summary,
+                "error": error,
+                "recovery": recovery,
+            }
+        ),
+    )
+
+    widget._load_photometry_file(str(wrong_file))
+
+    assert captured["title"] == "Photometry file not recognised"
+    assert "missing required column" in str(captured["error"])
+    assert "original raw photometry CSV" in captured["recovery"]
+    assert widget._selected_file is None
+    widget.deleteLater()
+
+
 def test_raw_qt_signal_selector_matches_file_type():
     app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()

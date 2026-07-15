@@ -25,6 +25,7 @@ from src.excel_ops.behaviour_exporter import (
     export_combined_csv,
     generate_summary_data,
 )
+from src.gui.shared.messages_and_errors import show_action_error
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +266,17 @@ class AlignedBehaviourExporter:
 
         if proceed:
             file_path = self.app.data_selection_frame.file_path_var.get()
-            self.extract_data_from_photometry(file_path, params)
+            try:
+                self.extract_data_from_photometry(file_path, params)
+            except Exception as exc:
+                show_action_error(
+                    "Behaviour export failed",
+                    "NeuroSyncApp could not export the aligned behaviour data",
+                    exc,
+                    self.app,
+                    "Close any existing output workbook, check the selected data, and try again.",
+                )
+                return
             logger.info("Behaviour data extraction completed.")
         else:
             logger.info("Behaviour data extraction cancelled by user.")

@@ -59,6 +59,7 @@ from src.processing.cluster_detection import (
     process_data_for_clusters as _process_data_for_clusters,
     select_stim_clusters as _select_stim_clusters,
 )
+from src.gui.shared.messages_and_errors import show_action_error
 from src.processing.telemetry_processing import (
     apply_cluster_binning as _apply_cluster_binning,
     align_and_concatenate_data as _align_and_concatenate_data,
@@ -1905,6 +1906,19 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         )
 
     def extract_button_click_handler(self):
+        try:
+            return self._extract_button_click_handler()
+        except Exception as exc:
+            show_action_error(
+                "Telemetry export failed",
+                "NeuroSyncApp could not export the telemetry analysis",
+                exc,
+                self,
+                "Check that data have been loaded and clustered, close any existing output workbook, and try again.",
+            )
+            return None
+
+    def _extract_button_click_handler(self):
         """
         Handle the extract button click event, perform data binning, and save the data to an Excel file.
 
@@ -1930,11 +1944,13 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             try:
                 with pd.ExcelWriter(output_file_path, engine='xlsxwriter') as writer:
                     self.workbook_exporter.create_sheets_for_clusters(writer)
-            except PermissionError:
-                logger.error(
-                    "Could not write export to %s because it is already open. "
-                    "Close the existing file with the same name and try again.",
-                    output_file_path,
+            except PermissionError as exc:
+                show_action_error(
+                    "Telemetry export file is unavailable",
+                    "NeuroSyncApp could not write the telemetry workbook",
+                    exc,
+                    self,
+                    "Close the existing workbook in Excel and try the export again.",
                 )
                 return
 
@@ -1998,6 +2014,19 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         return bin_labels
 
     def save_image(self):
+        try:
+            return self._save_image()
+        except Exception as exc:
+            show_action_error(
+                "Image could not be saved",
+                "NeuroSyncApp could not save the current telemetry plot",
+                exc,
+                self,
+                "Check the image settings and output-folder permissions, then try again.",
+            )
+            return None
+
+    def _save_image(self):
         """Saves the current figure to a file, applying user-defined font and label settings."""
         current_xlabel = self.fig.axes[0].get_xlabel()
         current_ylabel = self.fig.axes[0].get_ylabel()

@@ -7,7 +7,7 @@ from src.features.behaviour_alignment.services.reset_helpers import (
     clear_photometry_app_specific_selections,
 )
 from src.gui.shared.file_dialogs import select_csv_file
-from src.gui.shared.messages_and_errors import show_error
+from src.gui.shared.messages_and_errors import show_action_error, show_error
 from src.gui.shared.validation_checks import validate_baseline_state
 
 
@@ -35,7 +35,14 @@ class BehaviourFileSelector:
 
     def process_file(self, file_path) -> None:
         try:
-            self.app.manual_session_service.parse_manual_data(file_path)
-            self.app.is_file_parsed = True
+            parsed = self.app.manual_session_service.parse_manual_data(file_path)
+            self.app.is_file_parsed = parsed is True
         except Exception as error:
-            show_error("File Error", f"Failed to process file: {error}", self.app)
+            show_action_error(
+                "Behaviour import failed",
+                "NeuroSyncApp could not finish importing the behaviour file",
+                error,
+                self.app,
+                "Check the selected file and configured column names, then try again.",
+            )
+            self.app.is_file_parsed = False

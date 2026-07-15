@@ -1006,9 +1006,31 @@ class TelemetryPlotService:
         )
 
     def overlay_temp_and_act(self):
+        try:
+            return self._overlay_temp_and_act()
+        except Exception as exc:
+            from src.gui.shared.messages_and_errors import show_action_error
+
+            show_action_error(
+                "Telemetry alignment failed",
+                "NeuroSyncApp could not align the associated telemetry files",
+                exc,
+                self.app,
+                "Check the recording date, alignment time, and selected Activity and Temperature files, then try again.",
+            )
+            return None, None
+
+    def _overlay_temp_and_act(self):
         target_date = self.app.date
         act_file_path = self.app.act_file_path
         temp_file_path = self.app.temp_file_path
+        if act_file_path is None and temp_file_path is None:
+            QMessageBox.warning(
+                self.app,
+                "No telemetry files selected",
+                "No associated Activity or Temperature file was found. Select the telemetry files and try again.",
+            )
+            return None, None
         full_duration = self._get_full_photometry_duration_minutes()
         display_offset_minutes = self._get_display_time_offset_minutes()
         extraction_duration = full_duration
