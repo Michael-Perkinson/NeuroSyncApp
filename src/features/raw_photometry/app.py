@@ -852,6 +852,10 @@ QPlainTextEdit {{
         if self._thread is not None and self._thread.isRunning():
             self._thread.quit()
             if not self._thread.wait(3000):
+                # The dashboard will keep this tool alive when unload returns
+                # False. Restore the handler that was detached at the start of
+                # shutdown so the still-running tool remains fully usable.
+                self._setup_log_handler()
                 QMessageBox.information(
                     self,
                     "Still working",
