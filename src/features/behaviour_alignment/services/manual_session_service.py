@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import traceback
 import uuid
 
 from PySide6.QtWidgets import QMessageBox
@@ -18,6 +17,7 @@ from src.processing.behaviour_parser import process_behaviour_rows, read_behavio
 from src.shared.persistence.app_paths import config_file_path
 from src.processing.behavior_metrics import calculate_duration_metrics
 from src.gui.shared.qt_bindings import ObservableValue
+from src.gui.shared.messages_and_errors import show_action_error
 from src.string_ops.string_utils import normalize_deduplicate_and_order_strings
 
 
@@ -27,7 +27,7 @@ class BehaviourManualSessionService:
     def __init__(self, app):
         self.app = app
 
-    def parse_manual_data(self, file_path: str) -> None:
+    def parse_manual_data(self, file_path: str) -> bool:
         try:
             if (
                 self.app.checkbox_state
@@ -35,10 +35,10 @@ class BehaviourManualSessionService:
             ):
                 QMessageBox.information(
                     self.app,
-                    "Error",
+                    "Baseline not saved",
                     "Please remember to save the baseline values.",
                 )
-                return
+                return False
 
             behaviour_settings = load_behaviour_static_inputs(config_file_path("behaviour_settings.json"))
             self.app.behaviour_table_panel.clear_table()
@@ -49,14 +49,25 @@ class BehaviourManualSessionService:
 
             self.calculate_and_store_behavior_metrics(behavior_durations)
             self.update_ui_with_manual_data(table_data, behaviour_names)
-        except IOError:
-            traceback.print_exc()
-            QMessageBox.critical(self.app, "Error", "Failed to open the CSV file.")
-        except Exception as exc:
-            traceback.print_exc()
-            QMessageBox.critical(
-                self.app, "Error", f"Failed to parse the CSV file: {exc}"
+            return True
+        except IOError as exc:
+            show_action_error(
+                "Behaviour file could not be opened",
+                "NeuroSyncApp could not open the selected behaviour CSV",
+                exc,
+                self.app,
+                "Close the file in other programs, check its permissions, and try again.",
             )
+            return False
+        except Exception as exc:
+            show_action_error(
+                "Behaviour file not recognised",
+                "NeuroSyncApp could not import the selected behaviour CSV",
+                exc,
+                self.app,
+                "Check the configured behaviour, start-time, and end-time column names, then retry.",
+            )
+            return False
 
     def read_and_process_file(self, file_path: str):
         column_names = self.app.column_mapping_store.prompt_column_names()

@@ -53,8 +53,23 @@ class BehaviourDataService:
                 "Please enter both a start and end time for the baseline before applying z-score.",
             )
             return
-        current_baseline_start = float(raw_start) / 60
-        current_baseline_end = float(raw_end) / 60
+        try:
+            current_baseline_start = float(raw_start) / 60
+            current_baseline_end = float(raw_end) / 60
+        except ValueError:
+            QMessageBox.warning(
+                self.app,
+                "Baseline times are invalid",
+                "Baseline start and end must be numeric values in seconds.",
+            )
+            return None
+        if current_baseline_end <= current_baseline_start:
+            QMessageBox.warning(
+                self.app,
+                "Baseline range is invalid",
+                "Baseline end must be later than baseline start.",
+            )
+            return None
 
         if (
             self.app.z_score_computed
@@ -134,10 +149,11 @@ class BehaviourDataService:
             return None
 
         if self.app.checkbox_state:
-            baseline_start_time_min = (
-                float(self.app.data_selection_frame.baseline_start_entry.get()) / 60
-            )
-            self.app.z_scored_data, self.app.z_scored_time = self.calculate_z_score()
+            z_score_result = self.calculate_z_score()
+            if z_score_result is None:
+                return None
+            baseline_start_time_min = self.app.previous_baseline_start
+            self.app.z_scored_data, self.app.z_scored_time = z_score_result
             params["baseline_start_time_min"] = baseline_start_time_min
 
         return params

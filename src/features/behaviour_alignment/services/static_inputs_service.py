@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from src.data.json_handler import save_behaviour_static_inputs
 from src.shared.persistence.app_paths import config_file_path
+
+
+logger = logging.getLogger(__name__)
 
 
 class BehaviourStaticInputsService:
@@ -20,7 +25,7 @@ class BehaviourStaticInputsService:
 
         current_df = self.app.tables.get(self.app.current_table_key)
         if current_df is None:
-            print("No current dataframe found.")
+            logger.warning("Behaviour settings were not saved because no data table is loaded.")
             return
 
         if selected_behaviour == "All Behaviours":

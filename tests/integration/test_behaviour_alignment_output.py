@@ -4,9 +4,8 @@ photometry + behaviour CSV files and compares the produced Excel against the
 known-good golden file sheet by sheet.
 
 Settings that were used when generating the golden file
-(deduced from sheet shapes and bin-label ranges in the golden file):
-  - Active investigation : pre=30 s, post=30 s, bin=5 s  → 600 rows, 12 bins
-  - All other behaviours : pre=10 s, post=10 s, bin=5 s  → 200 rows,  4 bins
+(confirmed from its time axes and Summary Results bin labels):
+  - All behaviours       : pre=60 s, post=60 s, bin=20 s → 1200 rows, 6 bins
   - Exported column      : dFoF_465
   - use_binned_data      : True   (Summary Results sheet present)
   - combine_csv          : True   (single workbook)
@@ -46,7 +45,7 @@ EXPECTED_XLSX  = (
 # ---------------------------------------------------------------------------
 # Settings used when producing the golden file
 # ---------------------------------------------------------------------------
-_DEFAULT_SETTINGS = {"pre": "60", "post": "60", "bin": "30"}
+_DEFAULT_SETTINGS = {"pre": "60", "post": "60", "bin": "20"}
 BEHAVIOUR_SETTINGS = {}
 
 # Sheet names in the order they appear in the golden workbook

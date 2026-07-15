@@ -13,9 +13,13 @@ Functions:
 """
 
 import json
+import logging
 import os
 from typing import Any, Dict
 import pandas as pd
+
+
+logger = logging.getLogger(__name__)
 
 
 def save_behaviour_static_inputs(dataframe: pd.DataFrame, filename: str) -> None:
@@ -57,7 +61,7 @@ def save_dict_to_json(data: Dict[str, Any], filename: str) -> None:
         with open(filename, 'w', encoding='utf-8') as json_file:
             json.dump(data, json_file, indent=4)
     except IOError as e:
-        print(f"Error saving JSON file {filename}: {e}")
+        logger.exception("Error saving JSON file %s", filename)
 
 
 def load_behaviour_static_inputs(filename: str) -> Dict[str, Dict[str, Any]]:
@@ -106,5 +110,5 @@ def open_json_to_dict(filename: str) -> Dict[str, Any]:
             data = json.load(json_file)
         return data
     except (json.JSONDecodeError, IOError) as e:
-        print(f"Error loading JSON file {filename}: {e}")
+        logger.warning("Error loading JSON file %s: %s", filename, e)
         return {}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from PySide6.QtWidgets import QMessageBox
 
 from src.gui.shared.qt_graph_canvas import (
@@ -28,10 +29,13 @@ from src.processing.behaviour_plotting import (
 )
 from src.processing.image_export import build_image_export_request
 from src.processing.behavior_metrics import generate_mean_sem_df, zscore_column_key
+from src.gui.shared.messages_and_errors import show_action_error
 
 _EXTRA_TRACE_COLORS = [
     "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2",
 ]
+
+logger = logging.getLogger(__name__)
 
 
 def _selected_columns(app) -> list[str]:
@@ -81,7 +85,7 @@ def handle_figure_display_selection(app, event=None) -> None:
         not app.is_file_parsed
         and app.data_selection_frame.baseline_button_pressed
     ):
-        print("Please parse the file first.")
+        logger.warning("A behaviour display was requested before parsing a behaviour file.")
         app.data_already_adjusted = True
 
     if hasattr(app, "figure_canvas") and app.figure_canvas is not None:
@@ -150,12 +154,12 @@ def plot_z_scored_data(app, ax) -> None:
 
     selected_columns = _selected_columns(app)
     if not selected_columns or "z_scored_time" not in app.dataframe:
-        print("Required data columns are missing in the dataframe.")
+        logger.warning("Z-score plot skipped because selected data columns are unavailable.")
         return
 
     zscore_keys = [zscore_column_key(column) for column in selected_columns]
     if not all(key in app.dataframe for key in zscore_keys):
-        print("Required data columns are missing in the dataframe.")
+        logger.warning("Z-score plot skipped because computed z-score columns are unavailable.")
         return
 
     z_scored_data = app.dataframe[zscore_keys[0]]
@@ -446,7 +450,7 @@ def plot_mean_and_sem_trace(app, ax) -> None:
     if current_behavior in app.duration_data_cache:
         app.duration_data_cache[current_behavior]["mean_sem_df"] = primary_mean_sem_df
     else:
-        print(
+        logger.warning(
             f"Warning: Behavior '{current_behavior}' not found in cache to update mean_sem_df."
         )
 
@@ -541,7 +545,7 @@ def add_duration_box(app, ax, mean_sem_df) -> None:
 
     graphed_behaviour = app.behaviour_choice_graph.get()
     if graphed_behaviour not in app.duration_data_cache:
-        print(f"Duration data for {graphed_behaviour} not found in cache.")
+        logger.warning("Duration data for %s was not found in cache.", graphed_behaviour)
         return
 
     cached_data = app.duration_data_cache[graphed_behaviour]
@@ -630,21 +634,52 @@ def save_and_close_axis_range(app, popup=None, close: bool = True) -> None:
         selected_option = app.figure_display_dropdown.get()
 
     if app.graph_settings_container_instance.limit_axis_range_var.get():
-        if x_min and x_max and selected_option != "Behaviour Mean and SEM":
-            app.ax.set_xlim(float(x_min), float(x_max))
-        if y_min and y_max:
-            app.ax.set_ylim(float(y_min), float(y_max))
+        if bool(x_min) != bool(x_max):
+            QMessageBox.warning(
+                app,
+                "X-axis range incomplete",
+                "Enter both the minimum and maximum X-axis values, or leave both blank.",
+            )
+            return
+        if bool(y_min) != bool(y_max):
+            QMessageBox.warning(
+                app,
+                "Y-axis range incomplete",
+                "Enter both the minimum and maximum Y-axis values, or leave both blank.",
+            )
+            return
+        if not (x_min and x_max) and not (y_min and y_max):
+            QMessageBox.warning(
+                app,
+                "Axis range missing",
+                "Enter an X-axis range, a Y-axis range, or both.",
+            )
+            return
+        try:
+            x_range = (float(x_min), float(x_max)) if x_min and x_max else None
+            y_range = (float(y_min), float(y_max)) if y_min and y_max else None
+        except ValueError:
+            QMessageBox.warning(
+                app,
+                "Axis range is invalid",
+                "Axis minimum and maximum values must be numeric.",
+            )
+            return
+        if (x_range and x_range[0] >= x_range[1]) or (y_range and y_range[0] >= y_range[1]):
+            QMessageBox.warning(
+                app,
+                "Axis range is invalid",
+                "Each axis maximum must be greater than its minimum.",
+            )
+            return
+        if x_range and selected_option != "Behaviour Mean and SEM":
+            app.ax.set_xlim(*x_range)
+        if y_range:
+            app.ax.set_ylim(*y_range)
     else:
         if selected_option != "Behaviour Mean and SEM":
             app.ax.set_xlim(app.xlim_min, app.xlim_max)
         app.ax.set_ylim(app.default_y_limits)
-
-    if (
-        not app.graph_settings_container_instance.x_axis_min_var.get()
-        and not app.graph_settings_container_instance.y_axis_min_var.get()
-    ):
-        QMessageBox.critical(app, "Error", "Please enter values for both x and y!")
-        return
 
     app.figure_canvas.draw()
     app.settings_manager.save_variables()
@@ -673,7 +708,7 @@ def handle_zeroing(app, behaviours, start_times_min, end_times_min, converted_ti
 
     adjusted_time = converted_time_data.copy()
     if adjusted_df is None:
-        print("Adjusted DataFrame is None. Returning original times.")
+        logger.warning("Adjusted behaviour data is unavailable; using original times.")
         return start_times_min, end_times_min, adjusted_time
 
     adjusted_start_times_min = adjusted_df["Adjusted Start Time"].tolist()
@@ -708,8 +743,9 @@ def adjust_behavior_times(
         zero_axis_enabled,
     )
     if adjusted_df is None:
-        print(
-            f"Selected behaviour {selected_behaviour} not found or checkbox not active."
+        logger.warning(
+            "Selected behaviour %s was not found or zeroing is disabled.",
+            selected_behaviour,
         )
         return None
     app.adjusted_behaviour_dataframes[selected_behaviour] = adjusted_df
@@ -813,6 +849,15 @@ class BehaviourPlotService:
         )
 
     def save_image(self) -> None:
-        save_image(self.app)
+        try:
+            save_image(self.app)
+        except Exception as exc:
+            show_action_error(
+                "Image could not be saved",
+                "NeuroSyncApp could not save the current behaviour plot",
+                exc,
+                self.app,
+                "Check the image settings and output-folder permissions, then try again.",
+            )
 
 
