@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QCoreApplication, QEvent, QEventLoop, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -124,6 +124,7 @@ class QtDashboard(QMainWindow):
         return True
 
     def _clear_content(self) -> bool:
+        widgets_to_delete: list[QWidget] = []
         while self.content_layout and self.content_layout.count():
             item = self.content_layout.itemAt(0)
             widget = item.widget()
@@ -133,7 +134,25 @@ class QtDashboard(QMainWindow):
             item = self.content_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
-                widget.deleteLater()
+                widgets_to_delete.append(widget)
+
+        # Tool widgets own matplotlib timers, queued signals, log targets, and
+        # occasionally worker callbacks. On macOS, leaving deleteLater() until
+        # an arbitrary Cocoa event-loop turn can allow one of those callbacks
+        # to touch a half-destroyed native widget while the next tool is being
+        # constructed. Remove queued events first, then complete deferred Qt
+        # deletion synchronously at this explicit tool-switch boundary.
+        for widget in widgets_to_delete:
+            QCoreApplication.removePostedEvents(widget)
+            widget.hide()
+            widget.setParent(None)
+            widget.deleteLater()
+
+        if widgets_to_delete:
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+            QApplication.processEvents(
+                QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
+            )
         return True
 
     def load_app(self, app_id: str) -> None:
