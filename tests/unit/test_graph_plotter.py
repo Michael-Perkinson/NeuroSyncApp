@@ -18,7 +18,7 @@ class TestBuildSavePath:
         return str(file_path)
 
     def test_directory_includes_recording_date_when_provided(self, temp_file_path, tmp_path):
-        """Directory should include recording date when provided."""
+        """Directory should NOT include recording date; filename should."""
         output_path = build_save_path(
             temp_file_path,
             mouse_name="mouse_A",
@@ -28,7 +28,11 @@ class TestBuildSavePath:
             recording_date="26-07-21",
         )
 
-        assert "exported_images_mouse_A_26-07-21" in str(output_path)
+        # Directory should be just the mouse name, without the date
+        assert "exported_images_mouse_A" in str(output_path)
+        assert "exported_images_mouse_A_26-07-21" not in str(output_path)
+        # But the filename should still contain the date
+        assert "26-07-21" in Path(output_path).name
         assert str(output_path).endswith(".png")
 
     def test_directory_excludes_date_when_not_provided(self, temp_file_path, tmp_path):
@@ -46,6 +50,33 @@ class TestBuildSavePath:
         assert "exported_images_mouse_A" in output_str
         assert "_" not in output_str.split("exported_images_")[-1].split(os.sep)[0][len("mouse_A"):]
         assert output_str.endswith(".png")
+
+    def test_directory_is_reused_across_different_recording_dates(self, temp_file_path, tmp_path):
+        """Same mouse's export directory should be identical across different recording dates."""
+        path1 = build_save_path(
+            temp_file_path,
+            mouse_name="mouse_A",
+            figure_display="Full Trace",
+            behaviour_choice="",
+            fmt="png",
+            recording_date="25-12-08",
+        )
+        path2 = build_save_path(
+            temp_file_path,
+            mouse_name="mouse_A",
+            figure_display="Full Trace",
+            behaviour_choice="",
+            fmt="png",
+            recording_date="26-01-09",
+        )
+
+        # Same directory for the same mouse across different dates
+        assert path1.parent == path2.parent
+        # Different filenames due to different dates
+        assert path1.name != path2.name
+        # Each filename contains its respective date
+        assert "25-12-08" in path1.name
+        assert "26-01-09" in path2.name
 
     def test_filename_includes_recording_date(self, temp_file_path, tmp_path):
         """Filename should include recording date when provided."""

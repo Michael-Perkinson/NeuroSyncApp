@@ -479,23 +479,21 @@ def build_save_path(
     fmt: str,
     recording_date: str | None = "",
 ) -> Path:
-    """Return a save path for the exported figure using recording date.
+    """Return a save path for the exported figure.
 
-    Creates the ``exported_images_<mouse_name>_<recording_date>`` directory next to
-    *file_path* if it does not already exist.
+    Creates the ``exported_images_<mouse_name>`` directory next to *file_path*
+    if it does not already exist. Recording date (if provided) is included
+    in the filename for disambiguation across sessions, not in the directory.
 
     Parameters
     ----------
     recording_date : str
-        Recording date in 'yy-mm-dd' format. If provided, used in directory and filename.
+        Recording date in 'yy-mm-dd' format. If provided, used in filename only.
     """
     p = Path(file_path)
 
-    # Format directory name with recording date if available
-    if recording_date:
-        out_dir = p.parent / f"exported_images_{mouse_name}_{recording_date}"
-    else:
-        out_dir = p.parent / f"exported_images_{mouse_name}"
+    # Directory name uses only mouse name, no recording date
+    out_dir = p.parent / f"exported_images_{mouse_name}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if figure_display == "Behaviour Mean and SEM" and behaviour_choice:
