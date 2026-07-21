@@ -74,7 +74,7 @@ def _write_titled_dataframe_sheet(writer, sheet_name, title, dataframe: pd.DataF
     for col_num, column in enumerate(dataframe.columns):
         worksheet.write(1, col_num, column, header_format)
         series = dataframe[column].astype(str).replace("nan", "")
-        max_value_width = series.map(len).max() if not series.empty else 0
+        max_value_width = series.map(lambda x: len(x) if isinstance(x, str) else 0).max() if not series.empty else 0
         width = min(max(len(str(column)), max_value_width) + 2, 28)
         worksheet.set_column(col_num, col_num, max(width, 12))
 
