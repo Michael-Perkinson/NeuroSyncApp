@@ -477,14 +477,25 @@ def build_save_path(
     figure_display: str,
     behaviour_choice: str,
     fmt: str,
+    recording_date: str | None = "",
 ) -> Path:
-    """Return a unique timestamped save path for the exported figure.
+    """Return a save path for the exported figure using recording date.
 
-    Creates the ``exported_images_<mouse_name>`` directory next to
+    Creates the ``exported_images_<mouse_name>_<recording_date>`` directory next to
     *file_path* if it does not already exist.
+
+    Parameters
+    ----------
+    recording_date : str
+        Recording date in 'yy-mm-dd' format. If provided, used in directory and filename.
     """
     p = Path(file_path)
-    out_dir = p.parent / f"exported_images_{mouse_name}"
+
+    # Format directory name with recording date if available
+    if recording_date:
+        out_dir = p.parent / f"exported_images_{mouse_name}_{recording_date}"
+    else:
+        out_dir = p.parent / f"exported_images_{mouse_name}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if figure_display == "Behaviour Mean and SEM" and behaviour_choice:
@@ -495,11 +506,16 @@ def build_save_path(
     if not mouse_name:
         base = p.stem
 
-    timestamp = datetime.datetime.now().strftime("%b%d_%H%M")
-    candidate = out_dir / f"{base}_{timestamp}.{fmt}"
+    # Use recording date in filename if available, otherwise use timestamp
+    if recording_date:
+        date_str = recording_date
+    else:
+        date_str = datetime.datetime.now().strftime("%b%d_%H%M")
+
+    candidate = out_dir / f"{base}_{date_str}.{fmt}"
     counter = 1
     while candidate.exists():
-        candidate = out_dir / f"{base}_{timestamp}_{counter}.{fmt}"
+        candidate = out_dir / f"{base}_{date_str}_{counter}.{fmt}"
         counter += 1
 
     return candidate
