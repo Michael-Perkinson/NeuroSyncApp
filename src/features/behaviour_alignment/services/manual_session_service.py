@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 import uuid
+from pathlib import Path
 
 from PySide6.QtWidgets import QMessageBox
 
@@ -237,6 +239,16 @@ class BehaviourManualSessionService:
         self.app.selected_column_var = selected_column_var
         self.app.column_dropdown = column_dropdown
         self.app.mouse_name = mouse_name
+
+        # Extract recording date from filename (yy-mm-dd format)
+        file_name = Path(file_path_var.get()).name
+        date_match = re.search(r"(\d+)-(\d+)-(\d+)", file_name)
+        self.app.date = (
+            f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+            if date_match
+            else None
+        )
+
         self.app.dataframe = dataframe
         self.app.baseline_button_pressed = False
         self.app.z_score_computed = False

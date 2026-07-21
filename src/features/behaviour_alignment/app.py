@@ -204,6 +204,7 @@ class DataProcessingSingleInstance(QWidget):
                 "first_offset_time": None,
                 "baseline_button_pressed": False,
                 "mouse_name": None,
+                "date": None,
                 "column_dropdown": None,
                 "dataframe": None,
                 "z_score_computed": False,

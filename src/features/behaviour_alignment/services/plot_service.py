@@ -783,6 +783,7 @@ def save_image(app) -> None:
         request.figure_display,
         request.behaviour_choice,
         request.image_format,
+        recording_date=app.date if hasattr(app, 'date') else "",
     )
     save_figure(fig_copy, output_path, request.image_format, request.dpi)
 

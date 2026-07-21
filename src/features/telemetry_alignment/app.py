@@ -2061,6 +2061,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             request.figure_display,
             request.behaviour_choice,
             request.image_format,
+            recording_date=self.date if hasattr(self, 'date') else "",
         )
         save_figure(fig_copy, output_path, request.image_format, request.dpi)
 
