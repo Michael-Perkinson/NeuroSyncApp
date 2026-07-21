@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 import numpy as np
+import pytest
 import shiboken6
 from PySide6.QtWidgets import QApplication, QWidget
 
@@ -175,3 +176,26 @@ def test_raw_failed_unload_restores_log_handler(monkeypatch):
     widget._thread = None
     assert widget.prepare_for_unload() is True
     widget.deleteLater()
+
+
+def test_telemetry_save_image_raises_error_when_no_figure_displayed():
+    """Regression test: ensure save_image raises clear error when current_fig is None.
+
+    This catches the bug where current_fig could be None if:
+    - App starts without generating a plot first, then user tries to save
+    - Figure creation fails but save is attempted anyway
+    - Internal state becomes inconsistent
+
+    The None check prevents AttributeError: 'NoneType' object has no attribute 'axes'
+    """
+    from src.features.telemetry_alignment.app import TelemetryPhotomOptoProcessingApp
+
+    app = QApplication.instance() or QApplication([])
+
+    app_instance = TelemetryPhotomOptoProcessingApp()
+    app_instance.current_fig = None
+
+    with pytest.raises(ValueError, match="No figure is currently displayed"):
+        app_instance._save_image()
+
+    app_instance.deleteLater()

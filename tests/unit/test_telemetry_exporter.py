@@ -357,3 +357,75 @@ def test_get_standardized_native_window_bounds_uses_longest_cluster_duration():
 
     assert window_start == pytest.approx(-0.1)
     assert window_end == pytest.approx(0.9)
+
+
+def test_write_titled_dataframe_sheet_handles_numeric_data_in_column_width_calculation():
+    """Regression test: ensure numeric float values don't break column width calculation.
+
+    This catches the bug where series.map(len) would fail with:
+    TypeError: object of type 'float' has no len()
+    """
+    from io import BytesIO
+    from src.features.telemetry_alignment.exporters.signal_sheet_exporter import (
+        _write_titled_dataframe_sheet,
+    )
+
+    frame_with_floats = pd.DataFrame(
+        {
+            "Cluster Name": ["Cluster A", "Cluster B", "Cluster C"],
+            "Temperature": [37.1, 37.2, 37.5],
+            "Activity": [10.5, 11.2, 9.8],
+            "Time (min)": [1.234567, 2.345678, 3.456789],
+        }
+    )
+
+    with pd.ExcelWriter(BytesIO(), engine="xlsxwriter") as writer:
+        try:
+            _write_titled_dataframe_sheet(
+                writer,
+                "test_sheet",
+                "Test Sheet with Numeric Data",
+                frame_with_floats,
+            )
+            worksheet = writer.sheets["test_sheet"]
+            assert worksheet is not None
+        except TypeError as e:
+            if "object of type 'float' has no len()" in str(e):
+                pytest.fail(f"Regression caught: {e}")
+            raise
+
+
+def test_write_titled_dataframe_sheet_handles_nan_values_with_numeric_data():
+    """Regression test: ensure NaN values in numeric columns don't cause TypeError.
+
+    This catches the bug where NaN values that weren't properly converted to strings
+    would cause: TypeError: object of type 'float' has no len()
+    """
+    from io import BytesIO
+    from src.features.telemetry_alignment.exporters.signal_sheet_exporter import (
+        _write_titled_dataframe_sheet,
+    )
+
+    frame_with_nans = pd.DataFrame(
+        {
+            "Sample": ["A", "B", "C", "D"],
+            "Value1": [1.5, float("nan"), 3.2, 4.1],
+            "Value2": [10, 20, float("nan"), 40],
+            "Value3": [100.5, 200.3, 300.1, float("nan")],
+        }
+    )
+
+    with pd.ExcelWriter(BytesIO(), engine="xlsxwriter") as writer:
+        try:
+            _write_titled_dataframe_sheet(
+                writer,
+                "nan_test",
+                "Test Sheet with NaN Values",
+                frame_with_nans,
+            )
+            worksheet = writer.sheets["nan_test"]
+            assert worksheet is not None
+        except TypeError as e:
+            if "object of type 'float' has no len()" in str(e):
+                pytest.fail(f"Regression caught: {e}")
+            raise

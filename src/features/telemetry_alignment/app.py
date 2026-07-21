@@ -2028,9 +2028,11 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
 
     def _save_image(self):
         """Saves the current figure to a file, applying user-defined font and label settings."""
-        current_xlabel = self.fig.axes[0].get_xlabel()
-        current_ylabel = self.fig.axes[0].get_ylabel()
-        fig_copy = copy.deepcopy(self.fig)
+        if self.current_fig is None:
+            raise ValueError("No figure is currently displayed. Please generate a plot first.")
+        current_xlabel = self.current_fig.axes[0].get_xlabel()
+        current_ylabel = self.current_fig.axes[0].get_ylabel()
+        fig_copy = copy.deepcopy(self.current_fig)
         request = build_image_export_request(
             self.export_options_container.height_entry.get().strip(),
             self.export_options_container.width_entry.get().strip(),
