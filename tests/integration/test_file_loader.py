@@ -4,9 +4,10 @@ Integration tests for file_management/file_loader.py.
 Verifies that loading example CSV and Excel files produces the expected
 DataFrames — correct shape, column names, selected column, and time detection.
 """
-import pytest
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+import pytest
 
 from src.file_management.file_loader import load_data_file, process_loaded_data
 

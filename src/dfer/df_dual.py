@@ -148,6 +148,10 @@ def run_dual_analysis(
 
     mu470, sig470 = float(np.mean(dfof_470)), float(np.std(dfof_470))
     mu560, sig560 = float(np.mean(dfof_560)), float(np.std(dfof_560))
+    if sig470 == 0:
+        sig470 = float(np.finfo(float).eps)
+    if sig560 == 0:
+        sig560 = float(np.finfo(float).eps)
     z_470 = (dfof_470 - mu470) / sig470
     z_560 = (dfof_560 - mu560) / sig560
 

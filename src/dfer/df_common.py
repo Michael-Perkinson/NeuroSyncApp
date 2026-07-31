@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import cast
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -78,8 +78,7 @@ def safe_savgol(data: np.ndarray, window: int, poly: int) -> np.ndarray:
     if safe_window % 2 == 0:
         safe_window -= 1
     min_valid_window = poly + 1 if ((poly + 1) % 2 == 1) else (poly + 2)
-    if safe_window < min_valid_window:
-        safe_window = min_valid_window
+    safe_window = max(safe_window, min_valid_window)
     if safe_window > max_window:
         return arr.copy()
     return np.asarray(savgol_filter(arr, safe_window, poly), dtype=float)
@@ -95,7 +94,10 @@ def compute_adjusted_baselines(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     n = len(target)
     idx = np.arange(n)
-    scale_factor = np.mean(target) / np.mean(control)
+    mean_control = np.mean(control)
+    if mean_control == 0:
+        mean_control = np.finfo(float).eps
+    scale_factor = np.mean(target) / mean_control
     scaled_control = control * scale_factor
     qfit_control = np.polyfit(idx, control, 2)
     qfit_target = np.polyfit(idx, target, 2)

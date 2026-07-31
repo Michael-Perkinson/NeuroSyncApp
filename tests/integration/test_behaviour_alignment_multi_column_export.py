@@ -7,15 +7,16 @@ produced workbook has distinct, correctly suffixed sheets per column.
 """
 
 import matplotlib
+
 matplotlib.use("Agg")  # must be set before any GUI import
 
 import shutil
 import uuid
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
-from pathlib import Path
 from PySide6.QtWidgets import QApplication
 
 from src.features.behaviour_alignment.app import DataProcessingSingleInstance
@@ -56,7 +57,7 @@ def _build_app_and_run_export(
     csv_copy = tmp_dir / PHOTOMETRY_CSV.name
     shutil.copy(PHOTOMETRY_CSV, csv_copy)
 
-    qt_app = QApplication.instance() or QApplication([])
+    _qt_app = QApplication.instance() or QApplication([])
     app = DataProcessingSingleInstance()
 
     app.dataframe = pd.read_csv(str(PHOTOMETRY_CSV))

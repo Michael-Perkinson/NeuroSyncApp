@@ -84,23 +84,30 @@ def _fix_jitter(
     if len(peaks_arr) == 0 or len(troughs_arr) == 0:
         return peaks_arr, troughs_arr, prom_arr, width_arr
 
-    peak_id = np.column_stack([peaks_arr, np.ones(len(peaks_arr))])
-    trough_id = np.column_stack([troughs_arr, np.full(len(troughs_arr), 2)])
+    peak_id = np.column_stack([peaks_arr, np.ones(len(peaks_arr)), np.arange(len(peaks_arr))])
+    trough_id = np.column_stack([troughs_arr, np.full(len(troughs_arr), 2), np.arange(len(troughs_arr))])
     combined = np.vstack([peak_id, trough_id])
     order = np.argsort(combined[:, 0])
-    types = combined[order, 1].astype(int)
+    sorted_combined = combined[order]
+    types = sorted_combined[:, 1].astype(int)
     jitter = np.where(np.diff(types) == 0)[0]
 
-    for idx in reversed(jitter):
-        del_pos = idx // 2
+    peaks_to_delete = []
+    troughs_to_delete = []
+    for idx in jitter:
         if types[idx] == 2:
-            troughs_arr = np.delete(troughs_arr, del_pos)
+            orig_idx = int(sorted_combined[idx, 2])
+            troughs_to_delete.append(orig_idx)
         else:
-            peaks_arr = np.delete(peaks_arr, del_pos)
-            if prom_arr is not None:
-                prom_arr = np.delete(prom_arr, del_pos)
-            if width_arr is not None:
-                width_arr = np.delete(width_arr, del_pos)
+            orig_idx = int(sorted_combined[idx, 2])
+            peaks_to_delete.append(orig_idx)
+
+    peaks_arr = np.delete(peaks_arr, peaks_to_delete)
+    troughs_arr = np.delete(troughs_arr, troughs_to_delete)
+    if prom_arr is not None:
+        prom_arr = np.delete(prom_arr, peaks_to_delete)
+    if width_arr is not None:
+        width_arr = np.delete(width_arr, peaks_to_delete)
 
     return peaks_arr, troughs_arr, prom_arr, width_arr
 
@@ -238,7 +245,7 @@ def _analyze_signal(
 
     sigma = float(np.std(baseline_trace))
     if sigma == 0:
-        sigma = np.finfo(float).eps
+        sigma = float(np.finfo(float).eps)
 
     z_value = amplitudes / sigma
     z_ok = z_value > DEFAULT_Z_THRESHOLD
@@ -464,9 +471,12 @@ def run_pfer(
         if dataset_kind == "single" and result["peak_count"] > 0 and baseline_peak_count > 0:
             if result["peak_count"] < baseline_peak_count:
                 logger.warning("PFer warning 1: data may not be suitable for PFer analysis")
-            if len(amplitudes) > 0 and baseline_amp_mean is not None:
-                if (float(np.mean(amplitudes)) * 0.85) < baseline_amp_mean:
-                    logger.warning("PFer warning 2: data may not be suitable for PFer analysis")
+            if (
+                len(amplitudes) > 0
+                and baseline_amp_mean is not None
+                and (float(np.mean(amplitudes)) * 0.85) < baseline_amp_mean
+            ):
+                logger.warning("PFer warning 2: data may not be suitable for PFer analysis")
 
     if make_plots:
         _build_bokeh_plots(filename, t_vec, signal_specs, traces, results)

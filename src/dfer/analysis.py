@@ -79,8 +79,8 @@ def compute_options(
 
 
 __all__ = [
+    "compute_options",
     "detect_photometry_file_type",
     "expected_analysis_output_path",
     "run_analysis",
-    "compute_options",
 ]

@@ -10,16 +10,15 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from src.features.behaviour_alignment.services.plot_service import _selected_columns
 from src.gui.shared.qt_bindings import ComboBoxControl, ObservableValue
 from src.gui.shared.qt_view_styles import panel_stylesheet
 from src.gui.views.export_options_panel import ExportOptionsPanel
 from src.shared.ui.graph_settings_panel import GraphSettingsPanel
-from src.features.behaviour_alignment.services.plot_service import _selected_columns
 
 
 class BehaviourUiBuilder:
@@ -227,8 +226,8 @@ class BehaviourUiBuilder:
 
     @staticmethod
     def _style_color_button(button: QPushButton, color: str) -> None:
-        from PySide6.QtGui import QColor
         from PySide6.QtCore import Qt
+        from PySide6.QtGui import QColor
         qc = QColor(color)
         brightness = (0.299 * qc.red() + 0.587 * qc.green() + 0.114 * qc.blue()) / 255
         fg = "white" if brightness < 0.56 else "#17324D"

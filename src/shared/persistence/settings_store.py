@@ -8,7 +8,6 @@ from pathlib import Path
 
 from src.shared.persistence.app_paths import config_file_path, legacy_repo_file_path
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +30,11 @@ def load_settings(app_type: str) -> dict:
     candidates = [settings_file_path(app_type), _legacy_settings_file_path(app_type)]
     for path in candidates:
         try:
-            return _load_json(path)
+            result = _load_json(path)
+            if not isinstance(result, dict):
+                logger.warning("Settings file for %s at %s contains non-dict JSON.", app_type, path)
+                return {}
+            return result
         except FileNotFoundError:
             continue
         except Exception:

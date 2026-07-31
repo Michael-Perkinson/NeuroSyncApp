@@ -4,13 +4,9 @@ from __future__ import annotations
 
 import copy
 import logging
+
 from PySide6.QtWidgets import QMessageBox
 
-from src.gui.shared.qt_graph_canvas import (
-    create_styled_figure,
-    destroy_embedded_figure,
-    embed_figure_in_qt,
-)
 from src.gui.shared.graph_plotter import (
     apply_figure_size_and_fonts,
     build_save_path,
@@ -21,6 +17,13 @@ from src.gui.shared.graph_plotter import (
     draw_trace,
     save_figure,
 )
+from src.gui.shared.messages_and_errors import show_action_error
+from src.gui.shared.qt_graph_canvas import (
+    create_styled_figure,
+    destroy_embedded_figure,
+    embed_figure_in_qt,
+)
+from src.processing.behavior_metrics import generate_mean_sem_df, zscore_column_key
 from src.processing.behaviour_plotting import (
     build_adjusted_behaviour_df,
     compute_zeroed_time_axis,
@@ -28,8 +31,6 @@ from src.processing.behaviour_plotting import (
     select_single_row_window,
 )
 from src.processing.image_export import build_image_export_request
-from src.processing.behavior_metrics import generate_mean_sem_df, zscore_column_key
-from src.gui.shared.messages_and_errors import show_action_error
 
 _EXTRA_TRACE_COLORS = [
     "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2",
@@ -463,7 +464,7 @@ def plot_mean_and_sem_trace(app, ax) -> None:
             transform=ax.transAxes,
             ha="right",
             va="top",
-            bbox=dict(facecolor="white", edgecolor="black", boxstyle="square,pad=0.5"),
+            bbox={"facecolor": "white", "edgecolor": "black", "boxstyle": "square,pad=0.5"},
         )
 
     app.min_x_for_behaviour_mean_and_sem = start_time_adjusted

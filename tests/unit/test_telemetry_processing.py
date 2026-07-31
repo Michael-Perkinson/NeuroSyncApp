@@ -110,7 +110,7 @@ def test_extract_and_trim_data_uses_absolute_alignment_timestamp():
 
 
 def test_extract_data_for_date_and_offset_can_choose_previous_day_for_long_recording(monkeypatch):
-    import src.processing.telemetry_processing as telemetry_processing
+    from src.processing import telemetry_processing
 
     telemetry = pd.DataFrame(
         {
@@ -144,7 +144,7 @@ def test_extract_data_for_date_and_offset_can_choose_previous_day_for_long_recor
 
 
 def test_extract_data_for_date_and_offset_prefers_target_day_when_duration_fits(monkeypatch):
-    import src.processing.telemetry_processing as telemetry_processing
+    from src.processing import telemetry_processing
 
     telemetry = pd.DataFrame(
         {
@@ -178,7 +178,7 @@ def test_extract_data_for_date_and_offset_prefers_target_day_when_duration_fits(
 
 
 def test_extract_data_for_date_and_offset_raises_when_multiple_dates_cover_duration(monkeypatch):
-    import src.processing.telemetry_processing as telemetry_processing
+    from src.processing import telemetry_processing
 
     telemetry = pd.DataFrame(
         {
@@ -216,7 +216,7 @@ def test_extract_data_for_date_and_offset_raises_when_multiple_dates_cover_durat
 
 
 def test_extract_data_for_date_and_offset_uses_selected_ambiguous_date(monkeypatch):
-    import src.processing.telemetry_processing as telemetry_processing
+    from src.processing import telemetry_processing
 
     telemetry = pd.DataFrame(
         {

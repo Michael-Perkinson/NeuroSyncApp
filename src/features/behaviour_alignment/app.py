@@ -1,30 +1,32 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from PySide6.QtWidgets import QGridLayout, QSizePolicy, QTabWidget, QVBoxLayout, QWidget
 
 from src.core.app_settings_manager import AppSettingsManager
-from src.features.behaviour_alignment.models import BehaviourViewState
-from src.features.behaviour_alignment.io.column_mapping_store import (
-    BehaviourColumnMappingStore,
-)
-from src.features.behaviour_alignment.services.data_service import BehaviourDataService
 from src.features.behaviour_alignment.exporters.aligned_behaviour_exporter import (
     AlignedBehaviourExporter,
 )
 from src.features.behaviour_alignment.io.behaviour_file_selector import (
     BehaviourFileSelector,
 )
+from src.features.behaviour_alignment.io.column_mapping_store import (
+    BehaviourColumnMappingStore,
+)
+from src.features.behaviour_alignment.models import BehaviourViewState
+from src.features.behaviour_alignment.services.data_service import BehaviourDataService
 from src.features.behaviour_alignment.services.graph_helper_service import (
     BehaviourGraphHelperService,
 )
 from src.features.behaviour_alignment.services.manual_session_service import (
     BehaviourManualSessionService,
 )
-from src.features.behaviour_alignment.views.options_panel import BehaviourOptionsPanel
 from src.features.behaviour_alignment.services.plot_service import BehaviourPlotService
 from src.features.behaviour_alignment.services.static_inputs_service import (
     BehaviourStaticInputsService,
 )
+from src.features.behaviour_alignment.views.options_panel import BehaviourOptionsPanel
 from src.features.behaviour_alignment.views.table_panel import BehaviourTablePanel
 from src.features.behaviour_alignment.views.ui_builder import BehaviourUiBuilder
 from src.gui.shared.qt_bindings import ObservableValue
@@ -36,7 +38,7 @@ from src.gui.views.static_inputs_frame import StaticInputsFrame
 
 
 class DataProcessingSingleInstance(QWidget):
-    COMPONENT_TYPES = {
+    COMPONENT_TYPES: ClassVar[dict[str, type]] = {
         "plot_service": BehaviourPlotService,
         "behaviour_exporter": AlignedBehaviourExporter,
         "manual_session_service": BehaviourManualSessionService,

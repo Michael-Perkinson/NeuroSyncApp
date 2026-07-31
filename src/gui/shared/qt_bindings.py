@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Generic, TypeVar
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QCheckBox, QComboBox, QLineEdit
 
-T = TypeVar("T")
 
-
-class ObservableValue(Generic[T]):
+class ObservableValue[T]:
     def __init__(self, value: T | None = None) -> None:
         self._value = value
         self._callbacks: list[Callable[..., None]] = []
+        self._callback_map: dict[tuple | int, Callable[..., None]] = {}
 
     def get(self) -> T | None:
         return self._value
@@ -24,8 +22,31 @@ class ObservableValue(Generic[T]):
         for callback in list(self._callbacks):
             callback()
 
+    def _get_callback_key(self, callback: Callable[..., None]) -> tuple | int:
+        """Generate a stable identity key for a callback.
+
+        For bound methods, use (id(self), func) tuple for stable identity.
+        For functions/lambdas, use id(callback) as fallback.
+        """
+        if hasattr(callback, '__self__') and hasattr(callback, '__func__'):
+            # Bound method: (id of instance, func object) is stable across attribute access
+            return (id(callback.__self__), callback.__func__)
+        else:
+            # Plain function or lambda: use id as fallback
+            return id(callback)
+
     def trace_add(self, _mode: str, callback: Callable[..., None]) -> None:
-        self._callbacks.append(lambda: callback())
+        wrapped = lambda: callback()
+        self._callbacks.append(wrapped)
+        callback_key = self._get_callback_key(callback)
+        self._callback_map[callback_key] = wrapped
+
+    def trace_remove(self, _mode: str, callback: Callable[..., None]) -> None:
+        callback_key = self._get_callback_key(callback)
+        if callback_key in self._callback_map:
+            wrapped = self._callback_map.pop(callback_key)
+            if wrapped in self._callbacks:
+                self._callbacks.remove(wrapped)
 
     def trace(self, _mode: str, callback: Callable[..., None]) -> None:
         self.trace_add(_mode, callback)
@@ -73,7 +94,7 @@ class LineEditControl(QLineEdit):
 
 
 class ComboMenuAdapter:
-    def __init__(self, combo_box: "ComboBoxControl") -> None:
+    def __init__(self, combo_box: ComboBoxControl) -> None:
         self.combo_box = combo_box
         self._commands: dict[str, Callable[[], None]] = {}
 

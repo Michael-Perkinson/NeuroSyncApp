@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from src.processing.cluster_detection import (
     identify_clusters,
@@ -29,14 +28,13 @@ class TestIdentifyClustersElif:
         data = _make_series([5.0, 5.0, 10.0, 4.0, 10.0, 5.0])
         time = _time_series(6)
         peak_indices = [2, 4]
-        clusters, cluster_dict = identify_clusters(time, data, peak_indices)
+        clusters, _cluster_dict = identify_clusters(time, data, peak_indices)
         # Simply verify no crash and that clusters are returned
         assert isinstance(clusters, list)
 
     def test_signal_below_median_before_any_cluster(self):
         # First value < median: was_below_median starts True, elif branch fires at index 0
         # if current_value < median
-        data = _make_series([3.0, 3.0, 10.0, 10.0, 3.0])
         # median = 3.0, so values 3.0 are NOT < median (== median only), 10.0 > median
         # Use a dataset where first point IS strictly less than median
         data2 = _make_series([1.0, 1.0, 10.0, 10.0, 5.0, 1.0])
@@ -54,11 +52,11 @@ class TestIdentifyClustersEofOpenCluster:
         data = _make_series([1.0, 1.0, 1.0, 10.0, 10.0, 10.0])
         time = _time_series(6)
         peak_indices = [3, 4, 5]
-        clusters, cluster_dict = identify_clusters(time, data, peak_indices)
+        clusters, _cluster_dict = identify_clusters(time, data, peak_indices)
         assert len(clusters) >= 1
-        # Last cluster should end at last index
+        # Last cluster should end at last index (exclusive-end convention)
         last_cluster = clusters[-1]
-        assert last_cluster[1] == len(data) - 1
+        assert last_cluster[1] == len(data)
 
 
 class TestIdentifyClustersNotMerged:
@@ -116,7 +114,7 @@ class TestProcessClusterWindowIsStim:
         temp_df = self._make_telemetry()
         act_df = self._make_telemetry()
 
-        temp_result, act_result = process_cluster_window(
+        temp_result, _act_result = process_cluster_window(
             cluster_data, 2.0, 2.0, temp_df, act_df, is_stim=True
         )
         # Time axis should be relative to stim_start (3.0)
@@ -207,7 +205,7 @@ class TestProcessDataForClusters:
             "name": "2_stim_cluster",
             "cluster_size": 2,
         }
-        all_temp, all_act = process_data_for_clusters(
+        all_temp, _all_act = process_data_for_clusters(
             [stim_cluster], 1.0, 1.0, temp_df, act_df, is_stim=True
         )
         assert len(all_temp) == 1

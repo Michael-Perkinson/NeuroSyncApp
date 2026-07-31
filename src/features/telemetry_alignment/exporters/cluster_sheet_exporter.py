@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 
 def populate_cluster_sheet(exporter, writer, sheet_name, cluster_number):
@@ -86,13 +86,15 @@ def populate_cluster_sheet(exporter, writer, sheet_name, cluster_number):
             for col_num, header in enumerate(temp_act_headers):
                 worksheet.write(row_idx, col_num, header, exporter.app.bold)
             row_idx += 1
-            for bin_idx, row_temp in period_data["binned_mean_temp_data"].iterrows():
+            for row_temp in period_data["binned_mean_temp_data"].itertuples():
+                bin_idx = row_temp.Index
                 if bin_idx not in period_data["binned_mean_act_data"].index:
                     continue
-                bin_label = row_temp["Bin Range"]
+                row_dict = dict(zip(period_data["binned_mean_temp_data"].columns, row_temp[1:]))
+                bin_label = row_dict["Bin Range"]
                 worksheet.write(row_idx, 0, bin_label)
-                worksheet.write(row_idx, 1, row_temp["Mean"])
-                worksheet.write(row_idx, 2, row_temp["SEM"])
+                worksheet.write(row_idx, 1, row_dict["Mean"])
+                worksheet.write(row_idx, 2, row_dict["SEM"])
                 row_act = period_data["binned_mean_act_data"].loc[bin_idx]
                 worksheet.write(row_idx, 3, row_act["Mean"])
                 worksheet.write(row_idx, 4, row_act["SEM"])
@@ -498,7 +500,7 @@ def write_cluster_static_inputs(exporter, worksheet, row_idx, col_idx, cluster_n
     cluster_pattern_stim = f"{cluster_number}_stim_cluster_"
 
     for key, value in file_data.items():
-        if key.startswith(cluster_pattern_peaks) or key.startswith(cluster_pattern_stim):
+        if key.startswith((cluster_pattern_peaks, cluster_pattern_stim)):
             data_keys = [f"pre_{static_values_name}_time", f"post_{static_values_name}_time", "bin_size"]
             for data_key in data_keys:
                 try:

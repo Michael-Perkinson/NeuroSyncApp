@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from src.features.telemetry_alignment.io.static_input_builders import (
     build_opto_cluster_entries,
@@ -70,7 +69,7 @@ class TestBuildPhotometryClusterEntriesDefaults:
             },
             "stimulations": {},
         }
-        entries, used_defaults = build_photometry_cluster_entries(
+        _entries, used_defaults = build_photometry_cluster_entries(
             cluster_dict, _time_column(), normalized
         )
         assert used_defaults is True
@@ -157,7 +156,7 @@ class TestBuildOptoClusterEntriesStoredValues:
                 }
             },
         }
-        entries, used_defaults = build_opto_cluster_entries(stim_timings, normalized)
+        _entries, used_defaults = build_opto_cluster_entries(stim_timings, normalized)
         assert used_defaults is True
 
 

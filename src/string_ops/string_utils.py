@@ -1,7 +1,6 @@
-from typing import List
 
 
-def normalize_deduplicate_and_order_strings(strings: List[str]) -> List[str]:
+def normalize_deduplicate_and_order_strings(strings: list[str]) -> list[str]:
     """
     Normalize, deduplicate, and alphabetically order a list of strings.
 

@@ -59,7 +59,6 @@ from src.gui.shared.qt_view_styles import (
     title_stylesheet,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -310,8 +309,8 @@ class GraphPanel(QWidget):
                     widget._is_drawing = False
                     try:
                         widget.figure.clear()
-                    except Exception:
-                        pass
+                    except RuntimeError:
+                        logging.getLogger(__name__).debug("Figure cleanup: Qt object already deleted")
                 widget.hide()
                 widget.setParent(None)
                 widget.deleteLater()
@@ -354,7 +353,9 @@ class _QtLogHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         try:
             self._signal.emit(self.format(record))
-        except Exception:
+        except RuntimeError:
+            # Qt C++ signal object already deleted (teardown race); logging
+            # from within a log handler risks recursion, so stay silent.
             pass
 
 
@@ -878,8 +879,8 @@ QPlainTextEdit {{
         if self._log_signal_connected:
             try:
                 self._log_signal.disconnect(self._append_log)
-            except Exception:
-                pass
+            except RuntimeError:
+                logging.getLogger(__name__).debug("Signal disconnect: Qt object already deleted")
             self._log_signal_connected = False
 
         if self._log_handler is not None:

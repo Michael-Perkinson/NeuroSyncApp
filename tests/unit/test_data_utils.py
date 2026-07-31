@@ -1,7 +1,6 @@
 """
 Unit tests for src/processing/data_utils.py.
 """
-import pytest
 import pandas as pd
 
 from src.processing.data_utils import extract_mouse_name, get_column_titles

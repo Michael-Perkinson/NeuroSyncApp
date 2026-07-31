@@ -8,7 +8,10 @@ from src.excel_ops.behaviour_exporter import (
     create_df_for_behaviours,
     process_and_bin_data,
 )
-from src.processing.behaviour_parser import extract_behaviour_results, read_behaviour_csv
+from src.processing.behaviour_parser import (
+    extract_behaviour_results,
+    read_behaviour_csv,
+)
 
 
 def _build_photometry_frame(time_seconds: np.ndarray) -> pd.DataFrame:

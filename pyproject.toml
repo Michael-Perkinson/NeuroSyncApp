@@ -42,3 +42,45 @@ neurosyncapp = "src.app.main:main"
 
 [tool.setuptools.packages.find]
 include = ["src*"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+ignore = [
+    # Blind `except Exception` is intentional at the boundaries where it's used:
+    # user-facing action handlers that translate any failure into an error dialog
+    # (show_action_error/QMessageBox), or already-logged warnings, or genuinely
+    # optional cosmetic fallbacks (e.g. font registration). Reviewed case-by-case.
+    "BLE001",
+    # This app parses naive local wall-clock timestamps from lab equipment
+    # filenames/recordings (e.g. "23-9-20 MP5..."). There is no timezone
+    # information anywhere in the source data, so forcing tz-awareness would
+    # misrepresent it rather than fix anything.
+    "DTZ001",
+    "DTZ005",
+    "DTZ007",
+]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+# First-time mypy adoption (2026-07): every genuine bug mypy surfaced has been
+# fixed. The ~190 remaining findings are structural, not defects, and fall
+# into a few repeating shapes:
+#   - PySide6 stub gaps (Qt enum aliases like PointingHandCursor/Checked/
+#     WaitCursor/AlignLeft/Expanding resolve fine at runtime; the bundled
+#     stubs just don't model every alias).
+#   - Settings/component attributes assigned dynamically via a defaults-dict
+#     or COMPONENT_TYPES setattr loop (AppSettingsManager, DataProcessingSingleInstance,
+#     TelemetryPhotomOptoProcessingApp) — mypy can't see attributes set outside
+#     a literal `self.x = ...` statement.
+#   - matplotlib Axes/Artist methods typed as `object` by the stubs.
+#   - `QLayout.itemAt(i)`/`.widget()` returning `T | None` per Qt's real API,
+#     in loops that are already bounded by `.count()` so None is unreachable.
+# Full resolution would mean annotating/refactoring most of the app (a
+# PySide6 Protocol layer, restructuring the dynamic-attribute patterns) —
+# tracked as future cleanup, not done wholesale here to avoid touching
+# working code without cause. Re-run `mypy src main.py` to see the current
+# baseline; treat *new* errors introduced by future changes as real signal.

@@ -11,7 +11,6 @@ import re
 import numpy as np
 import pandas as pd
 
-
 # ---------------------------------------------------------------------------
 # Cluster heading generation
 # ---------------------------------------------------------------------------
@@ -241,7 +240,8 @@ def build_native_signal_frame(
             if segment_for_export.empty:
                 continue
 
-            for sample_index, (_, sample) in enumerate(segment_for_export.iterrows(), start=1):
+            for sample_index, sample in enumerate(segment_for_export.itertuples(index=False), start=1):
+                sample_dict = dict(zip(segment_for_export.columns, sample))
                 row = {
                     "Cluster Order": cluster_record["cluster_order"],
                     "Cluster Name": cluster_name,
@@ -253,9 +253,9 @@ def build_native_signal_frame(
                     "Window Start (min)": cluster_record["actual_window_start_time"],
                     "Window End (min)": cluster_record["actual_window_end_time"],
                     "Sample Index": sample_index,
-                    "Relative Time (min)": sample.get(time_column, ""),
-                    "Absolute Time": sample.get(date_time_column, ""),
-                    "Value": sample.get("Data", ""),
+                    "Relative Time (min)": sample_dict.get(time_column, ""),
+                    "Absolute Time": sample_dict.get(date_time_column, ""),
+                    "Value": sample_dict.get("Data", ""),
                 }
                 native_rows.append(row)
 

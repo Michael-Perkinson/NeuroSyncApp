@@ -36,7 +36,7 @@ def test_shared_log_handler_detaches_after_deleted_text_widget():
 
 
 def test_export_options_prepare_for_unload_detaches_log_handler():
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     panel = ExportOptionsPanel(
         None,
         file_path_var=None,
@@ -56,7 +56,7 @@ def test_export_options_prepare_for_unload_detaches_log_handler():
 
 
 def test_dashboard_calls_unload_hook_before_deleting_content(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     monkeypatch.setattr(QtDashboard, "_load_initial_app", lambda self: None)
     dashboard = QtDashboard()
 
@@ -79,7 +79,7 @@ def test_dashboard_calls_unload_hook_before_deleting_content(monkeypatch):
 
 
 def test_dashboard_keeps_content_when_unload_hook_blocks(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     monkeypatch.setattr(QtDashboard, "_load_initial_app", lambda self: None)
     dashboard = QtDashboard()
 
@@ -98,7 +98,7 @@ def test_dashboard_keeps_content_when_unload_hook_blocks(monkeypatch):
 
 
 def test_raw_prepare_for_unload_detaches_log_handler():
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     handler = widget._log_handler
 
@@ -143,7 +143,7 @@ def test_dashboard_repeatedly_switches_tools_after_raw_canvas_creation(monkeypat
 
 
 def test_raw_failed_unload_restores_log_handler(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
 
     class RunningThread:
@@ -190,7 +190,7 @@ def test_telemetry_save_image_raises_error_when_no_figure_displayed():
     """
     from src.features.telemetry_alignment.app import TelemetryPhotomOptoProcessingApp
 
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
 
     app_instance = TelemetryPhotomOptoProcessingApp()
     app_instance.current_fig = None

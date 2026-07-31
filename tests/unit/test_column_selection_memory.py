@@ -5,8 +5,8 @@ import importlib
 
 def _fresh_module(tmp_path, monkeypatch):
     monkeypatch.setenv("NEUROSYNCAPP_CONFIG_DIR", str(tmp_path))
-    import src.shared.persistence.app_paths as app_paths
     import src.shared.persistence.column_selection_memory as memory
+    from src.shared.persistence import app_paths
     importlib.reload(app_paths)
     importlib.reload(memory)
     return memory

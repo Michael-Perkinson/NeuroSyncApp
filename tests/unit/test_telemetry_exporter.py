@@ -366,6 +366,7 @@ def test_write_titled_dataframe_sheet_handles_numeric_data_in_column_width_calcu
     TypeError: object of type 'float' has no len()
     """
     from io import BytesIO
+
     from src.features.telemetry_alignment.exporters.signal_sheet_exporter import (
         _write_titled_dataframe_sheet,
     )
@@ -402,6 +403,7 @@ def test_write_titled_dataframe_sheet_handles_nan_values_with_numeric_data():
     would cause: TypeError: object of type 'float' has no len()
     """
     from io import BytesIO
+
     from src.features.telemetry_alignment.exporters.signal_sheet_exporter import (
         _write_titled_dataframe_sheet,
     )

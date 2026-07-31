@@ -1,20 +1,15 @@
 ﻿from __future__ import annotations
 
+import copy
 import logging
 import os
 import re
-import json
-import copy
-import pandas as pd
-import numpy as np
-import math
-
-from scipy.signal import find_peaks
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import matplotlib.dates as mdates
-import matplotlib.ticker as ticker
 from datetime import datetime, time, timedelta
+from typing import ClassVar
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from PySide6.QtWidgets import (
     QApplication,
     QColorDialog,
@@ -29,55 +24,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from scipy.signal import find_peaks
 
-from src.gui.views.behaviour_event_input_frame import BehaviourInputFrame
-from src.gui.views.data_selection_panel import DataSelectionPanel
-from src.features.telemetry_alignment.views.graph_settings_panel import (
-    create_telemetry_graph_settings_panel,
-)
-from src.gui.views.static_inputs_frame import StaticInputsFrame
-from src.gui.views.export_options_panel import ExportOptionsPanel
 from src.core.app_settings_manager import AppSettingsManager
-from src.features.telemetry_alignment.models import TelemetryViewState
-from src.gui.shared.qt_bindings import CheckBoxControl, LineEditControl, ObservableValue
-from src.gui.shared.qt_graph_canvas import (
-    destroy_embedded_figure,
-    embed_figure_in_qt,
-)
-from src.gui.shared.qt_view_styles import APP_TABS_STYLESHEET, PALETTE, apply_button_role
-from src.gui.shared.graph_plotter import (
-    apply_figure_size_and_fonts,
-    build_save_path,
-    save_figure,
-)
-from src.processing.behavior_metrics import (
-    get_time_scale as _get_time_scale,
-)
-from src.processing.cluster_detection import (
-    group_clusters_by_time_period as _group_clusters_by_time_period,
-    identify_clusters as _identify_clusters,
-    process_data_for_clusters as _process_data_for_clusters,
-    select_stim_clusters as _select_stim_clusters,
-)
-from src.gui.shared.messages_and_errors import show_action_error
-from src.processing.telemetry_processing import (
-    apply_cluster_binning as _apply_cluster_binning,
-    align_and_concatenate_data as _align_and_concatenate_data,
-    calculate_mean_and_sem as _calculate_mean_and_sem,
-    compute_photometry_mean as _compute_photometry_mean,
-    bin_data_dynamic as _bin_data_dynamic,
-    create_universal_time_axis as _create_universal_time_axis,
-    trim_data_to_minimum_length as _trim_data_to_minimum_length,
-)
-from src.processing.image_export import build_image_export_request
 from src.features.telemetry_alignment.exporters.export_frames import (
     generate_cluster_headings as _generate_cluster_headings,
 )
-from src.features.telemetry_alignment.views.cluster_table_panel import (
-    TelemetryClusterTablePanel,
-)
-from src.features.telemetry_alignment.views.display_mode_presenter import (
-    TelemetryDisplayPresenter,
+from src.features.telemetry_alignment.exporters.workbook_exporter import (
+    TelemetryWorkbookExporter,
 )
 from src.features.telemetry_alignment.io.associated_file_locator import (
     TelemetryAssociatedFileLocator,
@@ -85,22 +39,86 @@ from src.features.telemetry_alignment.io.associated_file_locator import (
 from src.features.telemetry_alignment.io.static_settings_store import (
     TelemetryStaticSettingsStore,
 )
+from src.features.telemetry_alignment.models import TelemetryViewState
+from src.features.telemetry_alignment.services.cluster_analysis import (
+    TelemetryClusterService,
+)
+from src.features.telemetry_alignment.services.plot_service import TelemetryPlotService
+from src.features.telemetry_alignment.views.cluster_table_panel import (
+    TelemetryClusterTablePanel,
+)
+from src.features.telemetry_alignment.views.display_mode_presenter import (
+    TelemetryDisplayPresenter,
+)
+from src.features.telemetry_alignment.views.graph_settings_panel import (
+    create_telemetry_graph_settings_panel,
+)
 from src.features.telemetry_alignment.views.label_settings_dialog import (
     TelemetryLabelSettingsDialog,
 )
-from src.features.telemetry_alignment.exporters.workbook_exporter import (
-    TelemetryWorkbookExporter,
+from src.gui.shared.graph_plotter import (
+    apply_figure_size_and_fonts,
+    build_save_path,
+    save_figure,
 )
-from src.features.telemetry_alignment.services.plot_service import TelemetryPlotService
-from src.features.telemetry_alignment.services.cluster_analysis import (
-    TelemetryClusterService,
+from src.gui.shared.messages_and_errors import show_action_error
+from src.gui.shared.qt_bindings import CheckBoxControl, LineEditControl, ObservableValue
+from src.gui.shared.qt_graph_canvas import (
+    destroy_embedded_figure,
+    embed_figure_in_qt,
+)
+from src.gui.shared.qt_view_styles import (
+    APP_TABS_STYLESHEET,
+    PALETTE,
+    apply_button_role,
+)
+from src.gui.views.behaviour_event_input_frame import BehaviourInputFrame
+from src.gui.views.data_selection_panel import DataSelectionPanel
+from src.gui.views.export_options_panel import ExportOptionsPanel
+from src.gui.views.static_inputs_frame import StaticInputsFrame
+from src.processing.behavior_metrics import (
+    get_time_scale as _get_time_scale,
+)
+from src.processing.cluster_detection import (
+    group_clusters_by_time_period as _group_clusters_by_time_period,
+)
+from src.processing.cluster_detection import (
+    identify_clusters as _identify_clusters,
+)
+from src.processing.cluster_detection import (
+    process_data_for_clusters as _process_data_for_clusters,
+)
+from src.processing.cluster_detection import (
+    select_stim_clusters as _select_stim_clusters,
+)
+from src.processing.image_export import build_image_export_request
+from src.processing.telemetry_processing import (
+    align_and_concatenate_data as _align_and_concatenate_data,
+)
+from src.processing.telemetry_processing import (
+    apply_cluster_binning as _apply_cluster_binning,
+)
+from src.processing.telemetry_processing import (
+    bin_data_dynamic as _bin_data_dynamic,
+)
+from src.processing.telemetry_processing import (
+    calculate_mean_and_sem as _calculate_mean_and_sem,
+)
+from src.processing.telemetry_processing import (
+    compute_photometry_mean as _compute_photometry_mean,
+)
+from src.processing.telemetry_processing import (
+    create_universal_time_axis as _create_universal_time_axis,
+)
+from src.processing.telemetry_processing import (
+    trim_data_to_minimum_length as _trim_data_to_minimum_length,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class TelemetryPhotomOptoProcessingApp(QWidget):
-    COMPONENT_TYPES = {
+    COMPONENT_TYPES: ClassVar[dict[str, type]] = {
         "cluster_table_panel": TelemetryClusterTablePanel,
         "display_presenter": TelemetryDisplayPresenter,
         "associated_file_locator": TelemetryAssociatedFileLocator,
@@ -437,14 +455,14 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
 
     def annotate_clusters_with_time_period(self):
         """Annotates each cluster and stim with information about whether it occurs during daytime or nighttime."""
-        for key, cluster_info in self.cluster_dict.items():
+        for cluster_info in self.cluster_dict.values():
             cluster_start_time = cluster_info['start_time']
             if self.is_cluster_in_nighttime(cluster_start_time):
                 cluster_info['time_period'] = 'Night'
             else:
                 cluster_info['time_period'] = 'Day'
 
-        for file_path, clusters in self.data_dict.items():
+        for clusters in self.data_dict.values():
             for cluster_name, cluster_info in clusters.items():
                 if 'stim' in cluster_name:
                     cluster_start_time = cluster_info['stim_start']
@@ -479,7 +497,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             list: Sorted list of unique peak counts extracted from cluster keys.
         """
         unique_peak_counts = set()
-        for cluster_key in self.cluster_dict.keys():
+        for cluster_key in self.cluster_dict:
             peak_count = cluster_key[2]
             unique_peak_counts.add(peak_count)
 
@@ -493,8 +511,8 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             list: Sorted list of unique stimulation counts extracted from data_dict keys.
         """
         unique_stim_counts = set()
-        for file_path, clusters in self.data_dict.items():
-            for cluster_name in clusters.keys():
+        for clusters in self.data_dict.values():
+            for cluster_name in clusters:
                 if 'stim' in cluster_name:
                     stim_count = int(
                         re.search(r'(\d+)_stim', cluster_name).group(1))
@@ -532,6 +550,15 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         processed_data, raw_data, native_data = self.extract_and_prepare_temp_and_act_data_for_stim(
             cluster_number)
 
+        if processed_data["full"]["temp"] is None or processed_data["full"]["act"] is None:
+            logger.warning(
+                "Stim %s: no temp/act data overlaps the stim time window — "
+                "check that the alignment start time and telemetry files cover the "
+                "photometry recording period. Skipping precompute for this stim.",
+                cluster_number,
+            )
+            return
+
         def convert_seconds_to_minutes(seconds):
             return [s / 60 for s in seconds]
 
@@ -550,9 +577,9 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             "day": {
                 "mean_temp_data": processed_data['day']['temp'],
                 "mean_act_data": processed_data['day']['act'],
-                "universal_time_axis_temp": processed_data['full']['temp']['Time (s)'].tolist(),
-                "universal_time_axis_act": processed_data['full']['act']['Time (s)'].tolist(),
-                "universal_time_axis_temp_min": convert_seconds_to_minutes(raw_data['full']['temp']['Time (s)'].tolist()),
+                "universal_time_axis_temp": processed_data['day']['temp']['Time (s)'].tolist() if processed_data['day']['temp'] is not None else [],
+                "universal_time_axis_act": processed_data['day']['act']['Time (s)'].tolist() if processed_data['day']['act'] is not None else [],
+                "universal_time_axis_temp_min": convert_seconds_to_minutes(raw_data['day']['temp']['Time (s)'].tolist()) if raw_data['day']['temp'] is not None else [],
                 "raw_temp_data": raw_data['day']['temp'],
                 "raw_act_data": raw_data['day']['act'],
                 "native_temp_segments": native_data["day"]["temp"],
@@ -561,9 +588,9 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             "night": {
                 "mean_temp_data": processed_data['night']['temp'],
                 "mean_act_data": processed_data['night']['act'],
-                "universal_time_axis_temp": processed_data['full']['temp']['Time (s)'].tolist(),
-                "universal_time_axis_act": processed_data['full']['act']['Time (s)'].tolist(),
-                "universal_time_axis_temp_min": convert_seconds_to_minutes(raw_data['full']['temp']['Time (s)'].tolist()),
+                "universal_time_axis_temp": processed_data['night']['temp']['Time (s)'].tolist() if processed_data['night']['temp'] is not None else [],
+                "universal_time_axis_act": processed_data['night']['act']['Time (s)'].tolist() if processed_data['night']['act'] is not None else [],
+                "universal_time_axis_temp_min": convert_seconds_to_minutes(raw_data['night']['temp']['Time (s)'].tolist()) if raw_data['night']['temp'] is not None else [],
                 "raw_temp_data": raw_data['night']['temp'],
                 "raw_act_data": raw_data['night']['act'],
                 "native_temp_segments": native_data["night"]["temp"],
@@ -592,7 +619,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         """
         pre_stim_time, post_stim_time = 0, 0
 
-        for _, stim_dict in self.data_dict.items():
+        for stim_dict in self.data_dict.values():
             for cluster_key, cluster_vals in stim_dict.items():
                 if f"{stim_number}_stim" in cluster_key:
                     pre_stim_time = float(cluster_vals['pre_stim_time'])
@@ -616,7 +643,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             stim_number (int): The stim number to process.
 
         Returns:
-            two tuples: Processed data and raw data dictionaries for 'full', 'day', and 'night' periods.
+            three tuples: Processed data, raw data, and native data dictionaries for 'full', 'day', and 'night' periods.
                 Each dictionary contains 'temp' and 'act' keys with corresponding data.
         """
 
@@ -642,7 +669,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
 
         stim_times = self.find_stim_times(stim_number)
         if stim_times is None:
-            return processed_data, raw_data
+            return processed_data, raw_data, native_data
 
         for period, clusters in clusters_by_period.items():
 
@@ -764,8 +791,8 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         nighttime_clusters = []
         all_clusters = []
 
-        for _, cluster_dict in self.data_dict.items():
-            for _, cluster_data in cluster_dict.items():
+        for cluster_dict in self.data_dict.values():
+            for cluster_data in cluster_dict.values():
                 all_clusters.append(cluster_data)
                 if cluster_data['time_period'] == 'Night':
                     nighttime_clusters.append(cluster_data)
@@ -1071,11 +1098,10 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             return
         if self.cluster_options_created:
             return
-        if destroy_frame:
-            if hasattr(self, "cluster_frame") and self.cluster_frame is not None:
-                self.cluster_frame.setParent(None)
-                self.cluster_frame.deleteLater()
-                self.cluster_frame = None
+        if destroy_frame and hasattr(self, "cluster_frame") and self.cluster_frame is not None:
+            self.cluster_frame.setParent(None)
+            self.cluster_frame.deleteLater()
+            self.cluster_frame = None
 
         self.graph_settings_container_instance.setup_canvas()
 
@@ -1545,7 +1571,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         - pd.DataFrame: DataFrame containing the data from the dictionary.
         """
         rows = []
-        for file_name, clusters in data_dict.items():
+        for clusters in data_dict.values():
             for cluster_name, cluster_data in clusters.items():
                 row = cluster_data.copy()
                 row['Cluster Name'] = cluster_name
@@ -1654,7 +1680,8 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         elif isinstance(time_input, time):
             return time_input.hour * 3600 + time_input.minute * 60 + time_input.second
         else:
-            raise ValueError("Invalid input type for time_to_seconds function")
+            # ValueError kept consistent with math_ops.time_converters.time_to_seconds.
+            raise ValueError("Invalid input type for time_to_seconds function")  # noqa: TRY004
 
     def find_offset_for_previous_time(self, dataframe, target_time_str):
         return self.plot_service.find_offset_for_previous_time(
@@ -1971,7 +1998,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
     def bin_all_cluster_data(self):
         """Bin all mean-cluster data using the persisted per-cluster bin sizes."""
         self.ensure_all_mean_cluster_data()
-        file_data = list(self.data_dict.values())[0]
+        file_data = next(iter(self.data_dict.values()))
         _apply_cluster_binning(self.mean_cluster_data, file_data)
 
     def compute_photometry_mean(self, photometry_data_list):

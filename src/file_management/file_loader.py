@@ -1,9 +1,12 @@
+
+import logging
+
+import pandas as pd
+
 from src.math_ops.time_converters import check_and_convert_time_column, is_time_data
 from src.processing.data_utils import get_column_titles
-from typing import Optional
-import pandas as pd
-import re
-import os
+
+logger = logging.getLogger(__name__)
 
 PREFERRED_SIGNAL_COLUMNS = ("dfof_465", "dfof_470", "490df/f")
 
@@ -84,6 +87,7 @@ def _load_excel(file_path: str) -> pd.DataFrame:
             if str(temp_df.columns[0]).replace('.', '', 1).isdigit():
                 return pd.read_excel(file_path, skiprows=i, header=None, names=column_titles)
         except Exception:
+            logger.debug("Header-offset probe failed at skiprows=%s for %s", i, file_path)
             continue
 
     return pd.read_excel(file_path)  # Default load

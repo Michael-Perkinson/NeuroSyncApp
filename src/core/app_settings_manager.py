@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from src.core.settings_defaults import get_default_settings
 from src.shared.persistence.settings_store import load_settings, save_settings
 
@@ -9,10 +11,10 @@ from src.shared.persistence.settings_store import load_settings, save_settings
 class AppSettingsManager:
     """Coordinates settings defaults and persistence using plain Python state."""
 
-    APP_TYPE_ALIASES = {
+    APP_TYPE_ALIASES: ClassVar[dict[str, str]] = {
         "raw_photometry_processing_app": "raw_photometry_processing",
     }
-    RAW_PHOTOMETRY_SETTING_ALIASES = {
+    RAW_PHOTOMETRY_SETTING_ALIASES: ClassVar[dict[str, str]] = {
         "time_column": "selected_time_column",
         "405nm_column": "selected_405nm_column",
         "465nm_column": "selected_465nm_column",

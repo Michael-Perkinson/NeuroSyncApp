@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from src.app.main import (
-    _create_qapplication,
     _is_pyside6_available,
     build_parser,
     logger,

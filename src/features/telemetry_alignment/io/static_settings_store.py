@@ -34,7 +34,7 @@ class TelemetryStaticSettingsStore:
         is_stim_update = "stim" in selected_cluster_label.lower()
 
         if selected_cluster_label in {"All Clusters", "All Stims"}:
-            for _, clusters in self.app.data_dict.items():
+            for clusters in self.app.data_dict.values():
                 for cluster_name, data in clusters.items():
                     if is_stim_update:
                         if "stim" in cluster_name:
@@ -52,7 +52,7 @@ class TelemetryStaticSettingsStore:
             match = re.search(r"(\d+) stim", selected_cluster_label)
             if match:
                 stim_count = int(match.group(1))
-                for _, clusters in self.app.data_dict.items():
+                for clusters in self.app.data_dict.values():
                     for cluster_name, data in clusters.items():
                         if f"{stim_count}_stim" in cluster_name:
                             data["pre_stim_time"] = pre_time
@@ -63,7 +63,7 @@ class TelemetryStaticSettingsStore:
             match = re.search(r"(\d+) Peak", selected_cluster_label)
             if match:
                 num_peaks_in_selected_cluster = int(match.group(1))
-                for _, clusters in self.app.data_dict.items():
+                for clusters in self.app.data_dict.values():
                     for cluster_name, data in clusters.items():
                         if f"{num_peaks_in_selected_cluster} Peaks" in cluster_name:
                             data["pre_cluster_time"] = pre_time
@@ -140,21 +140,22 @@ class TelemetryStaticSettingsStore:
     def save_static_inputs(self, df) -> None:
         data = {"clusters": {}, "stimulations": {}}
 
-        for _, row in df.iterrows():
-            cluster_name = row["Cluster Name"]
+        for row in df.itertuples(index=False):
+            row_dict = dict(zip(df.columns, row))
+            cluster_name = row_dict["Cluster Name"]
             base_cluster_name = cluster_name.rsplit("_", 1)[0]
 
             pre_time = (
-                row["pre_stim_time"]
+                row_dict["pre_stim_time"]
                 if "stim" in cluster_name
-                else row["pre_cluster_time"]
+                else row_dict["pre_cluster_time"]
             )
             post_time = (
-                row["post_stim_time"]
+                row_dict["post_stim_time"]
                 if "stim" in cluster_name
-                else row["post_cluster_time"]
+                else row_dict["post_cluster_time"]
             )
-            bin_size = row["bin_size"]
+            bin_size = row_dict["bin_size"]
 
             if "stim" in cluster_name:
                 data["stimulations"][base_cluster_name] = [pre_time, post_time, bin_size]

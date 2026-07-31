@@ -8,4 +8,3 @@ from src.gui.views.data_selection_panel import DataSelectionPanel
 class DataSelectionFrame(DataSelectionPanel):
     """Backward-compatible alias kept while callers migrate module paths."""
 
-    pass

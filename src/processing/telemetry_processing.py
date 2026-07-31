@@ -7,14 +7,13 @@ types, NumPy arrays, or pandas DataFrames.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from pathlib import Path
 import logging
 import re
+from datetime import datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 
 logger = logging.getLogger(__name__)
 
@@ -397,8 +396,7 @@ def calculate_nighttime_periods(
         )
 
     end_datetime = start_datetime + timedelta(minutes=duration_minutes)
-    if night_end > end_datetime:
-        night_end = end_datetime
+    night_end = min(night_end, end_datetime)
 
     return [(night_start.time(), night_end.time())]
 
@@ -742,11 +740,12 @@ def calculate_stim_timings(
         datetime.strptime(start_time_str, "%H:%M:%S") - datetime(1900, 1, 1)
     ).total_seconds() / 60
 
-    for _, row in stim_data_df.iterrows():
-        cluster_size = int(row["Cluster size (num)"])
-        stim_duration = row["Stim duration (sec)"]
-        interstim_interval = row["Interstim interval (sec)"]
-        stim_onset = row["Stim onset (hh:mm:ss)"].total_seconds() / 60
+    for cluster_size, stim_duration, interstim_interval, stim_onset in zip(
+        stim_data_df["Cluster size (num)"].astype(int),
+        stim_data_df["Stim duration (sec)"],
+        stim_data_df["Interstim interval (sec)"],
+        stim_data_df["Stim onset (hh:mm:ss)"].dt.total_seconds() / 60,
+    ):
         stim_onset_relative = stim_onset - start_time
 
         stim_periods = []

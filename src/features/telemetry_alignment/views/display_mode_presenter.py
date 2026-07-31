@@ -5,13 +5,13 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-import matplotlib.cm as cm
+
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
 from src.gui.shared.qt_bindings import ComboBoxControl, ObservableValue
 from src.gui.shared.qt_view_styles import apply_button_role, panel_stylesheet
-
 
 logger = logging.getLogger(__name__)
 
@@ -339,7 +339,7 @@ class TelemetryDisplayPresenter:
         matching_key = next(
             (
                 key
-                for key in self.app.data_dict[file_path_str].keys()
+                for key in self.app.data_dict[file_path_str]
                 if f"Cluster_{cluster_number}" in key
             ),
             None,

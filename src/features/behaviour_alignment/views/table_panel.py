@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import pandas as pd
-from PySide6.QtWidgets import QMessageBox, QFrame, QVBoxLayout
+from PySide6.QtWidgets import QFrame, QMessageBox, QVBoxLayout
 
-from src.gui.shared.qt_view_styles import panel_stylesheet
 from src.gui.shared.qt_table_adapter import QtTableAdapter
-
+from src.gui.shared.qt_view_styles import panel_stylesheet
 from src.processing.behaviour_plotting import build_treeview_rows
 
 
 class BehaviourTablePanel:
     """Owns the treeview UI setup plus table update/sort behaviors."""
 
-    TABLE_COLUMNS = [
+    TABLE_COLUMNS: ClassVar[list[str]] = [
         "file_name",
         "column_title",
         "behaviour_name",
@@ -123,15 +124,13 @@ class BehaviourTablePanel:
             self.app.tables[self.app.current_table_key] = dataframe
 
         if not self.app.warning_shown:
-            negative_behaviours = []
-            for _, row in dataframe.iterrows():
-                try:
-                    start_time = float(row["Start Time"])
-                    pre_behaviour_time = float(row["Pre Behaviour Time"])
-                    if (start_time - pre_behaviour_time) < 0:
-                        negative_behaviours.append(row["Behaviour Name"])
-                except ValueError:
-                    continue
+            try:
+                start_times = pd.to_numeric(dataframe["Start Time"], errors='coerce')
+                pre_behaviour_times = pd.to_numeric(dataframe["Pre Behaviour Time"], errors='coerce')
+                negative_mask = (start_times - pre_behaviour_times < 0) & start_times.notna() & pre_behaviour_times.notna()
+                negative_behaviours = dataframe.loc[negative_mask, "Behaviour Name"].tolist()
+            except ValueError:
+                negative_behaviours = []
 
             if negative_behaviours:
                 negative_behaviours_str = ", ".join(negative_behaviours)

@@ -24,7 +24,6 @@ from matplotlib.ticker import AutoLocator, MultipleLocator
 
 from src.processing.behavior_metrics import get_time_scale
 
-
 # ---------------------------------------------------------------------------
 # Time helpers
 # ---------------------------------------------------------------------------
@@ -189,13 +188,18 @@ def process_behaviour_data(
             else:
                 behaviour_data = behaviour_data + [np.nan] * (reference_length - len(behaviour_data))
 
-        time_points = np.linspace(
-            start_point * time_factor, end_point * time_factor, len(behaviour_data)
-        )
         behaviour_data_by_instance[instance_id] = behaviour_data
 
         start_time_adjusted = -pre_time  * time_factor
         end_time_adjusted   =  post_time * time_factor
+
+    # Compute time_points once, outside the loop, based on last iteration's bounds and reference_length
+    if reference_length is not None and behaviour_occurrences:
+        start_point = behaviour_occurrences[-1][0] - behaviour_occurrences[-1][2]
+        end_point = behaviour_occurrences[-1][0] + behaviour_occurrences[-1][3]
+        time_points = np.linspace(
+            start_point * time_factor, end_point * time_factor, reference_length
+        )
 
     return behaviour_data_by_instance, time_points, start_time_adjusted, end_time_adjusted
 

@@ -74,7 +74,7 @@ class BehaviourOptionsPanel:
 
     def get_color_code_and_text_color(self, behaviour_color):
         r, g, b = [int(component * 255) for component in behaviour_color[:3]]
-        color_code = "#%02x%02x%02x" % (r, g, b)
+        color_code = f"#{r:02x}{g:02x}{b:02x}"
         color_brightness = self.app.graph_settings_container_instance.brightness(
             behaviour_color
         )
@@ -111,11 +111,7 @@ class BehaviourOptionsPanel:
 
             self.app.figure_canvas.draw_idle()
 
-            color_hex = "#%02x%02x%02x" % (
-                int(color_rgb[0] * 255),
-                int(color_rgb[1] * 255),
-                int(color_rgb[2] * 255),
-            )
+            color_hex = f"#{int(color_rgb[0] * 255):02x}{int(color_rgb[1] * 255):02x}{int(color_rgb[2] * 255):02x}"
             button_to_update = self.app.color_buttons.get(behaviour)
             self.app.behaviour_colors[behaviour] = color_rgb
 

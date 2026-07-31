@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Callable, Optional
 import logging
+from collections.abc import Callable
+from pathlib import Path
 
+import pandas as pd
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -16,7 +17,6 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QWidget,
 )
-import pandas as pd
 
 from src.core.app_settings_manager import AppSettingsManager
 from src.file_management.file_loader import (
@@ -26,10 +26,6 @@ from src.file_management.file_loader import (
 )
 from src.gui.shared.checkable_column_selector import CheckableColumnSelector
 from src.gui.shared.messages_and_errors import show_action_error
-from src.shared.persistence.column_selection_memory import (
-    recall_selection,
-    remember_selection,
-)
 from src.gui.shared.qt_bindings import CheckBoxControl, LineEditControl, ObservableValue
 from src.gui.shared.qt_view_styles import (
     apply_button_role,
@@ -39,6 +35,10 @@ from src.gui.shared.qt_view_styles import (
 )
 from src.gui.shared.view_state_models import DataSelectionViewState
 from src.processing.data_utils import extract_mouse_name
+from src.shared.persistence.column_selection_memory import (
+    recall_selection,
+    remember_selection,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +48,13 @@ class DataSelectionPanel(QFrame):
         self,
         parent: QWidget | None,
         settings_manager: AppSettingsManager,
-        width: Optional[int] = None,
-        figure_display_callback: Optional[Callable] = None,
-        new_data_file_callback: Optional[Callable] = None,
+        width: int | None = None,
+        figure_display_callback: Callable | None = None,
+        new_data_file_callback: Callable | None = None,
         figure_display_dropdown=None,
-        figure_display_choices: Optional[list[str]] = None,
+        figure_display_choices: list[str] | None = None,
         baseline_button_pressed: bool = False,
-        update_table_from_frame_callback: Optional[Callable] = None,
+        update_table_from_frame_callback: Callable | None = None,
         **kwargs,
     ) -> None:
         super().__init__(parent, **kwargs)

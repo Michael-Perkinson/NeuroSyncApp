@@ -59,7 +59,7 @@ def identify_clusters(
             was_below_median = True
 
     if start is not None:
-        clusters.append((start, len(data_column) - 1))
+        clusters.append((start, len(data_column)))
 
     peak_indices = list(peak_indices)
     valid_clusters = [
@@ -80,8 +80,9 @@ def identify_clusters(
                 previous_cluster = cluster
                 continue
 
+            end_idx = min(previous_cluster[1], len(time_column) - 1)
             time_between_clusters = (
-                time_column.iloc[cluster[0]] - time_column.iloc[previous_cluster[1]]
+                time_column.iloc[cluster[0]] - time_column.iloc[end_idx]
             )
             if time_between_clusters < adjust_clustering_minutes:
                 merged_cluster = (previous_cluster[0], cluster[1])
@@ -116,7 +117,8 @@ def identify_clusters(
         else:
             interpeak_intervals = None
 
-        cluster_duration = time_column.iloc[cluster[1]] - time_column.iloc[cluster[0]]
+        end_idx = min(cluster[1], len(time_column) - 1)
+        cluster_duration = time_column.iloc[end_idx] - time_column.iloc[cluster[0]]
         peak_count = len(peak_times_within_cluster)
         cluster_name = (
             f"1 Peak in Cluster_{cluster_id}"
@@ -127,7 +129,7 @@ def identify_clusters(
         cluster_dict[key] = {
             "name": cluster_name,
             "start_time": time_column.iloc[cluster[0]],
-            "end_time": time_column.iloc[cluster[1]],
+            "end_time": time_column.iloc[end_idx],
             "peaks": peak_times_within_cluster,
             "peak_amplitudes": peak_amplitudes_within_cluster,
             "alignment_index": 0,

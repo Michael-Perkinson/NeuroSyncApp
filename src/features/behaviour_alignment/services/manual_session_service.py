@@ -6,20 +6,19 @@ import re
 import uuid
 from pathlib import Path
 
-from PySide6.QtWidgets import QMessageBox
-
 import pandas as pd
+from PySide6.QtWidgets import QMessageBox
 
 from src.data.json_handler import (
     load_behaviour_static_inputs,
     save_behaviour_static_inputs,
 )
 from src.file_management.file_loader import select_preferred_signal_column
+from src.gui.shared.messages_and_errors import show_action_error
+from src.gui.shared.qt_bindings import ObservableValue
+from src.processing.behavior_metrics import calculate_duration_metrics
 from src.processing.behaviour_parser import process_behaviour_rows, read_behaviour_csv
 from src.shared.persistence.app_paths import config_file_path
-from src.processing.behavior_metrics import calculate_duration_metrics
-from src.gui.shared.qt_bindings import ObservableValue
-from src.gui.shared.messages_and_errors import show_action_error
 from src.string_ops.string_utils import normalize_deduplicate_and_order_strings
 
 
@@ -52,7 +51,7 @@ class BehaviourManualSessionService:
             self.calculate_and_store_behavior_metrics(behavior_durations)
             self.update_ui_with_manual_data(table_data, behaviour_names)
             return True
-        except IOError as exc:
+        except OSError as exc:
             show_action_error(
                 "Behaviour file could not be opened",
                 "NeuroSyncApp could not open the selected behaviour CSV",
@@ -151,7 +150,7 @@ class BehaviourManualSessionService:
             self.app.behaviour_display_status[behaviour].set(True)
 
     def update_behaviour_dropdowns(self, behaviour_names, table_data) -> None:
-        sorted_behaviours = sorted(list(behaviour_names))
+        sorted_behaviours = sorted(behaviour_names)
 
         self.update_menu(
             self.app.static_inputs_frame.behaviour_dropdown,
@@ -170,6 +169,10 @@ class BehaviourManualSessionService:
             first_behaviour = single_instance_behaviours[0]
             self.app.graph_settings_container_instance.selected_behaviour_to_zero.set(
                 first_behaviour
+            )
+            # Remove any previously-added trace to prevent callback accumulation
+            self.app.graph_settings_container_instance.selected_behaviour_to_zero.trace_remove(
+                "write", self.app.graph_helper_service.handle_behaviour_change
             )
             self.app.graph_settings_container_instance.selected_behaviour_to_zero.trace_add(
                 "write", self.app.graph_helper_service.handle_behaviour_change

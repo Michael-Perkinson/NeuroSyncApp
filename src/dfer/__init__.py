@@ -12,4 +12,4 @@ Scientific Reports 11, 24212 (2021). https://doi.org/10.1038/s41598-021-03626-9
 from .analysis import compute_options, run_analysis
 from .pfer import run_pfer
 
-__all__ = ["run_analysis", "run_pfer", "compute_options"]
+__all__ = ["compute_options", "run_analysis", "run_pfer"]

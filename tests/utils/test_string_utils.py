@@ -1,5 +1,7 @@
 import pytest
+
 from src.string_ops.string_utils import normalize_deduplicate_and_order_strings
+
 
 @pytest.mark.parametrize("input_behaviours, expected_output", [
     (["walking", "RUNNING", "EaTing"], ["Eating", "Running", "Walking"]),

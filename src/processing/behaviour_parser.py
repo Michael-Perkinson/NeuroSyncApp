@@ -14,7 +14,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-
 # ---------------------------------------------------------------------------
 # Filesystem
 # ---------------------------------------------------------------------------
@@ -240,7 +239,8 @@ def process_behaviour_rows(
     table_data: list[tuple] = []
     behavior_durations: dict = {}
 
-    for _, row in df.iterrows():
+    for row_tuple in df.itertuples(index=False):
+        row = pd.Series(dict(zip(df.columns, row_tuple)))
         behaviour_name = get_behaviour_name(row, column_names).capitalize()
         start_time, end_time = get_start_end_times(row, column_names, synchronize_start_time)
         behavior_durations = update_behavior_durations(
@@ -282,7 +282,7 @@ def check_total_time_divisible(
 def build_params_from_df(
     df: pd.DataFrame,
     behaviour_display_status: dict,
-) -> tuple[dict, set[str], set[str], set[str]]:
+) -> tuple[dict, set[str], set[str], set[str], set[str]]:
     """Build the extraction params dict from a table DataFrame.
 
     This is the pure core of ``check_and_prepare_parameters``.  It does
@@ -322,7 +322,8 @@ def build_params_from_df(
     missing_post: set[str] = set()
     not_divisible: set[str] = set()
 
-    for _, row in df.iterrows():
+    for row_tuple in df.itertuples(index=False):
+        row = pd.Series(dict(zip(df.columns, row_tuple)))
         behaviour_name = row["Behaviour Name"]
         status = behaviour_display_status.get(behaviour_name, 0)
         if status != 1:
@@ -604,11 +605,13 @@ def retrieve_static_params(
 
     Uses the last instance in the list (matches original God class behaviour).
     """
-    pre = post = bin_ = None
-    for instance in params[behaviour_name]:
-        pre = int(instance.get("pre_behaviour_time"))
-        post = int(instance.get("post_behaviour_time"))
-        bin_ = int(instance.get("bin_size"))
+    instances = params[behaviour_name]
+    if not instances:
+        raise ValueError(f"No instances recorded for behaviour {behaviour_name!r}")
+    last_instance = instances[-1]
+    pre = int(last_instance.get("pre_behaviour_time"))
+    post = int(last_instance.get("post_behaviour_time"))
+    bin_ = int(last_instance.get("bin_size"))
     return pre, post, bin_
 
 

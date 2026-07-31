@@ -11,17 +11,18 @@ NOTE — known bug in current code:
   They will fail until the refactor fixes the conversion logic.
   The equivalent function in processing/time_utils.py is correct.
 """
-import pytest
-import pandas as pd
-import numpy as np
 from datetime import time
 
+import numpy as np
+import pandas as pd
+import pytest
+
 from src.math_ops.time_converters import (
+    check_and_convert_time_column,
     convert_time,
     get_time_label,
-    time_to_seconds,
-    check_and_convert_time_column,
     is_time_data,
+    time_to_seconds,
 )
 
 

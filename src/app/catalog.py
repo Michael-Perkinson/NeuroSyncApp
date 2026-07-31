@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from importlib import import_module
-from typing import Iterator
 
 
 @dataclass(frozen=True)

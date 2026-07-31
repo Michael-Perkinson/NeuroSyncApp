@@ -5,10 +5,8 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 from src.shared.persistence.app_paths import config_file_path, legacy_repo_file_path
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +31,12 @@ def save_state(app_name: str) -> None:
     try:
         with file_path.open("w", encoding="utf-8") as handle:
             json.dump({"last_app": app_name}, handle)
-    except IOError:
+    except OSError:
         logger.exception("Could not save dashboard state to %s", file_path)
         return
 
 
-def load_state() -> Optional[str]:
+def load_state() -> str | None:
     """Load the last-opened application id."""
     for file_path in (state_file_path(), _legacy_state_file_path()):
         if not file_path.exists():
@@ -46,8 +44,11 @@ def load_state() -> Optional[str]:
         try:
             with file_path.open("r", encoding="utf-8") as handle:
                 state = json.load(handle)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             logger.warning("Could not load dashboard state from %s", file_path, exc_info=True)
+            return None
+        if not isinstance(state, dict):
+            logger.warning("Dashboard state file contains non-dict JSON at %s", file_path)
             return None
         return state.get("last_app")
     return None

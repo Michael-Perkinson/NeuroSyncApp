@@ -32,7 +32,7 @@ def _key(column_titles: list[str]) -> str:
 def _load() -> dict[str, list[str]]:
     try:
         return json.loads(_path().read_text(encoding="utf-8"))
-    except (IOError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError):
         return {}
 
 
@@ -61,5 +61,5 @@ def remember_selection(column_titles: list[str], selected: list[str]) -> None:
     data[_key(column_titles)] = list(selected)
     try:
         _path().write_text(json.dumps(data), encoding="utf-8")
-    except IOError:
+    except OSError:
         logger.warning("Could not persist signal column selection.", exc_info=True)

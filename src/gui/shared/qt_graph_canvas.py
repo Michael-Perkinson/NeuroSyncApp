@@ -42,7 +42,7 @@ def _prepare_widget_for_deletion(widget) -> None:
         widget._is_drawing = False
         try:
             widget.figure.clear()
-        except Exception:
+        except RuntimeError:
             pass
 
     widget.hide()

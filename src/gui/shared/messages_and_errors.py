@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Union
 
 from PySide6.QtWidgets import QMessageBox, QWidget
-
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +64,7 @@ def show_action_error(
 
 def show_error(
     title: str,
-    message: Union[str, Exception],
+    message: str | Exception,
     parent: QWidget | None = None,
 ) -> None:
     """

@@ -7,7 +7,6 @@ import logging
 from src.data.json_handler import save_behaviour_static_inputs
 from src.shared.persistence.app_paths import config_file_path
 
-
 logger = logging.getLogger(__name__)
 
 

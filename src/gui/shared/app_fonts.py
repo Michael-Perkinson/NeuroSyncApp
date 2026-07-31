@@ -11,7 +11,6 @@ from src.gui.shared.qt_view_styles import (
     MONO_FONT_FAMILY,
 )
 
-
 FONT_FILES = (
     "DejaVuSans.ttf",
     "DejaVuSans-Bold.ttf",

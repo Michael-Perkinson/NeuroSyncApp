@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from PySide6.QtWidgets import (
     QDialog,
@@ -22,7 +22,6 @@ from src.gui.shared.qt_view_styles import (
     apply_button_role,
     panel_stylesheet,
     section_stylesheet,
-    subtitle_stylesheet,
     title_stylesheet,
 )
 from src.gui.shared.view_state_models import ExportOptionsViewState

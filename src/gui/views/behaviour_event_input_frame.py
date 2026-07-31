@@ -1,10 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QHideEvent
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -31,15 +32,28 @@ def _column_names_path() -> Path:
     return config_file_path("column_names.json")
 
 
+class _PopupFrame(QFrame):
+    """QFrame subclass that properly handles hideEvent for popup dismissal."""
+
+    def __init__(self, parent: QWidget | None = None, on_hide: Callable[[], None] | None = None):
+        super().__init__(parent, Qt.WindowType.Popup)
+        self.on_hide = on_hide
+
+    def hideEvent(self, event: QHideEvent) -> None:
+        super().hideEvent(event)
+        if self.on_hide:
+            self.on_hide()
+
+
 class BehaviourInputFrame(QFrame):
     def __init__(
         self,
         parent: QWidget | None,
-        width: Optional[int] = None,
-        select_column_names_callback: Optional[Callable[[], None]] = None,
-        select_event_file_callback: Optional[Callable[[], None]] = None,
+        width: int | None = None,
+        select_column_names_callback: Callable[[], None] | None = None,
+        select_event_file_callback: Callable[[], None] | None = None,
         show_column_names: bool = True,
-        save_column_names_callback: Optional[Callable[[], None]] = None,
+        save_column_names_callback: Callable[[], None] | None = None,
         **kwargs,
     ) -> None:
         super().__init__(parent, **kwargs)
@@ -62,14 +76,14 @@ class BehaviourInputFrame(QFrame):
         self.behaviour_name_var = ObservableValue("")
         self.behaviour_type_var = ObservableValue("Point")
 
-        self.behaviour_input_label: Optional[QLabel] = None
-        self.behaviour_coding_frame: Optional[QFrame] = None
-        self.synchronize_start_time_label: Optional[QLabel] = None
-        self.synchronize_start_time_entry: Optional[LineEditControl] = None
-        self.start_time_entry: Optional[LineEditControl] = None
-        self.end_time_entry: Optional[LineEditControl] = None
-        self.import_behaviour_button: Optional[QPushButton] = None
-        self.column_names_button: Optional[QPushButton] = None  # legacy stub
+        self.behaviour_input_label: QLabel | None = None
+        self.behaviour_coding_frame: QFrame | None = None
+        self.synchronize_start_time_label: QLabel | None = None
+        self.synchronize_start_time_entry: LineEditControl | None = None
+        self.start_time_entry: LineEditControl | None = None
+        self.end_time_entry: LineEditControl | None = None
+        self.import_behaviour_button: QPushButton | None = None
+        self.column_names_button: QPushButton | None = None  # legacy stub
 
         self._build_ui()
 
@@ -80,7 +94,7 @@ class BehaviourInputFrame(QFrame):
             self.start_col_var.set(data.get("Start Time", ""))
             self.end_col_var.set(data.get("End Time", ""))
             self.time_unit_var.set(data.get("Time Unit", "seconds"))
-        except (IOError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError):
             pass
 
     def _build_ui(self) -> None:
@@ -166,7 +180,12 @@ class BehaviourInputFrame(QFrame):
             outer_layout.addWidget(self._col_toggle, 2, 0, 1, 2)
 
             # Floating popup — not in the layout
-            self._col_content = QFrame(self, Qt.WindowType.Popup)
+            def _on_popup_hide():
+                self._popup_just_closed = True
+                self._col_toggle.setChecked(False)
+                self._col_toggle.setText("▶  CSV Column Names")
+
+            self._col_content = _PopupFrame(self, on_hide=_on_popup_hide)
             self._col_content.setObjectName("behaviourColSection")
             self._col_content.setStyleSheet(section_stylesheet("behaviourColSection"))
             col_layout = QGridLayout(self._col_content)
@@ -197,17 +216,6 @@ class BehaviourInputFrame(QFrame):
             apply_button_role(save_btn, "primary")
             save_btn.clicked.connect(self._on_save_column_names)
             col_layout.addWidget(save_btn, 4, 0, 1, 2)
-
-            # When popup is dismissed (outside click or save), reset toggle
-            original_hide = self._col_content.hideEvent
-
-            def _hide_event(event, _orig=original_hide):
-                _orig(event)
-                self._popup_just_closed = True
-                self._col_toggle.setChecked(False)
-                self._col_toggle.setText("▶  CSV Column Names")
-
-            self._col_content.hideEvent = _hide_event
 
         # Compatibility fields kept for older widget access patterns
         self.start_time_entry = self.synchronize_start_time_entry

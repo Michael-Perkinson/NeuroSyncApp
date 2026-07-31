@@ -9,21 +9,30 @@ import pandas as pd
 
 def build_treeview_rows(dataframe: pd.DataFrame) -> list[list]:
     """Return table rows ready for insertion into the treeview."""
-    rows: list[list] = []
-    for _, row in dataframe.iterrows():
-        rows.append(
-            [
-                Path(str(row["File Path"])).name,
-                row["Selected Column"],
-                row["Behaviour Name"],
-                row["Behaviour Type"],
-                row["Pre Behaviour Time"],
-                row["Post Behaviour Time"],
-                row["Bin Size"],
-                row["Start Time"],
-                row["End Time"],
-            ]
+    rows = [
+        [
+            Path(str(file_path)).name,
+            selected_col,
+            behaviour_name,
+            behaviour_type,
+            pre_time,
+            post_time,
+            bin_size,
+            start_time,
+            end_time,
+        ]
+        for file_path, selected_col, behaviour_name, behaviour_type, pre_time, post_time, bin_size, start_time, end_time in zip(
+            dataframe["File Path"],
+            dataframe["Selected Column"],
+            dataframe["Behaviour Name"],
+            dataframe["Behaviour Type"],
+            dataframe["Pre Behaviour Time"],
+            dataframe["Post Behaviour Time"],
+            dataframe["Bin Size"],
+            dataframe["Start Time"],
+            dataframe["End Time"],
         )
+    ]
     return rows
 
 
@@ -40,21 +49,23 @@ def extract_behaviour_occurrences(
     post_behaviour_times: list[float] = []
 
     filtered_df = table_df[table_df["Behaviour Name"] == graphed_behaviour]
-    for _, row in filtered_df.iterrows():
-        start_time = round(float(row["Start Time"]) / 60, 2)
-        pre_behaviour_time = round(float(row["Pre Behaviour Time"]) / 60, 2)
-        post_behaviour_time = round(float(row["Post Behaviour Time"]) / 60, 2)
-        end_time = (
-            None
-            if row["Behaviour Type"] == "Point"
-            else float(row["End Time"]) / 60
-        )
 
-        pre_behaviour_times.append(pre_behaviour_time)
-        post_behaviour_times.append(post_behaviour_time)
-        behaviour_occurrences.append(
-            (start_time, end_time, pre_behaviour_time, post_behaviour_time)
+    # Vectorized column extraction
+    start_times = (filtered_df["Start Time"].astype(float) / 60).round(2).values
+    pre_behaviour_times_vec = (filtered_df["Pre Behaviour Time"].astype(float) / 60).round(2).values
+    post_behaviour_times_vec = (filtered_df["Post Behaviour Time"].astype(float) / 60).round(2).values
+    end_time_vals = pd.to_numeric(filtered_df["End Time"], errors='coerce') / 60
+    is_point = (filtered_df["Behaviour Type"] == "Point").values
+
+    # Build occurrence tuples with conditional end_time
+    behaviour_occurrences = [
+        (st, None if is_pt else et, pre, post)
+        for st, et, is_pt, pre, post in zip(
+            start_times, end_time_vals, is_point, pre_behaviour_times_vec, post_behaviour_times_vec
         )
+    ]
+    pre_behaviour_times = pre_behaviour_times_vec.tolist()
+    post_behaviour_times = post_behaviour_times_vec.tolist()
 
     return (
         behaviour_occurrences,

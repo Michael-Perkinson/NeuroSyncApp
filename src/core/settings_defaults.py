@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-
 DEFAULT_SETTINGS: dict[str, str] = {
     "selected_trace_color": "green",
     "selected_sem_color": "grey",

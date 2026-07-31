@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.gui.shared.qt_bindings import ObservableValue
 from src.shared.persistence.app_paths import config_file_path
 
 
@@ -54,5 +53,5 @@ class BehaviourColumnMappingStore:
         """Load persisted CSV column-name mapping from JSON."""
         try:
             return json.loads(self._path().read_text(encoding="utf-8"))
-        except (IOError, json.JSONDecodeError):
+        except (OSError, json.JSONDecodeError):
             return getattr(self.app, "default_column_names", {})

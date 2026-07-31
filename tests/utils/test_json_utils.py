@@ -1,8 +1,11 @@
 import json
-import pytest
+
 import pandas as pd
 
-from src.data.json_handler import save_behaviour_static_inputs, load_behaviour_static_inputs
+from src.data.json_handler import (
+    load_behaviour_static_inputs,
+    save_behaviour_static_inputs,
+)
 
 
 def test_save_behaviour_static_inputs_valid(tmp_path):

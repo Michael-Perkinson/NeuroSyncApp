@@ -1,9 +1,10 @@
-import re
 import os
-import pandas as pd
-from typing import Optional, List
+import re
 
-def extract_mouse_name(file_path: str) -> Optional[str]:
+import pandas as pd
+
+
+def extract_mouse_name(file_path: str) -> str | None:
     """
     Extracts the mouse name from the given file path, looking for patterns of letters followed by numbers.
 
@@ -23,6 +24,6 @@ def extract_mouse_name(file_path: str) -> Optional[str]:
     return None  # Return None if no match is found
 
 
-def get_column_titles(dataframe: pd.DataFrame) -> List[str]:
+def get_column_titles(dataframe: pd.DataFrame) -> list[str]:
     """Returns a list of column titles from a DataFrame."""
     return dataframe.columns.tolist()

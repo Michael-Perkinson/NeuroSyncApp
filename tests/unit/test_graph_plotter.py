@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+
+import pytest
+
 from src.gui.shared.graph_plotter import build_save_path
 
 

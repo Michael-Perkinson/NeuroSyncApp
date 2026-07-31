@@ -385,7 +385,7 @@ def _get_cluster_static_inputs(exporter, cluster_number, file_data):
     cluster_pattern_stim = f"{cluster_number}_stim_cluster_"
 
     for key, value in file_data.items():
-        if key.startswith(cluster_pattern_peaks) or key.startswith(cluster_pattern_stim):
+        if key.startswith((cluster_pattern_peaks, cluster_pattern_stim)):
             return {
                 "pre": exporter._format_summary_value(
                     value.get(f"pre_{static_values_name}_time", "")

@@ -8,7 +8,6 @@ from matplotlib.figure import Figure
 
 from .plotting import render_html
 
-
 # ---------------------------------------------------------------------------
 # Matplotlib inline figures (used by the Qt UI for in-app display)
 # ---------------------------------------------------------------------------

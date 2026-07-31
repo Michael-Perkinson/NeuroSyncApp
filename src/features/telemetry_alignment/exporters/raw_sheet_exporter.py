@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def populate_raw_data_sheet(exporter, writer, sheet_name, cluster_number):
@@ -164,7 +168,10 @@ def write_raw_data_to_sheet(exporter, worksheet, writer, row_idx, col_idx, perio
                     try:
                         worksheet.write(row_idx + row_num + 1, col_idx + col_num, value)
                     except Exception:
-                        pass
+                        logger.warning(
+                            "Skipped unwritable cell (row=%s, col=%s, value=%r)",
+                            row_idx + row_num + 1, col_idx + col_num, value,
+                        )
             next_col_idx += len(data.columns)
             next_row_idx = row_idx + len(data) + 1
         else:

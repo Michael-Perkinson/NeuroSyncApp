@@ -20,7 +20,7 @@ def _isolated_neurosync_config(tmp_path, monkeypatch):
 
 
 def test_raw_qt_app_instantiates():
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     assert widget.notebook_graphs.count() == 4
     assert widget.notebook_settings.count() == 2
@@ -39,7 +39,7 @@ def test_raw_qt_app_instantiates():
 
 
 def test_raw_qt_preview_uses_inline_compute_options_worker(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     captured = {}
 
@@ -67,7 +67,7 @@ def test_raw_qt_preview_uses_inline_compute_options_worker(monkeypatch):
 
 
 def test_raw_qt_window_aliases_normalise_to_full_range():
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
 
     widget.start_time_edit.setText("start")
@@ -83,7 +83,7 @@ def test_raw_qt_window_aliases_normalise_to_full_range():
 
 
 def test_raw_qt_options_done_does_not_leave_raw_tab(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
 
     widget.notebook_graphs.setCurrentIndex(0)
@@ -97,7 +97,7 @@ def test_raw_qt_options_done_does_not_leave_raw_tab(monkeypatch):
 
 
 def test_raw_qt_remembers_selected_dfer_option(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     saved = []
 
@@ -120,7 +120,7 @@ def test_raw_qt_remembers_selected_dfer_option(monkeypatch):
 
 
 def test_raw_qt_late_logs_after_deleted_log_widget_are_ignored():
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
 
     class DeletedLogEdit:
@@ -138,7 +138,7 @@ def test_raw_qt_late_logs_after_deleted_log_widget_are_ignored():
 
 
 def test_raw_qt_final_dfer_uses_reference_plot_workflow(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     captured = {}
 
@@ -171,7 +171,7 @@ def test_raw_qt_final_dfer_uses_reference_plot_workflow(monkeypatch):
 
 
 def test_raw_qt_pfer_uses_reference_plot_workflow(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     captured = {}
 
@@ -204,7 +204,7 @@ def test_raw_qt_pfer_uses_reference_plot_workflow(monkeypatch):
 
 
 def test_raw_qt_file_selection_unlocks_options_and_locks_results(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
 
     monkeypatch.setattr(widget, "_draw_raw_graph", lambda file_path: None)
@@ -226,7 +226,7 @@ def test_raw_qt_file_selection_unlocks_options_and_locks_results(monkeypatch):
 
 
 def test_raw_qt_dual_file_selection_exports_above_session_folder(monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
 
     monkeypatch.setattr(widget, "_draw_raw_graph", lambda file_path: None)
@@ -243,7 +243,7 @@ def test_raw_qt_dual_file_selection_exports_above_session_folder(monkeypatch):
 
 
 def test_raw_qt_wrong_dual_file_reports_required_schema(tmp_path, monkeypatch):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     wrong_file = tmp_path / "processed.csv"
     wrong_file.write_text(
@@ -274,7 +274,7 @@ def test_raw_qt_wrong_dual_file_reports_required_schema(tmp_path, monkeypatch):
 
 
 def test_raw_qt_signal_selector_matches_file_type():
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     widget.notebook_graphs.setTabEnabled(1, True)
 
@@ -355,7 +355,7 @@ def test_dfer_results_graph_softens_dual_traces():
 def test_raw_qt_dfer_results_405_checkbox_disables_for_dual():
     import pandas as pd
 
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     widget._dfer_result_frame = pd.DataFrame(
         {
@@ -376,7 +376,7 @@ def test_raw_qt_dfer_results_405_checkbox_disables_for_dual():
 
 
 def test_raw_qt_plot_export_paths_are_session_numbered(tmp_path):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     widget._output_folder = str(tmp_path / "dfof_results")
     widget._dfer_result_csv = str(tmp_path / "dfof_results" / "recording_Data.csv")
@@ -390,7 +390,7 @@ def test_raw_qt_plot_export_paths_are_session_numbered(tmp_path):
 
 
 def test_raw_qt_dual_plot_export_uses_recording_folder_name(tmp_path):
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
     widget._output_folder = str(tmp_path / "dfof_results")
     widget._dfer_result_csv = str(tmp_path / "dfof_results" / "session_Dual_Data.csv")

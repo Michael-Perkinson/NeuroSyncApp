@@ -8,10 +8,11 @@ PySide6, CLI, tests).
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 import pandas as pd
 from scipy.integrate import simpson
-
 
 # ---------------------------------------------------------------------------
 # Per-event metrics
@@ -175,7 +176,7 @@ def calculate_metrics_for_bins(
     instances_data: list[list],
     expected_num_bins: int,
     metric_name: str,
-    metric_func: callable,
+    metric_func: Callable[[object], float],
 ) -> list[float]:
     """Average a metric across all instances for each time bin.
 
@@ -268,6 +269,8 @@ def compute_z_score(
 
     baseline_mean = float(np.mean(baseline_data))
     baseline_std = float(np.std(baseline_data))
+    if baseline_std == 0:
+        baseline_std = float(np.finfo(float).eps)
 
     z_scored_data = (raw_data - baseline_mean) / baseline_std
     z_scored_time = (

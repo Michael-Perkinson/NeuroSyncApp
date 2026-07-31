@@ -13,15 +13,16 @@ Settings that were used when generating the golden file
 """
 
 import matplotlib
+
 matplotlib.use("Agg")  # must be set before any GUI import
 
 import shutil
 import uuid
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
-from pathlib import Path
 from PySide6.QtWidgets import QApplication
 
 from src.features.behaviour_alignment.app import DataProcessingSingleInstance
@@ -104,7 +105,7 @@ def output_xlsx(tmp_path_factory):
     csv_copy = tmp_dir / PHOTOMETRY_CSV.name
     shutil.copy(PHOTOMETRY_CSV, csv_copy)
 
-    qt_app = QApplication.instance() or QApplication([])
+    _qt_app = QApplication.instance() or QApplication([])
     app = DataProcessingSingleInstance()
 
     # ── 1. photometry data ────────────────────────────────────────────────

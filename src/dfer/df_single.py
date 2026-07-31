@@ -138,6 +138,10 @@ def run_single_analysis(
 
     mu465, sigma465 = float(np.mean(dfof_465)), float(np.std(dfof_465))
     mu405, sigma405 = float(np.mean(dfof_405)), float(np.std(dfof_405))
+    if sigma465 == 0:
+        sigma465 = float(np.finfo(float).eps)
+    if sigma405 == 0:
+        sigma405 = float(np.finfo(float).eps)
     z_465 = (dfof_465 - mu465) / sigma465
     z_405 = (dfof_405 - mu405) / sigma405
 

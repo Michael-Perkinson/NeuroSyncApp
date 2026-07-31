@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from PySide6.QtWidgets import QFrame, QVBoxLayout
 
-from src.gui.shared.qt_view_styles import panel_stylesheet
 from src.gui.shared.qt_table_adapter import QtTableAdapter
+from src.gui.shared.qt_view_styles import panel_stylesheet
+
 
 class TelemetryClusterTablePanel:
     """Owns telemetry cluster table construction and row updates."""
 
-    COLUMNS = [
+    COLUMNS: ClassVar[list[str]] = [
         "file_name",
         "number_of_peaks",
         "pre_cluster_time",
@@ -20,7 +23,7 @@ class TelemetryClusterTablePanel:
         "end_time",
     ]
 
-    COLUMN_HEADINGS = {
+    COLUMN_HEADINGS: ClassVar[dict[str, str]] = {
         "file_name": "File name",
         "number_of_peaks": "Number of peaks",
         "pre_cluster_time": "Pre-cluster time",

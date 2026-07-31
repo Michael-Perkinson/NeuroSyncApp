@@ -81,7 +81,7 @@ class TestCalculateDurationMetrics:
         assert sem > 0
 
     def test_none_end_times_skipped(self):
-        mean, sem = calculate_duration_metrics([0.0, 0.0], [60.0, None])
+        mean, _sem = calculate_duration_metrics([0.0, 0.0], [60.0, None])
         assert mean == pytest.approx(1.0)
 
     def test_nan_end_times_skipped(self):

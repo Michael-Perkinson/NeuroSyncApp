@@ -1,8 +1,7 @@
 import re
 from datetime import time
-import pandas as pd
-from typing import Union
 
+import pandas as pd
 
 # Centralized Conversion Factors and Labels
 # Each value = how many minutes equal 1 of that unit.
@@ -20,7 +19,7 @@ TIME_LABELS: dict[str, str] = {
 }
 
 
-def convert_time(value: Union[float, int], from_unit: str, to_unit: str = "minutes") -> float:
+def convert_time(value: float, from_unit: str, to_unit: str = "minutes") -> float:
     """
     Convert time between units.
 
@@ -51,7 +50,7 @@ def get_time_label(unit: str) -> str:
     return TIME_LABELS.get(unit, "Time (min)")
 
 
-def time_to_seconds(time_input: Union[str, time]) -> int:
+def time_to_seconds(time_input: str | time) -> int:
     """
     Convert a time input to seconds.
 
@@ -70,7 +69,8 @@ def time_to_seconds(time_input: Union[str, time]) -> int:
     elif isinstance(time_input, time):
         return time_input.hour * 3600 + time_input.minute * 60 + time_input.second
     else:
-        raise ValueError("Invalid input type for time_to_seconds function")
+        # ValueError (not TypeError) is the documented/tested contract for this function.
+        raise ValueError("Invalid input type for time_to_seconds function")  # noqa: TRY004
 
 
 def check_and_convert_time_column(dataframe: pd.DataFrame, target_unit: str = "minutes") -> pd.DataFrame:
@@ -86,12 +86,11 @@ def check_and_convert_time_column(dataframe: pd.DataFrame, target_unit: str = "m
     """
     first_column_title: str = dataframe.columns[0].lower()
 
-    for unit in CONVERSION_FACTORS.keys():
+    for unit, unit_factor in CONVERSION_FACTORS.items():
         # Match unit in column name
         pattern = re.compile(r'\b' + re.escape(unit) + r's?\b', re.IGNORECASE)
         if pattern.search(first_column_title):
-            factor: float = CONVERSION_FACTORS[unit] / \
-                CONVERSION_FACTORS[target_unit]
+            factor: float = unit_factor / CONVERSION_FACTORS[target_unit]
             first_column_name = dataframe.columns[0]
             dataframe[first_column_name] = dataframe.iloc[:, 0].astype(float) * factor
             dataframe.columns = [get_time_label(
@@ -106,7 +105,10 @@ def is_time_data(dataframe, subset_size=20, tolerance_ratio=0.9):
     first_column = dataframe.iloc[:, 0]
     if pd.api.types.is_numeric_dtype(first_column):
         diffs = first_column.diff().dropna()
-        mode_diff = diffs.mode()[0]
+        mode_result = diffs.mode()
+        if len(mode_result) == 0:
+            return False
+        mode_diff = mode_result[0]
         tolerance = mode_diff * 0.05
         consistent_diffs_count = sum(abs(diffs - mode_diff) < tolerance)
         return consistent_diffs_count / min(subset_size, len(diffs)) >= tolerance_ratio

@@ -7,7 +7,7 @@ from src.features.telemetry_alignment.app import TelemetryPhotomOptoProcessingAp
 
 
 def test_telemetry_qt_app_instantiates():
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = TelemetryPhotomOptoProcessingApp()
     assert widget.top_frame_layout.count() == 3
     assert widget.bottom_frame_layout.count() == 2
@@ -15,7 +15,7 @@ def test_telemetry_qt_app_instantiates():
 
 
 def test_telemetry_sample_rate_uses_full_datetimes_across_midnight():
-    app = QApplication.instance() or QApplication([])
+    _app = QApplication.instance() or QApplication([])
     widget = TelemetryPhotomOptoProcessingApp()
 
     sample_rate = widget.calculate_sample_rate(

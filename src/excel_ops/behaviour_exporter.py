@@ -15,7 +15,6 @@ import pandas as pd
 
 from src.processing.behaviour_parser import retrieve_static_params, truncate_sheet_title
 
-
 # ---------------------------------------------------------------------------
 # DataFrame building
 # ---------------------------------------------------------------------------
@@ -197,17 +196,16 @@ def process_and_bin_data(
     for instance_index, (start_data, end_data) in enumerate(data_list):
         combined = np.concatenate([start_data.values, end_data.values]).ravel()
         if time_ranges is not None and instance_index < len(time_ranges):
-            instance_times = pd.Series(time_ranges[instance_index]).reset_index(
+            instance_times_series = pd.Series(time_ranges[instance_index]).reset_index(
                 drop=True
             )
-            instance_times = instance_times.iloc[: len(combined)].to_numpy(dtype=float)
+            instance_times = instance_times_series.iloc[: len(combined)].to_numpy(dtype=float)
             for bin_start in bin_ranges:
                 bin_end = bin_start + bin_size
                 mask = (instance_times >= bin_start) & (instance_times < bin_end)
                 behaviour_instances_data.append(combined[mask])
         else:
-            for values in np.array_split(combined, num_bins_total):
-                behaviour_instances_data.append(values)
+            behaviour_instances_data.extend(np.array_split(combined, num_bins_total))
 
     return bin_labels, num_bins_total, behaviour_instances_data
 
@@ -242,7 +240,9 @@ def generate_summary_data(
     pd.DataFrame
         Un-headered summary table ready for Excel export.
     """
-    from src.processing.behavior_metrics import calculate_metrics_for_bins  # avoid circular
+    from src.processing.behavior_metrics import (
+        calculate_metrics_for_bins,  # avoid circular
+    )
 
     summary_rows: list[list] = []
 
@@ -370,12 +370,12 @@ def build_non_binned_metrics_df(
     behaviours_metrics: dict = {}
     bin_size = params.get("bin_size")
 
-    for behaviour_name in behaviours_results:
+    for behaviour_name, behaviour_ranges in behaviours_results.items():
         for behaviour_instance in params[behaviour_name]:
             pre  = float(behaviour_instance["pre_behaviour_time"])
             post = float(behaviour_instance["post_behaviour_time"])
 
-            for start_data, end_data in behaviours_results[behaviour_name]:
+            for start_data, end_data in behaviour_ranges:
                 data_dict: dict = {
                     "behaviour_name":    behaviour_name,
                     "pre_behaviour_time":  pre,
@@ -455,17 +455,20 @@ def format_non_binned_excel(output_file_name: str) -> None:
     from openpyxl import load_workbook
     from openpyxl.styles import Border, Side
     wb = load_workbook(output_file_name)
-    no_border = Border(
-        left=Side(style="none"),
-        right=Side(style="none"),
-        top=Side(style="none"),
-        bottom=Side(style="none"),
-    )
-    for sheet_name in wb.sheetnames:
-        ws = wb[sheet_name]
-        for cell in ws[1]:
-            cell.border = no_border
-    wb.save(output_file_name)
+    try:
+        no_border = Border(
+            left=Side(style="none"),
+            right=Side(style="none"),
+            top=Side(style="none"),
+            bottom=Side(style="none"),
+        )
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            for cell in ws[1]:
+                cell.border = no_border
+        wb.save(output_file_name)
+    finally:
+        wb.close()
 
 
 # ---------------------------------------------------------------------------
@@ -559,15 +562,18 @@ def format_excel(output_file_name: str, behaviours_results: dict) -> None:
     """Apply bold/border formatting to an already-written Excel workbook."""
     from openpyxl import load_workbook
     wb = load_workbook(output_file_name)
-    for sheet_name in wb.sheetnames:
-        ws = wb[sheet_name]
-        if sheet_name == "Event Duration":
-            bold_first_row(ws)
-            bold_first_column(ws)
-        else:
-            if sheet_name == wb.sheetnames[0]:
-                ws.delete_rows(1)
-            bold_first_column(ws)
-            bold_behavior_name_rows(ws, behaviours_results)
-        remove_borders(ws)
-    wb.save(output_file_name)
+    try:
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            if sheet_name == "Event Duration":
+                bold_first_row(ws)
+                bold_first_column(ws)
+            else:
+                if sheet_name == wb.sheetnames[0]:
+                    ws.delete_rows(1)
+                bold_first_column(ws)
+                bold_behavior_name_rows(ws, behaviours_results)
+            remove_borders(ws)
+        wb.save(output_file_name)
+    finally:
+        wb.close()

@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import logging
 import re
+
 import numpy as np
 import pandas as pd
 from PySide6.QtWidgets import QMessageBox
 
+from src.excel_ops.behaviour_exporter import (
+    build_output_file_name,
+    create_df_for_behaviours,
+    export_combined_csv,
+    generate_summary_data,
+)
+from src.gui.shared.messages_and_errors import show_action_error
 from src.processing.behavior_metrics import (
     calculate_auc,
     calculate_max_amp,
@@ -19,13 +27,6 @@ from src.processing.behaviour_parser import (
     extract_behaviour_results,
     truncate_sheet_title,
 )
-from src.excel_ops.behaviour_exporter import (
-    build_output_file_name,
-    create_df_for_behaviours,
-    export_combined_csv,
-    generate_summary_data,
-)
-from src.gui.shared.messages_and_errors import show_action_error
 
 logger = logging.getLogger(__name__)
 

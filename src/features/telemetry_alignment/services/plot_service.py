@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 import logging
 import math
 import re
+from datetime import datetime, timedelta
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,15 +15,24 @@ from PySide6.QtWidgets import QInputDialog, QMessageBox
 from src.processing.telemetry_processing import (
     AmbiguousTelemetryAlignmentError,
     calculate_nighttime_periods,
-    calculate_stim_timings as _calculate_stim_timings,
-    extract_and_trim_data as _extract_and_trim_data,
-    extract_data_for_date_and_offset as _extract_data_for_date_and_offset,
-    extract_data_with_buffer as _extract_data_with_buffer,
-    find_offset_for_previous_time as _find_offset_for_previous_time,
     parse_recording_date,
     upsample_telemetry_data,
 )
-
+from src.processing.telemetry_processing import (
+    calculate_stim_timings as _calculate_stim_timings,
+)
+from src.processing.telemetry_processing import (
+    extract_and_trim_data as _extract_and_trim_data,
+)
+from src.processing.telemetry_processing import (
+    extract_data_for_date_and_offset as _extract_data_for_date_and_offset,
+)
+from src.processing.telemetry_processing import (
+    extract_data_with_buffer as _extract_data_with_buffer,
+)
+from src.processing.telemetry_processing import (
+    find_offset_for_previous_time as _find_offset_for_previous_time,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -560,9 +569,7 @@ class TelemetryPlotService:
                 ax.set_xlabel("Time (s)")
             elif time_unit == "hours":
                 ax.set_xlabel("Time (h)")
-            elif time_unit == "minutes":
-                ax.set_xlabel("Time (min)")
-            elif time_unit == "time of day":
+            elif time_unit == "minutes" or time_unit == "time of day":
                 ax.set_xlabel("Time (min)")
 
         if show_time_of_day and not self._apply_time_of_day_axis(ax, time_column):
@@ -1035,7 +1042,6 @@ class TelemetryPlotService:
         display_offset_minutes = self._get_display_time_offset_minutes()
         extraction_duration = full_duration
         extended_duration = full_duration + 60
-        act_data = None
         temp_data = None
         self.app.raw_aligned_act_data = None
         self.app.raw_extended_act_data = None
@@ -1121,7 +1127,6 @@ class TelemetryPlotService:
                     return None, None
 
         if act_overlay is not None:
-            act_data = act_overlay["source_data"]
             self.app.act_sample_rate = act_overlay["sample_rate"]
             self.app.raw_extended_act_data = act_overlay["extended"]
             self.app.raw_aligned_act_data = act_overlay["trimmed"]
@@ -1134,7 +1139,7 @@ class TelemetryPlotService:
 
         if self.app.data_type == "photometry" and temp_data is not None:
             temp_data = self.upsample_data(temp_data)
-            temp_sample_rate = 0.1
+            self.app.temp_sample_rate = 0.1
 
         self.apply_cached_telemetry_for_current_display()
         trimmed_temp_df = self.app.temp_data

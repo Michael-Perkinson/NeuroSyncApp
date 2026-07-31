@@ -7,9 +7,11 @@ import pandas as pd
 from src.gui.shared.graph_plotter import (
     convert_time_data,
     draw_behaviour_boxes,
-    process_behaviour_data as _process_behaviour_data,
     retrieve_behaviour_records,
     set_ax_tick_spacing,
+)
+from src.gui.shared.graph_plotter import (
+    process_behaviour_data as _process_behaviour_data,
 )
 from src.processing.behavior_metrics import get_time_scale
 from src.processing.behaviour_plotting import extract_behaviour_occurrences
@@ -35,9 +37,13 @@ class BehaviourGraphHelperService:
         time_factor = get_time_scale(time_unit)
 
         if self.app.checkbox_state:
-            time_data = self.app.dataframe.get(
-                "z_scored_time", self.app.data_service.calculate_z_score()[1]
-            ).copy()
+            z_score_result = self.app.data_service.calculate_z_score()
+            if z_score_result is not None:
+                time_data = self.app.dataframe.get(
+                    "z_scored_time", z_score_result[1]
+                ).copy()
+            else:
+                time_data = self.app.dataframe.iloc[:, 0].copy()
         else:
             time_data = self.app.dataframe.iloc[:, 0].copy()
 
