@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
 
+from .df_common import set_axis_labels
 from .plotting import render_html
 
 # ---------------------------------------------------------------------------
@@ -174,15 +175,10 @@ def mpl_pfer_figure(dfer_csv: str, stats_csv: str) -> Figure:
 # Bokeh HTML figures (optional — kept for CLI / batch use)
 # ---------------------------------------------------------------------------
 
-def _set_axis_labels(plot, x_label: str, y_label: str) -> None:
-    plot.xaxis.axis_label = x_label
-    plot.yaxis.axis_label = y_label
-
-
 def render_single_preview(filename: str, acquisition_sec: np.ndarray, y405: np.ndarray, y465: np.ndarray) -> None:
     from bokeh.plotting import figure  # lazy
     p_raw = figure(width=1000, height=400, title=filename + "   465 vs 405 raw data")
-    _set_axis_labels(p_raw, "Acquisition time (seconds)", "RFU")
+    set_axis_labels(p_raw, "Acquisition time (seconds)", "RFU")
     p_raw.line(acquisition_sec, y405, line_color="red", line_width=0.6)
     p_raw.line(acquisition_sec, y465, line_color="green", line_width=0.6)
     render_html(p_raw, "DFer_raw.html", title=filename, open_in_browser=True)
@@ -202,24 +198,24 @@ def render_single_option_plots(
 
     p1 = figure(width=1100, height=400, title=filename +
                 "     Option 1: Good noise correction and bleach correction")
-    _set_axis_labels(p1, "Time(min)", "RFU")
+    set_axis_labels(p1, "Time(min)", "RFU")
     p1.line(t_min, smooth_465, line_color="green", line_width=0.6)
     p1.line(t_min, smooth_adj_1, line_color="red", line_width=0.6)
 
     p2 = figure(width=1100, height=400, title=filename +
                 "     Option 2: Assumes that shifts in 465 baseline are independent of activity.")
-    _set_axis_labels(p2, "Time(min)", "RFU")
+    set_axis_labels(p2, "Time(min)", "RFU")
     p2.line(t_min, smooth_465, line_color="green", line_width=0.6)
     p2.line(t_min, smooth_adj_2, line_color="red", line_width=0.6)
 
     p3 = figure(width=1100, height=400, title=filename + "     Option 3: No noise correction")
-    _set_axis_labels(p3, "Time(min)", "RFU")
+    set_axis_labels(p3, "Time(min)", "RFU")
     p3.line(t_min, smooth_465, line_color="green", line_width=0.6)
     p3.line(t_min, smooth_adj_3, line_color="red", line_width=0.6)
 
     p4 = figure(width=1100, height=400, title=filename +
                 "     Option 4: No noise correction. No activity-dependent baseline correction")
-    _set_axis_labels(p4, "Time(min)", "RFU")
+    set_axis_labels(p4, "Time(min)", "RFU")
     p4.line(t_min, smooth_465, line_color="green", line_width=0.6)
     p4.line(t_min, smooth_adj_4, line_color="red", line_width=0.6)
 
@@ -238,12 +234,12 @@ def render_single_results(
     from bokeh.plotting import figure  # lazy
 
     p_df = figure(width=1000, height=400, title=filename + "   DF/F")
-    _set_axis_labels(p_df, "Time(min)", "DF/F")
+    set_axis_labels(p_df, "Time(min)", "DF/F")
     p_df.line(t_min, dfof_405, line_color="purple", line_width=0.6)
     p_df.line(t_min, dfof_465, line_color="green", line_width=0.6)
 
     p_z = figure(width=1000, height=400, title=filename + "   Z-score")
-    _set_axis_labels(p_z, "Time(min)", "Z")
+    set_axis_labels(p_z, "Time(min)", "Z")
     p_z.line(t_min, z_405, line_color="purple", line_width=0.6)
     p_z.line(t_min, z_465, line_color="green", line_width=0.6)
 
@@ -254,7 +250,7 @@ def render_dual_preview(filename: str, t_ms: np.ndarray, y410: np.ndarray, y470:
     from bokeh.plotting import figure  # lazy
     t_sec = t_ms / 1000.0
     p_raw = figure(width=1100, height=420, title=filename + "   RAW (dual)")
-    _set_axis_labels(p_raw, "Time (sec)", "RFU")
+    set_axis_labels(p_raw, "Time (sec)", "RFU")
     p_raw.line(t_sec, y410, line_color="gray", line_width=0.6, line_alpha=0.55, legend_label="410 (control)")
     p_raw.line(t_sec, y470, line_color="green", line_width=0.6, line_alpha=0.75, legend_label="470")
     p_raw.line(t_sec, y560, line_color="red", line_width=0.6, line_alpha=0.75, legend_label="560")
@@ -273,7 +269,7 @@ def render_dual_option_plots(
 
     def _build(option_number, key470, key560):
         p = figure(width=1200, height=420, title=filename + f"   Option {option_number} (dual)")
-        _set_axis_labels(p, "Time(min)", "RFU")
+        set_axis_labels(p, "Time(min)", "RFU")
         p.line(t_min, p470["target_smooth"], line_color="green", line_width=0.6, line_alpha=0.75, legend_label="470 (smooth)")
         p.line(t_min, p470[key470], line_color="green", line_width=0.6, line_alpha=0.30, legend_label="470 fitted-control")
         p.line(t_min, p560["target_smooth"], line_color="red", line_width=0.6, line_alpha=0.75, legend_label="560 (smooth)")
@@ -300,13 +296,13 @@ def render_dual_results(
     from bokeh.plotting import figure  # lazy
 
     p_df = figure(width=1100, height=420, title=filename + "   DF/F (dual)")
-    _set_axis_labels(p_df, "Time(min)", "DF/F")
+    set_axis_labels(p_df, "Time(min)", "DF/F")
     p_df.line(t_min, dfof_470, line_color="green", line_width=0.6, line_alpha=0.85, legend_label="470 dF/F")
     p_df.line(t_min, dfof_560, line_color="red", line_width=0.6, line_alpha=0.85, legend_label="560 dF/F")
     p_df.legend.click_policy = "hide"
 
     p_z = figure(width=1100, height=420, title=filename + "   Z-score (dual)")
-    _set_axis_labels(p_z, "Time(min)", "Z")
+    set_axis_labels(p_z, "Time(min)", "Z")
     p_z.line(t_min, z_470, line_color="green", line_width=0.6, line_alpha=0.85, legend_label="470 Z")
     p_z.line(t_min, z_560, line_color="red", line_width=0.6, line_alpha=0.85, legend_label="560 Z")
     p_z.legend.click_policy = "hide"

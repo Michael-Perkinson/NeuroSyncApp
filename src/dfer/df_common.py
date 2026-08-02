@@ -18,6 +18,11 @@ SAVGOL_FINE = (21, 6)     # (window, poly) - gentle smoothing
 SAVGOL_COARSE = (501, 0)  # (window, poly) - strong smoothing / moving average
 
 
+def set_axis_labels(plot, x_label: str, y_label: str) -> None:
+    plot.xaxis.axis_label = x_label
+    plot.yaxis.axis_label = y_label
+
+
 def missing_columns(df: pd.DataFrame, required: list[str]) -> list[str]:
     return [column for column in required if column not in df.columns]
 
