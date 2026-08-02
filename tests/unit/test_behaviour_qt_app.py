@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QApplication
 
-from src.features.behaviour_alignment.app import DataProcessingSingleInstance
+from src.features.behaviour_alignment.data_processing_widget import (
+    DataProcessingSingleInstance,
+)
 
 
 def test_behaviour_qt_app_instantiates():

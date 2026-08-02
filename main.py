@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from src.app.main import (
+from src.dashboard.main import (
     _is_pyside6_available,
     build_parser,
     logger,
 )
-from src.app.main import run_dashboard as _run_dashboard
-from src.app.main import run_tool_window as _run_tool_window
+from src.dashboard.main import run_dashboard as _run_dashboard
+from src.dashboard.main import run_tool_window as _run_tool_window
 
 
 def run_dashboard() -> int:

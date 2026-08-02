@@ -19,7 +19,9 @@ import pandas as pd
 import pytest
 from PySide6.QtWidgets import QApplication
 
-from src.features.behaviour_alignment.app import DataProcessingSingleInstance
+from src.features.behaviour_alignment.data_processing_widget import (
+    DataProcessingSingleInstance,
+)
 
 EXAMPLE_DIR = (
     Path(__file__).parent.parent.parent

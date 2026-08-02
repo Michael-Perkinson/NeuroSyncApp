@@ -38,7 +38,7 @@ dev = [
 ]
 
 [project.scripts]
-neurosyncapp = "src.app.main:main"
+neurosyncapp = "src.dashboard.main:main"
 
 [tool.setuptools.packages.find]
 include = ["src*"]

@@ -7,8 +7,10 @@ import pytest
 import shiboken6
 from PySide6.QtWidgets import QApplication, QWidget
 
-from src.app.dashboard import QtDashboard
-from src.features.raw_photometry.app import RawPhotometryProcessingQt
+from src.dashboard.dashboard import QtDashboard
+from src.features.raw_photometry.photometry_processing_widget import (
+    RawPhotometryProcessingQt,
+)
 from src.gui.framework.qt_log_handler import QtTextHandler
 from src.gui.views.export_options_panel import ExportOptionsPanel
 
@@ -163,7 +165,7 @@ def test_raw_failed_unload_restores_log_handler(monkeypatch):
     thread = RunningThread()
     widget._thread = thread
     monkeypatch.setattr(
-        "src.features.raw_photometry.app.QMessageBox.information",
+        "src.features.raw_photometry.photometry_processing_widget.QMessageBox.information",
         lambda *_args, **_kwargs: None,
     )
 
@@ -188,7 +190,9 @@ def test_telemetry_save_image_raises_error_when_no_figure_displayed():
 
     The None check prevents AttributeError: 'NoneType' object has no attribute 'axes'
     """
-    from src.features.telemetry_alignment.app import TelemetryPhotomOptoProcessingApp
+    from src.features.telemetry_alignment.telemetry_processing_widget import (
+        TelemetryPhotomOptoProcessingApp,
+    )
 
     _app = QApplication.instance() or QApplication([])
 

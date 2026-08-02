@@ -49,9 +49,9 @@ jobs:
             --hidden-import=matplotlib.backends.backend_qtagg ^
             --hidden-import=matplotlib.backends.backend_svg ^
             --hidden-import=matplotlib.backends.backend_ps ^
-            --hidden-import=src.features.raw_photometry.app ^
-            --hidden-import=src.features.behaviour_alignment.app ^
-            --hidden-import=src.features.telemetry_alignment.app ^
+            --hidden-import=src.features.raw_photometry.photometry_processing_widget ^
+            --hidden-import=src.features.behaviour_alignment.data_processing_widget ^
+            --hidden-import=src.features.telemetry_alignment.telemetry_processing_widget ^
             --hidden-import=openpyxl
 
       - name: Verify .exe exists
@@ -132,9 +132,9 @@ jobs:
             --hidden-import=matplotlib.backends.backend_qtagg \
             --hidden-import=matplotlib.backends.backend_svg \
             --hidden-import=matplotlib.backends.backend_ps \
-            --hidden-import=src.features.raw_photometry.app \
-            --hidden-import=src.features.behaviour_alignment.app \
-            --hidden-import=src.features.telemetry_alignment.app \
+            --hidden-import=src.features.raw_photometry.photometry_processing_widget \
+            --hidden-import=src.features.behaviour_alignment.data_processing_widget \
+            --hidden-import=src.features.telemetry_alignment.telemetry_processing_widget \
             --hidden-import=openpyxl
 
       - name: Sign macOS app

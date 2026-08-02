@@ -1,6 +1,6 @@
 import pytest
 
-from src.app.catalog import (
+from src.dashboard.catalog import (
     DEFAULT_APP_ID,
     get_app_definition,
     iter_app_definitions,

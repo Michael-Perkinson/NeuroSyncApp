@@ -28,7 +28,7 @@ APP_DEFINITIONS = (
     AppDefinition(
         app_id="raw_analysis",
         label="Analyse Raw Data",
-        module_path="src.features.raw_photometry.app",
+        module_path="src.features.raw_photometry.photometry_processing_widget",
         class_name="RawPhotometryProcessingQt",
         qt_supported=True,
         description="Inspect raw photometry recordings and choose an analysis window.",
@@ -36,7 +36,7 @@ APP_DEFINITIONS = (
     AppDefinition(
         app_id="single_animal",
         label="Align Photometry and Behaviour",
-        module_path="src.features.behaviour_alignment.app",
+        module_path="src.features.behaviour_alignment.data_processing_widget",
         class_name="DataProcessingSingleInstance",
         qt_supported=True,
         description="Align photometry recordings with coded behaviour events.",
@@ -44,7 +44,7 @@ APP_DEFINITIONS = (
     AppDefinition(
         app_id="telemetry_photom_opto",
         label="Align Telemetry Data",
-        module_path="src.features.telemetry_alignment.app",
+        module_path="src.features.telemetry_alignment.telemetry_processing_widget",
         class_name="TelemetryPhotomOptoProcessingApp",
         qt_supported=True,
         description="Align telemetry, photometry, and optogenetic recordings.",

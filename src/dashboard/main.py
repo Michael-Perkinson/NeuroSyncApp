@@ -5,7 +5,7 @@ import importlib.util
 import logging
 import sys
 
-from src.app.catalog import get_app_definition
+from src.dashboard.catalog import get_app_definition
 
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.WARNING)
@@ -37,7 +37,7 @@ def _create_qapplication():
 
 def run_dashboard() -> int:
     print("Starting NeuroSyncApp...", flush=True)
-    from src.app.dashboard import QtDashboard
+    from src.dashboard.dashboard import QtDashboard
 
     app = _create_qapplication()
     dashboard = QtDashboard()

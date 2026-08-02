@@ -3,7 +3,9 @@ from __future__ import annotations
 import pandas as pd
 from PySide6.QtWidgets import QApplication
 
-from src.features.telemetry_alignment.app import TelemetryPhotomOptoProcessingApp
+from src.features.telemetry_alignment.telemetry_processing_widget import (
+    TelemetryPhotomOptoProcessingApp,
+)
 
 
 def test_telemetry_qt_app_instantiates():

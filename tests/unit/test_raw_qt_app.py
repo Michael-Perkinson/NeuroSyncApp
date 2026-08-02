@@ -5,10 +5,10 @@ import logging
 import pytest
 from PySide6.QtWidgets import QApplication
 
-import src.features.raw_photometry.app as raw_app
+import src.features.raw_photometry.photometry_processing_widget as raw_app
 from src.dfer.df_common import expected_analysis_output_path
 from src.dfer.pfer import _stats_output_path, _waveform_output_path
-from src.features.raw_photometry.app import (
+from src.features.raw_photometry.photometry_processing_widget import (
     RawPhotometryProcessingQt,
     _mpl_dfer_results_figure_from_frame,
 )
