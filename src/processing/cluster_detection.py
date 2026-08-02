@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 
+import numpy as np
 import pandas as pd
+from scipy.signal import find_peaks
 
 from src.processing.telemetry_processing import get_universal_times
 
@@ -273,3 +275,60 @@ def process_data_for_clusters(
         all_act_data.append(act_data)
 
     return all_temp_data, all_act_data
+
+
+def format_cluster_string(burst_count: int) -> str:
+    """Format a cluster's peak count as its display label."""
+    if burst_count == 1:
+        return "Clusters with 1 Peak"
+    return f"Clusters with {burst_count} Peaks"
+
+
+def has_empty_inputs(cluster_data: dict | None) -> bool:
+    """Check whether any of a cluster's pre/post/bin-size fields are unset."""
+    if cluster_data is None:
+        return True
+
+    fields_to_check = ["pre_cluster_time", "post_cluster_time", "bin_size"]
+    return any(not cluster_data[field] for field in fields_to_check)
+
+
+def group_clusters_by_peak_count(cluster_dict: dict) -> dict:
+    """Group clusters by how many peaks each one contains.
+
+    Parameters
+    ----------
+    cluster_dict : dict
+        Keys are clusters, values are lists of peak times within each cluster.
+
+    Returns
+    -------
+    dict
+        Keys are peak counts, values are lists of ``(cluster, peak_times)`` pairs.
+    """
+    grouped_clusters: dict = {}
+
+    for cluster, peak_times in cluster_dict.items():
+        num_peaks = len(peak_times)
+        grouped_clusters.setdefault(num_peaks, []).append((cluster, peak_times))
+
+    return grouped_clusters
+
+
+def detect_peaks_with_optimal_prominence(data_column, min_distance: int = 150) -> np.ndarray:
+    """Detect peaks using a prominence/height threshold derived from the data's own scale."""
+    if isinstance(data_column, pd.Series):
+        data_column = data_column.values
+
+    data_column = np.asarray(data_column, dtype=float)
+    if data_column.size == 0 or np.all(np.isnan(data_column)):
+        return np.array([], dtype=int)
+
+    amp = np.nanpercentile(data_column, 99.9)
+    threshold = 0.3 * amp
+    prominence = 0.35 * amp
+
+    peaks, _ = find_peaks(
+        data_column, prominence=prominence, height=threshold, distance=min_distance)
+
+    return peaks

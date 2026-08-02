@@ -4,7 +4,7 @@ import copy
 import logging
 import os
 import re
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from typing import ClassVar
 
 import matplotlib.pyplot as plt
@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from scipy.signal import find_peaks
 
 from src.core.app_settings_manager import AppSettingsManager
 from src.features.telemetry_alignment.exporters.export_frames import (
@@ -80,7 +79,19 @@ from src.processing.behavior_metrics import (
     get_time_scale as _get_time_scale,
 )
 from src.processing.cluster_detection import (
+    detect_peaks_with_optimal_prominence as _detect_peaks_with_optimal_prominence,
+)
+from src.processing.cluster_detection import (
+    format_cluster_string as _format_cluster_string,
+)
+from src.processing.cluster_detection import (
+    group_clusters_by_peak_count as _group_clusters_by_peak_count,
+)
+from src.processing.cluster_detection import (
     group_clusters_by_time_period as _group_clusters_by_time_period,
+)
+from src.processing.cluster_detection import (
+    has_empty_inputs as _has_empty_inputs,
 )
 from src.processing.cluster_detection import (
     identify_clusters as _identify_clusters,
@@ -105,10 +116,16 @@ from src.processing.telemetry_processing import (
     calculate_mean_and_sem as _calculate_mean_and_sem,
 )
 from src.processing.telemetry_processing import (
+    calculate_sample_rate as _calculate_sample_rate,
+)
+from src.processing.telemetry_processing import (
     compute_photometry_mean as _compute_photometry_mean,
 )
 from src.processing.telemetry_processing import (
     create_universal_time_axis as _create_universal_time_axis,
+)
+from src.processing.telemetry_processing import (
+    data_dict_to_df as _data_dict_to_df,
 )
 from src.processing.telemetry_processing import (
     trim_data_to_minimum_length as _trim_data_to_minimum_length,
@@ -715,20 +732,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         return processed_data, raw_data, native_data
 
     def has_empty_inputs(self, cluster_data):
-        """
-        Check if the specified fields in cluster_data are empty.
-
-        Parameters:
-        - cluster_data: Dictionary containing cluster data.
-
-        Returns:
-        - bool: True if any of the specified fields in cluster_data are empty, False otherwise.
-        """
-        if cluster_data is None:
-            return True
-
-        fields_to_check = ['pre_cluster_time', 'post_cluster_time', 'bin_size']
-        return any(not cluster_data[field] for field in fields_to_check)
+        return _has_empty_inputs(cluster_data)
 
     def visualize_mean_cluster(self, selected_cluster_string):
         self.display_presenter.visualize_mean_cluster(selected_cluster_string)
@@ -739,43 +743,8 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
     def find_longest_times(self, cluster_number):
         return self.cluster_service.find_longest_times(cluster_number)
 
-    def get_minimum_length(self, data_list):
-        """
-        Find the minimum length among a list of DataFrames.
-
-        Parameters:
-            data_list (list): List of pandas DataFrames.
-
-        Returns:
-            int: The minimum length among all DataFrames in the list.
-        """
-        return min(len(data) for data in data_list)
-
     def calculate_sample_rate(self, timestamps):
-        """
-        Calculate the sample rate based on a list of timestamps.
-
-        Parameters:
-            timestamps (list): List of timestamps, which can be either datetime objects or floats.
-
-        Returns:
-            float: The calculated sample rate.
-        """
-        if isinstance(timestamps[0], (datetime, pd.Timestamp, np.datetime64)):
-            parsed_timestamps = pd.to_datetime(pd.Series(timestamps), errors="coerce")
-            time_diffs = (
-                parsed_timestamps.diff().dt.total_seconds().dropna().tolist()
-            )
-        else:
-            time_diffs = [
-                timestamps[i + 1] - timestamps[i]
-                for i in range(len(timestamps) - 1)
-            ]
-
-        time_diffs = [diff for diff in time_diffs if diff > 0]
-        if not time_diffs:
-            raise ValueError("Could not calculate a positive telemetry sample interval.")
-        return sum(time_diffs) / len(time_diffs)
+        return _calculate_sample_rate(timestamps)
 
     def separate_clusters_by_time_period(self):
         """
@@ -1282,63 +1251,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         self.figure_canvas.draw_idle()
 
     def detect_peaks_with_optimal_prominence(self, data_column, min_distance=150):
-        """
-        Detect peaks in the data using an optimal prominence threshold.
-
-        Parameters:
-            data_column (pd.Series or np.ndarray): The data column in which peaks are to be detected.
-            prominence_threshold (float, optional): The prominence threshold for peak detection (default is 0.70).
-            min_distance (int, optional): The minimum distance between peaks (default is 150).
-            height_threshold (float, optional): The minimum height threshold for peak detection.
-
-        Returns:
-            np.ndarray: An array containing the indices of the detected peaks.
-        """
-
-        if isinstance(data_column, pd.Series):
-            data_column = data_column.values
-
-        data_column = np.asarray(data_column, dtype=float)
-        if data_column.size == 0 or np.all(np.isnan(data_column)):
-            return np.array([], dtype=int)
-
-        amp = np.nanpercentile(data_column, 99.9)
-        threshold = 0.3 * amp
-        prominence = 0.35 * amp
-
-        peaks, _ = find_peaks(
-            data_column, prominence=prominence, height=threshold, distance=min_distance)
-
-        return peaks
-
-    def detect_sub_threshold_peaks(self, data_column, min_distance=150):
-        """
-        Detect sub-threshold peaks in the data that are between 20% and 30% of the maximum value.
-
-        Parameters:
-            data_column (pd.Series or np.ndarray): The data column in which sub-threshold peaks are to be detected.
-            min_distance (int, optional): The minimum distance between peaks (default is 150).
-
-        Returns:
-            np.ndarray: An array containing the indices of the detected sub-threshold peaks.
-        """
-
-        # TODO add this to the photometry output?
-
-        if isinstance(data_column, pd.Series):
-            data_column = data_column.values
-
-        max_value = data_column.max()
-        lower_threshold = 0.2 * max_value
-        upper_threshold = 0.3 * max_value
-
-        peaks, properties = find_peaks(
-            data_column, height=lower_threshold, distance=min_distance)
-
-        sub_threshold_peaks = peaks[(properties['peak_heights'] >= lower_threshold) & (
-            properties['peak_heights'] < upper_threshold)]
-
-        return sub_threshold_peaks
+        return _detect_peaks_with_optimal_prominence(data_column, min_distance)
 
     def identify_clusters(
         self,
@@ -1403,25 +1316,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         self.settings_manager.save_variables()
 
     def group_clusters_by_peak_count(self, cluster_dict):
-        """
-        Group clusters based on the number of peaks they contain.
-
-        Parameters:
-        - cluster_dict (dict): A dictionary where keys are clusters and values are lists of peak times within each cluster.
-
-        Returns:
-        - grouped_clusters (dict): A dictionary where keys are the number of peaks and values are lists of clusters (and their peak times)
-        that have that number of peaks.
-        """
-        grouped_clusters = {}
-
-        for cluster, peak_times in cluster_dict.items():
-            num_peaks = len(peak_times)
-            if num_peaks not in grouped_clusters:
-                grouped_clusters[num_peaks] = []
-            grouped_clusters[num_peaks].append((cluster, peak_times))
-
-        return grouped_clusters
+        return _group_clusters_by_peak_count(cluster_dict)
 
     def custom_date_parser(self, date_str):
         return self.plot_service.custom_date_parser(date_str)
@@ -1561,22 +1456,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         pass
 
     def data_dict_to_df(self, data_dict):
-        """
-        Convert data_dict to DataFrame.
-
-        Parameters:
-        - data_dict (dict): Dictionary containing the data.
-
-        Returns:
-        - pd.DataFrame: DataFrame containing the data from the dictionary.
-        """
-        rows = []
-        for clusters in data_dict.values():
-            for cluster_name, cluster_data in clusters.items():
-                row = cluster_data.copy()
-                row['Cluster Name'] = cluster_name
-                rows.append(row)
-        return pd.DataFrame(rows)
+        return _data_dict_to_df(data_dict)
 
     def clear_table(self):
         """Clear and cache the table."""
@@ -1661,28 +1541,6 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
     def update_cluster_inputs(self):
         self.static_settings_store.update_cluster_inputs()
 
-    def time_to_seconds(self, time_input):
-        """
-        Convert a time input to seconds.
-
-        Parameters:
-        - time_input (str or datetime.time): The time input to convert.
-
-        Returns:
-        - int: The equivalent time in seconds.
-
-        Raises:
-        - ValueError: If the input type is invalid.
-        """
-        if isinstance(time_input, str):
-            h, m, s = map(int, time_input.split(':'))
-            return h * 3600 + m * 60 + s
-        elif isinstance(time_input, time):
-            return time_input.hour * 3600 + time_input.minute * 60 + time_input.second
-        else:
-            # ValueError kept consistent with math_ops.time_converters.time_to_seconds.
-            raise ValueError("Invalid input type for time_to_seconds function")  # noqa: TRY004
-
     def find_offset_for_previous_time(self, dataframe, target_time_str):
         return self.plot_service.find_offset_for_previous_time(
             dataframe, target_time_str
@@ -1749,19 +1607,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         return False
 
     def format_cluster_string(self, burst_count):
-        """
-        Format the cluster string based on the burst count.
-
-        Parameters:
-        - burst_count (int): The number of peaks in the cluster.
-
-        Returns:
-        - str: Formatted cluster string.
-        """
-        if burst_count == 1:
-            return "Clusters with 1 Peak"
-        else:
-            return f"Clusters with {burst_count} Peaks"
+        return _format_cluster_string(burst_count)
 
     def embed_figure_in_canvas(self, fig, graph_canvas):
         if hasattr(self, "current_fig"):
@@ -2006,39 +1852,6 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
 
     def bin_data_dynamic(self, data, bin_size_sec):
         return _bin_data_dynamic(data, bin_size_sec)
-
-    def float_range(self, start, stop, step):
-        """
-        Generate a range of floating-point numbers.
-
-        Parameters:
-        start (float): The starting value.
-        stop (float): The end value.
-        step (float): The step size.
-
-        Yields:
-        float: The next value in the range.
-        """
-        while start < stop:
-            yield start
-            start += step
-
-    def generate_bin_axis(self, pre_time, post_time, bin_size):
-        """
-        Generate the bin axis (labels) based on pre-time, post-time, and bin size.
-
-        Parameters:
-        - pre_time (float): Pre-time (negative value).
-        - post_time (float): Post-time (positive value).
-        - bin_size (int): Size of each bin.
-
-        Returns:
-        - bin_labels (list): List of bin labels.
-        """
-        bin_ranges = np.linspace(pre_time, post_time, int(
-            (pre_time + post_time) / bin_size), endpoint=False)
-        bin_labels = [f'{start} - {start + bin_size}' for start in bin_ranges]
-        return bin_labels
 
     def save_image(self):
         try:

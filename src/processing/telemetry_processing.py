@@ -759,3 +759,33 @@ def calculate_stim_timings(
         stim_timings.append((cluster_size, stim_periods))
 
     return stim_timings
+
+
+def calculate_sample_rate(timestamps) -> float:
+    """Calculate the mean sample interval from a list of timestamps or floats."""
+    if isinstance(timestamps[0], (datetime, pd.Timestamp, np.datetime64)):
+        parsed_timestamps = pd.to_datetime(pd.Series(timestamps), errors="coerce")
+        time_diffs = (
+            parsed_timestamps.diff().dt.total_seconds().dropna().tolist()
+        )
+    else:
+        time_diffs = [
+            timestamps[i + 1] - timestamps[i]
+            for i in range(len(timestamps) - 1)
+        ]
+
+    time_diffs = [diff for diff in time_diffs if diff > 0]
+    if not time_diffs:
+        raise ValueError("Could not calculate a positive telemetry sample interval.")
+    return sum(time_diffs) / len(time_diffs)
+
+
+def data_dict_to_df(data_dict: dict) -> pd.DataFrame:
+    """Flatten a {period: {cluster_name: row_dict}} mapping into a DataFrame."""
+    rows = []
+    for clusters in data_dict.values():
+        for cluster_name, cluster_data in clusters.items():
+            row = cluster_data.copy()
+            row["Cluster Name"] = cluster_name
+            rows.append(row)
+    return pd.DataFrame(rows)
