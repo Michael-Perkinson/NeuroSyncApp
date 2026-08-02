@@ -17,14 +17,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.shared.qt_bindings import LineEditControl, ObservableValue
-from src.gui.shared.qt_view_styles import (
+from src.gui.framework.qt_view_styles import (
     PALETTE,
     apply_button_role,
     panel_stylesheet,
     section_stylesheet,
     title_stylesheet,
 )
+from src.gui.framework.tk_compat_controls import LineEditControl, ObservableValue
 from src.persistence.app_paths import config_file_path
 
 

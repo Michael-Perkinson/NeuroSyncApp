@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
-from src.gui.shared.qt_bindings import ComboBoxControl, ObservableValue
-from src.gui.shared.qt_view_styles import apply_button_role, panel_stylesheet
+from src.gui.framework.qt_view_styles import apply_button_role, panel_stylesheet
+from src.gui.framework.tk_compat_controls import ComboBoxControl, ObservableValue
 
 logger = logging.getLogger(__name__)
 

@@ -1016,7 +1016,7 @@ class TelemetryPlotService:
         try:
             return self._overlay_temp_and_act()
         except Exception as exc:
-            from src.gui.shared.messages_and_errors import show_action_error
+            from src.gui.framework.messages_and_errors import show_action_error
 
             show_action_error(
                 "Telemetry alignment failed",

@@ -55,21 +55,25 @@ from src.features.telemetry_alignment.views.graph_settings_panel import (
 from src.features.telemetry_alignment.views.label_settings_dialog import (
     TelemetryLabelSettingsDialog,
 )
-from src.gui.shared.graph_plotter import (
+from src.gui.framework.graph_plotter import (
     apply_figure_size_and_fonts,
     build_save_path,
     save_figure,
 )
-from src.gui.shared.messages_and_errors import show_action_error
-from src.gui.shared.qt_bindings import CheckBoxControl, LineEditControl, ObservableValue
-from src.gui.shared.qt_graph_canvas import (
+from src.gui.framework.messages_and_errors import show_action_error
+from src.gui.framework.qt_graph_canvas import (
     destroy_embedded_figure,
     embed_figure_in_qt,
 )
-from src.gui.shared.qt_view_styles import (
+from src.gui.framework.qt_view_styles import (
     APP_TABS_STYLESHEET,
     PALETTE,
     apply_button_role,
+)
+from src.gui.framework.tk_compat_controls import (
+    CheckBoxControl,
+    LineEditControl,
+    ObservableValue,
 )
 from src.gui.views.behaviour_event_input_frame import BehaviourInputFrame
 from src.gui.views.data_selection_panel import DataSelectionPanel

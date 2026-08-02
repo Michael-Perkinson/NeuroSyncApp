@@ -6,9 +6,9 @@ from src.features.behaviour_alignment.services.reset_helpers import (
     clear_common_selections,
     clear_photometry_app_specific_selections,
 )
-from src.gui.shared.file_dialogs import select_csv_file
-from src.gui.shared.messages_and_errors import show_action_error, show_error
-from src.gui.shared.validation_checks import validate_baseline_state
+from src.gui.framework.file_dialogs import select_csv_file
+from src.gui.framework.messages_and_errors import show_action_error, show_error
+from src.gui.framework.validation_checks import validate_baseline_state
 
 
 class BehaviourFileSelector:

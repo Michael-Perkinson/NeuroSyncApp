@@ -12,14 +12,14 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from src.gui.shared.qt_bindings import LineEditControl, ObservableValue
-from src.gui.shared.qt_view_styles import (
+from src.gui.framework.qt_view_styles import (
     apply_button_role,
     panel_stylesheet,
     section_stylesheet,
     subtitle_stylesheet,
     title_stylesheet,
 )
+from src.gui.framework.tk_compat_controls import LineEditControl, ObservableValue
 
 if TYPE_CHECKING:
     from .graph_settings_panel import GraphSettingsPanel

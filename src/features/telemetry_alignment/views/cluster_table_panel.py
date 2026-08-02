@@ -6,8 +6,8 @@ from typing import ClassVar
 
 from PySide6.QtWidgets import QFrame, QVBoxLayout
 
-from src.gui.shared.qt_table_adapter import QtTableAdapter
-from src.gui.shared.qt_view_styles import panel_stylesheet
+from src.gui.framework.qt_view_styles import panel_stylesheet
+from src.gui.framework.tk_style_table import TkStyleTable
 
 
 class TelemetryClusterTablePanel:
@@ -46,7 +46,7 @@ class TelemetryClusterTablePanel:
         layout.setContentsMargins(0, 0, 0, 0)
         frame.layout().addWidget(table_container_frame)
 
-        self.app.table_treeview = QtTableAdapter(self.COLUMNS, table_container_frame)
+        self.app.table_treeview = TkStyleTable(self.COLUMNS, table_container_frame)
         self.app.table_treeview.configure(height=30)
         layout.addWidget(self.app.table_treeview)
         self.app.table_treeview.tag_configure("Even", background="white")

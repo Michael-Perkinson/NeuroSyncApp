@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
 )
 
 from src.features.behaviour_alignment.services.plot_service import _selected_columns
-from src.gui.shared.qt_bindings import ComboBoxControl, ObservableValue
-from src.gui.shared.qt_view_styles import panel_stylesheet
+from src.gui.framework.qt_view_styles import panel_stylesheet
+from src.gui.framework.tk_compat_controls import ComboBoxControl, ObservableValue
 from src.gui.views.export_options_panel import ExportOptionsPanel
 from src.panels.graph_settings_panel import GraphSettingsPanel
 

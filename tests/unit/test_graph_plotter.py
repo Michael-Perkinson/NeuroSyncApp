@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.gui.shared.graph_plotter import build_save_path
+from src.gui.framework.graph_plotter import build_save_path
 
 
 class TestBuildSavePath:

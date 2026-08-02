@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
 
-from src.gui.shared.qt_bindings import CheckBoxControl
+from src.gui.framework.tk_compat_controls import CheckBoxControl
 
 
 class BehaviourOptionsPanel:

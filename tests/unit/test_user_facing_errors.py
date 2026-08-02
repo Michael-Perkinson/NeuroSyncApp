@@ -5,7 +5,7 @@ import pytest
 from src.features.behaviour_alignment.io.behaviour_file_selector import (
     BehaviourFileSelector,
 )
-from src.gui.shared.messages_and_errors import (
+from src.gui.framework.messages_and_errors import (
     describe_exception,
     format_action_error,
 )

@@ -24,16 +24,20 @@ from src.file_management.file_loader import (
     process_loaded_data,
     select_preferred_signal_column,
 )
-from src.gui.shared.checkable_column_selector import CheckableColumnSelector
-from src.gui.shared.messages_and_errors import show_action_error
-from src.gui.shared.qt_bindings import CheckBoxControl, LineEditControl, ObservableValue
-from src.gui.shared.qt_view_styles import (
+from src.gui.framework.checkable_column_selector import CheckableColumnSelector
+from src.gui.framework.messages_and_errors import show_action_error
+from src.gui.framework.qt_view_styles import (
     apply_button_role,
     panel_stylesheet,
     section_stylesheet,
     title_stylesheet,
 )
-from src.gui.shared.view_state_models import DataSelectionViewState
+from src.gui.framework.tk_compat_controls import (
+    CheckBoxControl,
+    LineEditControl,
+    ObservableValue,
+)
+from src.gui.framework.view_state_models import DataSelectionViewState
 from src.persistence.column_selection_memory import (
     recall_selection,
     remember_selection,

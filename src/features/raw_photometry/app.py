@@ -46,8 +46,8 @@ from src.dfer.df_common import (
     validate_single_df,
 )
 from src.dfer.df_plots import mpl_pfer_figure
-from src.gui.shared.messages_and_errors import format_action_error, show_action_error
-from src.gui.shared.qt_view_styles import (
+from src.gui.framework.messages_and_errors import format_action_error, show_action_error
+from src.gui.framework.qt_view_styles import (
     APP_TABS_STYLESHEET,
     PALETTE,
     apply_button_role,

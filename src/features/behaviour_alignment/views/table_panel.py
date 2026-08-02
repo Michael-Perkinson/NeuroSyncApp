@@ -7,8 +7,8 @@ from typing import ClassVar
 import pandas as pd
 from PySide6.QtWidgets import QFrame, QMessageBox, QVBoxLayout
 
-from src.gui.shared.qt_table_adapter import QtTableAdapter
-from src.gui.shared.qt_view_styles import panel_stylesheet
+from src.gui.framework.qt_view_styles import panel_stylesheet
+from src.gui.framework.tk_style_table import TkStyleTable
 from src.processing.behaviour_plotting import build_treeview_rows
 
 
@@ -40,7 +40,7 @@ class BehaviourTablePanel:
         layout.setContentsMargins(0, 0, 0, 0)
         frame.layout().addWidget(table_container_frame)
 
-        self.app.table_treeview = QtTableAdapter(self.TABLE_COLUMNS, table_container_frame)
+        self.app.table_treeview = TkStyleTable(self.TABLE_COLUMNS, table_container_frame)
         self.app.table_treeview.configure(height=30)
         layout.addWidget(self.app.table_treeview)
 

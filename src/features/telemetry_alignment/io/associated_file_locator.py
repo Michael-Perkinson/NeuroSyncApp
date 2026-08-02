@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 from PySide6.QtWidgets import QFileDialog
 
-from src.gui.shared.qt_bindings import ObservableValue
+from src.gui.framework.tk_compat_controls import ObservableValue
 
 logger = logging.getLogger(__name__)
 

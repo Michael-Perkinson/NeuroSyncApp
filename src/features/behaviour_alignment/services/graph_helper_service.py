@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.gui.shared.graph_plotter import (
+from src.gui.framework.graph_plotter import (
     convert_time_data,
     draw_behaviour_boxes,
     retrieve_behaviour_records,
     set_ax_tick_spacing,
 )
-from src.gui.shared.graph_plotter import (
+from src.gui.framework.graph_plotter import (
     process_behaviour_data as _process_behaviour_data,
 )
 from src.processing.behavior_metrics import get_time_scale

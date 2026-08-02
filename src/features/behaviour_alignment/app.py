@@ -29,9 +29,9 @@ from src.features.behaviour_alignment.services.static_inputs_service import (
 from src.features.behaviour_alignment.views.options_panel import BehaviourOptionsPanel
 from src.features.behaviour_alignment.views.table_panel import BehaviourTablePanel
 from src.features.behaviour_alignment.views.ui_builder import BehaviourUiBuilder
-from src.gui.shared.qt_bindings import ObservableValue
-from src.gui.shared.qt_graph_canvas import destroy_embedded_figure
-from src.gui.shared.qt_view_styles import APP_TABS_STYLESHEET, PALETTE
+from src.gui.framework.qt_graph_canvas import destroy_embedded_figure
+from src.gui.framework.qt_view_styles import APP_TABS_STYLESHEET, PALETTE
+from src.gui.framework.tk_compat_controls import ObservableValue
 from src.gui.views.behaviour_event_input_frame import BehaviourInputFrame
 from src.gui.views.data_selection_panel import DataSelectionPanel
 from src.gui.views.static_inputs_frame import StaticInputsFrame

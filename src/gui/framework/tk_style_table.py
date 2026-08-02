@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 
-class QtTableAdapter(QTableWidget):
+class TkStyleTable(QTableWidget):
     def __init__(self, columns: list[str], parent=None) -> None:
         super().__init__(0, len(columns), parent)
         self._columns = list(columns)

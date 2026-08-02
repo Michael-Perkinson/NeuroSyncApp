@@ -16,13 +16,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.shared.qt_bindings import (
-    CheckBoxControl,
-    ComboBoxControl,
-    LineEditControl,
-    ObservableValue,
-)
-from src.gui.shared.qt_view_styles import (
+from src.gui.framework.qt_view_styles import (
     PALETTE,
     apply_button_role,
     panel_stylesheet,
@@ -31,7 +25,13 @@ from src.gui.shared.qt_view_styles import (
     subtitle_stylesheet,
     title_stylesheet,
 )
-from src.gui.shared.view_state_models import GraphSettingsViewState
+from src.gui.framework.tk_compat_controls import (
+    CheckBoxControl,
+    ComboBoxControl,
+    LineEditControl,
+    ObservableValue,
+)
+from src.gui.framework.view_state_models import GraphSettingsViewState
 
 from .graph_settings_dialogs import (
     ActivitySettingsDialog,

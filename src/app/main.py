@@ -25,7 +25,7 @@ def _is_pyside6_available() -> bool:
 def _create_qapplication():
     from PySide6.QtWidgets import QApplication, QStyleFactory
 
-    from src.gui.shared.app_fonts import apply_application_font
+    from src.gui.framework.app_fonts import apply_application_font
 
     app = QApplication.instance()
     if app is None:

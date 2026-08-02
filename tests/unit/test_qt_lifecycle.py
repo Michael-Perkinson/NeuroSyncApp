@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 
 from src.app.dashboard import QtDashboard
 from src.features.raw_photometry.app import RawPhotometryProcessingQt
-from src.gui.shared.qt_log_handler import QtTextHandler
+from src.gui.framework.qt_log_handler import QtTextHandler
 from src.gui.views.export_options_panel import ExportOptionsPanel
 
 

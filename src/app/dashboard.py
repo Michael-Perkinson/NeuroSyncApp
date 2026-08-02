@@ -19,7 +19,7 @@ from src.app.catalog import (
     get_app_definition,
     iter_app_definitions,
 )
-from src.gui.shared.qt_view_styles import PALETTE
+from src.gui.framework.qt_view_styles import PALETTE
 from src.persistence.dashboard_state import load_state, save_state
 
 

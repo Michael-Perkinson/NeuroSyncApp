@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.shared.qt_view_styles import PALETTE, apply_button_role
+from src.gui.framework.qt_view_styles import PALETTE, apply_button_role
 
 _POPUP_STYLESHEET = f"""
 QFrame#checkableColumnPopup {{

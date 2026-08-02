@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.shared.qt_bindings import LineEditControl, ObservableValue
+from src.gui.framework.tk_compat_controls import LineEditControl, ObservableValue
 
 
 class TelemetryLabelSettingsDialog:

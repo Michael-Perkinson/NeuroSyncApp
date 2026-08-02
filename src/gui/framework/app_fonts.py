@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PySide6.QtGui import QFont, QFontDatabase
 
-from src.gui.shared.qt_view_styles import (
+from src.gui.framework.qt_view_styles import (
     APP_FONT_FAMILY,
     APP_FONT_POINT_SIZE,
     MONO_FONT_FAMILY,

@@ -7,7 +7,7 @@ import logging
 
 from PySide6.QtWidgets import QMessageBox
 
-from src.gui.shared.graph_plotter import (
+from src.gui.framework.graph_plotter import (
     apply_figure_size_and_fonts,
     build_save_path,
     compute_bar_position,
@@ -17,8 +17,8 @@ from src.gui.shared.graph_plotter import (
     draw_trace,
     save_figure,
 )
-from src.gui.shared.messages_and_errors import show_action_error
-from src.gui.shared.qt_graph_canvas import (
+from src.gui.framework.messages_and_errors import show_action_error
+from src.gui.framework.qt_graph_canvas import (
     create_styled_figure,
     destroy_embedded_figure,
     embed_figure_in_qt,

@@ -15,7 +15,7 @@ from src.excel_ops.behaviour_exporter import (
     export_combined_csv,
     generate_summary_data,
 )
-from src.gui.shared.messages_and_errors import show_action_error
+from src.gui.framework.messages_and_errors import show_action_error
 from src.processing.behavior_metrics import (
     calculate_auc,
     calculate_max_amp,

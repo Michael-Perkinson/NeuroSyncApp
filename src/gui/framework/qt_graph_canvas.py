@@ -7,7 +7,7 @@ from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from src.gui.shared.qt_view_styles import PALETTE
+from src.gui.framework.qt_view_styles import PALETTE
 
 
 class LightNavigationToolbar(NavigationToolbar2QT):
