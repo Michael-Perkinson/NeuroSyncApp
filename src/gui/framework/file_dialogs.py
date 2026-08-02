@@ -14,8 +14,3 @@ def select_csv_file(parent: QWidget | None = None) -> str:
         "CSV Files (*.csv)",
     )
     return file_path
-
-
-def select_file(parent: QWidget | None = None) -> str:
-    """Backward-compatible alias for CSV file selection."""
-    return select_csv_file(parent)

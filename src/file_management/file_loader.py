@@ -4,7 +4,7 @@ import logging
 import pandas as pd
 
 from src.math_ops.time_converters import check_and_convert_time_column, is_time_data
-from src.processing.data_utils import get_column_titles
+from src.processing.photometry_metadata import get_column_titles
 
 logger = logging.getLogger(__name__)
 

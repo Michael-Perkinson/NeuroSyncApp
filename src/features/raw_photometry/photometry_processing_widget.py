@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src import default_dirs
+from src import path_config
 from src.core.app_settings_manager import AppSettingsManager
 from src.dfer import compute_options, run_analysis, run_pfer
 from src.dfer.df_common import (
@@ -1372,7 +1372,7 @@ QPlainTextEdit {{
 
         safe_stem = _safe_path_part(result_stem)
         recording_name = safe_stem.removesuffix("_Dual")
-        output_base = Path(self._output_folder or default_dirs.module)
+        output_base = Path(self._output_folder or path_config.module)
         plots_root = output_base.parent / "plots"
         return plots_root / _safe_path_part(recording_name), safe_stem
 

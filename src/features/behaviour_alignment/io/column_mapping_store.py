@@ -30,7 +30,7 @@ class BehaviourColumnMappingStore:
         self.app.time_input_unit_var.set(data["Time Unit"])
         self._path().write_text(json.dumps(data), encoding="utf-8")
 
-    def prompt_column_names(self) -> dict:
+    def get_normalized_column_names(self) -> dict:
         """Return a normalised lowercase column mapping for parsing.
 
         Reads live values from the embedded frame fields so the user

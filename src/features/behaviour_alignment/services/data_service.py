@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QMessageBox
 
-from src.processing.behavior_metrics import (
+from src.processing.behaviour_metrics import (
     PRIMARY_ZSCORE_COLUMN,
     compute_z_score,
     zscore_column_key,

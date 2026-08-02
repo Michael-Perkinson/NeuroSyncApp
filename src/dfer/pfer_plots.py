@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src import default_dirs
+from src import path_config
 
 from .df_common import set_axis_labels
 from .pfer_detection import PFerResult
@@ -60,7 +60,7 @@ def build_bokeh_plots(
             p3.line(waveform_time, mean_wave, line_color=color, line_width=0.6)
         figures.append(p3)
 
-    out_html = Path(default_dirs.processor) / "PFer_results.html"
+    out_html = Path(path_config.processor) / "PFer_results.html"
     out_html.parent.mkdir(parents=True, exist_ok=True)
     output_file(str(out_html), title=filename)
     save(column(*figures))

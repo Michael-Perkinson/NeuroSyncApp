@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 
-from src.data.json_handler import (
+from src.data.behaviour_settings_io import (
     load_behaviour_static_inputs,
     save_behaviour_static_inputs,
 )

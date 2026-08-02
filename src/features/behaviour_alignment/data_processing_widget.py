@@ -8,8 +8,8 @@ from src.core.app_settings_manager import AppSettingsManager
 from src.features.behaviour_alignment.exporters.aligned_behaviour_exporter import (
     AlignedBehaviourExporter,
 )
-from src.features.behaviour_alignment.io.behaviour_file_selector import (
-    BehaviourFileSelector,
+from src.features.behaviour_alignment.io.behaviour_file_pipeline import (
+    BehaviourFilePipeline,
 )
 from src.features.behaviour_alignment.io.column_mapping_store import (
     BehaviourColumnMappingStore,
@@ -48,7 +48,7 @@ class DataProcessingSingleInstance(QWidget):
         "data_service": BehaviourDataService,
         "behaviour_table_panel": BehaviourTablePanel,
         "graph_helper_service": BehaviourGraphHelperService,
-        "behaviour_file_selector": BehaviourFileSelector,
+        "behaviour_file_pipeline": BehaviourFilePipeline,
         "ui_builder": BehaviourUiBuilder,
     }
 
@@ -284,7 +284,7 @@ class DataProcessingSingleInstance(QWidget):
         self.behaviour_event_input_frame = BehaviourInputFrame(
             self.main_frame,
             width=450,
-            select_event_file_callback=self.behaviour_file_selector.handle_behaviour_file_selection,
+            select_event_file_callback=self.behaviour_file_pipeline.handle_behaviour_file_selection,
             save_column_names_callback=self.column_mapping_store.save_from_frame,
         )
         self.main_frame_layout.addWidget(self.behaviour_event_input_frame, 0, 1)

@@ -13,7 +13,7 @@ from src.gui.framework.graph_plotter import (
 from src.gui.framework.graph_plotter import (
     process_behaviour_data as _process_behaviour_data,
 )
-from src.processing.behavior_metrics import get_time_scale
+from src.processing.behaviour_metrics import get_time_scale
 from src.processing.behaviour_plotting import extract_behaviour_occurrences
 
 

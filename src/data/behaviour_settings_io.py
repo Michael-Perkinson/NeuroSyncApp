@@ -1,5 +1,5 @@
 """
-json_handler.py
+behaviour_settings_io.py
 
 This module provides functions for handling JSON files, focusing on saving and loading
 behaviour settings to/from JSON. It integrates with pandas DataFrames for streamlined

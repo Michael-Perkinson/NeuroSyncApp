@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
 
+from .bokeh_html_plots import render_html
 from .df_common import set_axis_labels
-from .plotting import render_html
 
 # ---------------------------------------------------------------------------
 # Matplotlib inline figures (used by the Qt UI for in-app display)

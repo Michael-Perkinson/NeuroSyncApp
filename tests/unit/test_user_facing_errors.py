@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.features.behaviour_alignment.io.behaviour_file_selector import (
-    BehaviourFileSelector,
+from src.features.behaviour_alignment.io.behaviour_file_pipeline import (
+    BehaviourFilePipeline,
 )
 from src.gui.framework.messages_and_errors import (
     describe_exception,
@@ -41,7 +41,7 @@ def test_behaviour_file_is_not_marked_parsed_after_failed_import():
         manual_session_service = ManualSessionService()
 
     app = App()
-    BehaviourFileSelector(app).process_file("wrong.csv")
+    BehaviourFilePipeline(app).process_file("wrong.csv")
 
     assert app.is_file_parsed is False
 

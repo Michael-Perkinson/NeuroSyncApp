@@ -54,7 +54,7 @@ def test_duration_cache_stores_minutes_independent_of_display_unit(monkeypatch):
     )
     service = BehaviourManualSessionService(app)
 
-    service.calculate_and_store_behavior_metrics(
+    service.calculate_and_store_behaviour_metrics(
         {"Explore": {"start_times": [0.0, 10.0], "end_times": [60.0, 70.0]}}
     )
 

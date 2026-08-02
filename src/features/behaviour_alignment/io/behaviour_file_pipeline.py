@@ -2,23 +2,36 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from src.features.behaviour_alignment.services.reset_helpers import (
     clear_common_selections,
     clear_photometry_app_specific_selections,
 )
 from src.gui.framework.file_dialogs import select_csv_file
 from src.gui.framework.messages_and_errors import show_action_error, show_error
-from src.gui.framework.validation_checks import validate_baseline_state
 
 
-class BehaviourFileSelector:
+def _validate_baseline_state(
+    checkbox_state: bool,
+    baseline_button_pressed: bool,
+    error_callback: Callable[[str, str], None],
+) -> bool:
+    """Require the baseline to have been saved if the baseline checkbox is on."""
+    if checkbox_state and not baseline_button_pressed:
+        error_callback("Error", "Please remember to save the baseline values.")
+        return False
+    return True
+
+
+class BehaviourFilePipeline:
     """Owns behaviour file selection + parse dispatch."""
 
     def __init__(self, app):
         self.app = app
 
     def handle_behaviour_file_selection(self) -> None:
-        if not validate_baseline_state(
+        if not _validate_baseline_state(
             self.app.checkbox_state,
             self.app.data_selection_frame.baseline_button_pressed,
             lambda title, message: show_error(title, message, self.app),

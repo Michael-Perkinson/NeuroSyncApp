@@ -1,9 +1,9 @@
 """
-Unit tests for src/processing/data_utils.py.
+Unit tests for src/processing/photometry_metadata.py.
 """
 import pandas as pd
 
-from src.processing.data_utils import extract_mouse_name, get_column_titles
+from src.processing.photometry_metadata import extract_mouse_name, get_column_titles
 
 
 class TestExtractMouseName:

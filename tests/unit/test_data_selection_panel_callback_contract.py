@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from src.gui.views.data_selection_frame import DataSelectionFrame
+from src.gui.views.data_selection_panel import DataSelectionPanel
 
 
 class _DummyVar:
@@ -25,7 +25,7 @@ def test_on_select_file_passes_expected_callback_arguments(monkeypatch):
     }
 
     callback = Mock()
-    frame = DataSelectionFrame.__new__(DataSelectionFrame)
+    frame = DataSelectionPanel.__new__(DataSelectionPanel)
     frame.file_path_var = _DummyVar()
     frame.selected_column = _DummyVar()
     frame.column_dropdown = object()
@@ -39,7 +39,7 @@ def test_on_select_file_passes_expected_callback_arguments(monkeypatch):
         "src.gui.views.data_selection_panel.process_loaded_data", lambda _df: processed_data
     )
 
-    DataSelectionFrame._on_select_file(frame, frame.file_path_var)
+    DataSelectionPanel._on_select_file(frame, frame.file_path_var)
 
     callback.assert_called_once_with(
         frame.file_path_var,
@@ -52,13 +52,13 @@ def test_on_select_file_passes_expected_callback_arguments(monkeypatch):
 
 
 def test_column_selection_change_does_not_redraw_during_file_load():
-    frame = DataSelectionFrame.__new__(DataSelectionFrame)
+    frame = DataSelectionPanel.__new__(DataSelectionPanel)
     frame.settings_manager = Mock()
     frame.selected_column = _DummyVar("dFoF_470")
     frame.handle_figure_display_selection = Mock()
     frame._suppress_column_redraw = True
 
-    DataSelectionFrame.on_column_selection_changed(frame)
+    DataSelectionPanel.on_column_selection_changed(frame)
 
     assert frame.settings_manager.selected_column_name == "dFoF_470"
     frame.handle_figure_display_selection.assert_not_called()

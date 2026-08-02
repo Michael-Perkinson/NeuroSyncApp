@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from src.data.json_handler import save_behaviour_static_inputs
+from src.data.behaviour_settings_io import save_behaviour_static_inputs
 from src.persistence.app_paths import config_file_path
 
 logger = logging.getLogger(__name__)

@@ -42,7 +42,7 @@ from src.persistence.column_selection_memory import (
     recall_selection,
     remember_selection,
 )
-from src.processing.data_utils import extract_mouse_name
+from src.processing.photometry_metadata import extract_mouse_name
 
 logger = logging.getLogger(__name__)
 

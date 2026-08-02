@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 from PySide6.QtWidgets import QMessageBox
 
-from src.data.json_handler import (
+from src.data.behaviour_settings_io import (
     load_behaviour_static_inputs,
     save_behaviour_static_inputs,
 )
@@ -17,7 +17,7 @@ from src.file_management.file_loader import select_preferred_signal_column
 from src.gui.framework.messages_and_errors import show_action_error
 from src.gui.framework.tk_compat_controls import ObservableValue
 from src.persistence.app_paths import config_file_path
-from src.processing.behavior_metrics import calculate_duration_metrics
+from src.processing.behaviour_metrics import calculate_duration_metrics
 from src.processing.behaviour_parser import process_behaviour_rows, read_behaviour_csv
 from src.string_ops.string_utils import normalize_deduplicate_and_order_strings
 
@@ -44,11 +44,11 @@ class BehaviourManualSessionService:
             behaviour_settings = load_behaviour_static_inputs(config_file_path("behaviour_settings.json"))
             self.app.behaviour_table_panel.clear_table()
             df, column_names = self.read_and_process_file(file_path)
-            table_data, behaviour_names, behavior_durations = self.process_each_row(
+            table_data, behaviour_names, behaviour_durations = self.process_each_row(
                 df, column_names, behaviour_settings, file_path
             )
 
-            self.calculate_and_store_behavior_metrics(behavior_durations)
+            self.calculate_and_store_behaviour_metrics(behaviour_durations)
             self.update_ui_with_manual_data(table_data, behaviour_names)
             return True
         except OSError as exc:
@@ -71,7 +71,7 @@ class BehaviourManualSessionService:
             return False
 
     def read_and_process_file(self, file_path: str):
-        column_names = self.app.column_mapping_store.prompt_column_names()
+        column_names = self.app.column_mapping_store.get_normalized_column_names()
         time_unit = self.app.time_input_unit_var.get().lower()
         return read_behaviour_csv(file_path, column_names, time_unit)
 
@@ -88,8 +88,8 @@ class BehaviourManualSessionService:
             self.app.selected_column_var.get(),
         )
 
-    def calculate_and_store_behavior_metrics(self, behavior_durations) -> None:
-        for behavior, times in behavior_durations.items():
+    def calculate_and_store_behaviour_metrics(self, behaviour_durations) -> None:
+        for behavior, times in behaviour_durations.items():
             mean_duration, sem_duration = calculate_duration_metrics(
                 times["start_times"], times["end_times"]
             )

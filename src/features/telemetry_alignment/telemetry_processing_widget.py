@@ -79,7 +79,7 @@ from src.gui.views.behaviour_event_input_frame import BehaviourInputFrame
 from src.gui.views.data_selection_panel import DataSelectionPanel
 from src.gui.views.export_options_panel import ExportOptionsPanel
 from src.gui.views.static_inputs_frame import StaticInputsFrame
-from src.processing.behavior_metrics import (
+from src.processing.behaviour_metrics import (
     get_time_scale as _get_time_scale,
 )
 from src.processing.cluster_detection import (

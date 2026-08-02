@@ -22,7 +22,7 @@ import pandas as pd
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import AutoLocator, MultipleLocator
 
-from src.processing.behavior_metrics import get_time_scale
+from src.processing.behaviour_metrics import get_time_scale
 
 # ---------------------------------------------------------------------------
 # Time helpers

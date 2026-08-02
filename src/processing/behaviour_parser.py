@@ -154,18 +154,18 @@ def get_behaviour_type(end_time) -> str:
     return "Continuous"
 
 
-def update_behavior_durations(
-    behavior_durations: dict,
+def update_behaviour_durations(
+    behaviour_durations: dict,
     behaviour_name: str,
     start_time: float,
     end_time: float,
 ) -> dict:
     """Append start/end times to the per-behaviour duration dict and return it."""
-    if behaviour_name not in behavior_durations:
-        behavior_durations[behaviour_name] = {"start_times": [], "end_times": []}
-    behavior_durations[behaviour_name]["start_times"].append(start_time)
-    behavior_durations[behaviour_name]["end_times"].append(end_time)
-    return behavior_durations
+    if behaviour_name not in behaviour_durations:
+        behaviour_durations[behaviour_name] = {"start_times": [], "end_times": []}
+    behaviour_durations[behaviour_name]["start_times"].append(start_time)
+    behaviour_durations[behaviour_name]["end_times"].append(end_time)
+    return behaviour_durations
 
 
 def get_behaviour_settings(
@@ -232,19 +232,19 @@ def process_behaviour_rows(
         behaviour_type, pre, post, bin, start_time, end_time)``.
     behaviour_names : set[str]
         All unique behaviour names encountered.
-    behavior_durations : dict
+    behaviour_durations : dict
         ``{behaviour_name: {"start_times": [...], "end_times": [...]}}``
     """
     behaviour_names: set[str] = set()
     table_data: list[tuple] = []
-    behavior_durations: dict = {}
+    behaviour_durations: dict = {}
 
     for row_tuple in df.itertuples(index=False):
         row = pd.Series(dict(zip(df.columns, row_tuple)))
         behaviour_name = get_behaviour_name(row, column_names).capitalize()
         start_time, end_time = get_start_end_times(row, column_names, synchronize_start_time)
-        behavior_durations = update_behavior_durations(
-            behavior_durations, behaviour_name, start_time, end_time
+        behaviour_durations = update_behaviour_durations(
+            behaviour_durations, behaviour_name, start_time, end_time
         )
         pre, post, bin_ = get_behaviour_settings(
             behaviour_name, behaviour_settings, default_pre, default_post, default_bin
@@ -262,7 +262,7 @@ def process_behaviour_rows(
         ))
         behaviour_names.add(behaviour_name)
 
-    return table_data, behaviour_names, behavior_durations
+    return table_data, behaviour_names, behaviour_durations
 
 
 # ---------------------------------------------------------------------------

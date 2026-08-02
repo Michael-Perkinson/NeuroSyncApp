@@ -5,7 +5,7 @@ import os
 import webbrowser
 from pathlib import Path
 
-from src import default_dirs
+from src import path_config
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ def is_wsl() -> bool:
 
 def plot_out_path(html_name: str) -> Path:
     """Return the output path for a generated HTML plot."""
-    return Path(default_dirs.processor) / html_name
+    return Path(path_config.processor) / html_name
 
 
 def render_html(obj, html_name: str, title: str, open_in_browser: bool) -> Path:

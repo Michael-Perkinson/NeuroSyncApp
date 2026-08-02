@@ -12,11 +12,11 @@ from PySide6.QtWidgets import QMessageBox
 from src.excel_ops.behaviour_exporter import (
     build_output_file_name,
     create_df_for_behaviours,
-    export_combined_csv,
+    export_combined_excel,
     generate_summary_data,
 )
 from src.gui.framework.messages_and_errors import show_action_error
-from src.processing.behavior_metrics import (
+from src.processing.behaviour_metrics import (
     calculate_auc,
     calculate_max_amp,
     calculate_mean_dff,
@@ -144,7 +144,7 @@ class AlignedBehaviourExporter:
             time_ranges,
         )
         # Sheet order: a single "Summary Results" (prepended by
-        # export_combined_csv) then "Event Duration" at the front, followed by
+        # export_combined_excel) then "Event Duration" at the front, followed by
         # every per-behaviour detail sheet. There is one summary only — extra
         # signal columns add their own behaviour detail sheets, not a second
         # summary.
@@ -152,7 +152,7 @@ class AlignedBehaviourExporter:
         df_list.extend(detail_df_list)
 
         output_file_name = self._get_output_file_name(file_path, folder_path)
-        export_combined_csv(df_summary, df_list, output_file_name, behaviours_results)
+        export_combined_excel(df_summary, df_list, output_file_name, behaviours_results)
 
     def extract_data_from_photometry(self, file_path: str, params: dict) -> None:
         """Extract and export photometry-aligned behaviour data."""

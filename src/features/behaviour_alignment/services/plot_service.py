@@ -23,7 +23,7 @@ from src.gui.framework.qt_graph_canvas import (
     destroy_embedded_figure,
     embed_figure_in_qt,
 )
-from src.processing.behavior_metrics import generate_mean_sem_df, zscore_column_key
+from src.processing.behaviour_metrics import generate_mean_sem_df, zscore_column_key
 from src.processing.behaviour_plotting import (
     build_adjusted_behaviour_df,
     compute_zeroed_time_axis,

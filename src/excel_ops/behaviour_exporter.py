@@ -240,7 +240,7 @@ def generate_summary_data(
     pd.DataFrame
         Un-headered summary table ready for Excel export.
     """
-    from src.processing.behavior_metrics import (
+    from src.processing.behaviour_metrics import (
         calculate_metrics_for_bins,  # avoid circular
     )
 
@@ -482,7 +482,7 @@ def save_to_excel(df_list: list[tuple[pd.DataFrame, str]], output_file_name: str
             df.to_excel(writer, sheet_name=sheet_name.replace("/", "_"), index=False)
 
 
-def export_combined_csv(
+def export_combined_excel(
     df_summary: pd.DataFrame,
     df_list: list[tuple[pd.DataFrame, str]],
     output_file_name: str,

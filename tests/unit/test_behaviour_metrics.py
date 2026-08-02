@@ -1,11 +1,11 @@
-"""Tests for src/processing/behavior_metrics.py — currently 0% covered."""
+"""Tests for src/processing/behaviour_metrics.py — currently 0% covered."""
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.processing.behavior_metrics import (
+from src.processing.behaviour_metrics import (
     calculate_auc,
     calculate_duration_metrics,
     calculate_max_amp,
