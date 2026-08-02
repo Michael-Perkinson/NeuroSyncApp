@@ -6,7 +6,7 @@ import json
 import logging
 from pathlib import Path
 
-from src.shared.persistence.app_paths import config_file_path, legacy_repo_file_path
+from src.persistence.app_paths import config_file_path, legacy_repo_file_path
 
 logger = logging.getLogger(__name__)
 

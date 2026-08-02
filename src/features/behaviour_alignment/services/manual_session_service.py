@@ -16,9 +16,9 @@ from src.data.json_handler import (
 from src.file_management.file_loader import select_preferred_signal_column
 from src.gui.shared.messages_and_errors import show_action_error
 from src.gui.shared.qt_bindings import ObservableValue
+from src.persistence.app_paths import config_file_path
 from src.processing.behavior_metrics import calculate_duration_metrics
 from src.processing.behaviour_parser import process_behaviour_rows, read_behaviour_csv
-from src.shared.persistence.app_paths import config_file_path
 from src.string_ops.string_utils import normalize_deduplicate_and_order_strings
 
 

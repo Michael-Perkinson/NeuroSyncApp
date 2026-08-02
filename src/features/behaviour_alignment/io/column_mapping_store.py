@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.shared.persistence.app_paths import config_file_path
+from src.persistence.app_paths import config_file_path
 
 
 class BehaviourColumnMappingStore:

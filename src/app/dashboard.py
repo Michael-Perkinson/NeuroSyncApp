@@ -20,7 +20,7 @@ from src.app.catalog import (
     iter_app_definitions,
 )
 from src.gui.shared.qt_view_styles import PALETTE
-from src.shared.persistence.dashboard_state import load_state, save_state
+from src.persistence.dashboard_state import load_state, save_state
 
 
 class QtDashboard(QMainWindow):

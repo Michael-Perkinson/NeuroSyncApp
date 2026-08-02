@@ -18,7 +18,7 @@ from src.features.behaviour_alignment.services.plot_service import _selected_col
 from src.gui.shared.qt_bindings import ComboBoxControl, ObservableValue
 from src.gui.shared.qt_view_styles import panel_stylesheet
 from src.gui.views.export_options_panel import ExportOptionsPanel
-from src.shared.ui.graph_settings_panel import GraphSettingsPanel
+from src.panels.graph_settings_panel import GraphSettingsPanel
 
 
 class BehaviourUiBuilder:

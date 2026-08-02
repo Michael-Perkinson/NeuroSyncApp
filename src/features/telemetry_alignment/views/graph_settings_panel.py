@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.shared.ui.graph_settings_panel import GraphSettingsPanel
+from src.panels.graph_settings_panel import GraphSettingsPanel
 
 
 def create_telemetry_graph_settings_panel(parent, app) -> GraphSettingsPanel:

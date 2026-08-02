@@ -34,11 +34,11 @@ from src.gui.shared.qt_view_styles import (
     title_stylesheet,
 )
 from src.gui.shared.view_state_models import DataSelectionViewState
-from src.processing.data_utils import extract_mouse_name
-from src.shared.persistence.column_selection_memory import (
+from src.persistence.column_selection_memory import (
     recall_selection,
     remember_selection,
 )
+from src.processing.data_utils import extract_mouse_name
 
 logger = logging.getLogger(__name__)
 

@@ -25,7 +25,7 @@ from src.gui.shared.qt_view_styles import (
     section_stylesheet,
     title_stylesheet,
 )
-from src.shared.persistence.app_paths import config_file_path
+from src.persistence.app_paths import config_file_path
 
 
 def _column_names_path() -> Path:

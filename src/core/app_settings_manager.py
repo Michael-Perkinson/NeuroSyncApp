@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from src.core.settings_defaults import get_default_settings
-from src.shared.persistence.settings_store import load_settings, save_settings
+from src.persistence.settings_store import load_settings, save_settings
 
 
 class AppSettingsManager:

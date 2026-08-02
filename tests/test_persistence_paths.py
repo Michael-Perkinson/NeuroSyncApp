@@ -2,12 +2,12 @@ import shutil
 import uuid
 from pathlib import Path
 
-from src.shared.persistence.dashboard_state import (
+from src.persistence.dashboard_state import (
     get_state_file_path,
     load_state,
     save_state,
 )
-from src.shared.persistence.settings_store import (
+from src.persistence.settings_store import (
     load_settings,
     save_settings,
     settings_file_path,

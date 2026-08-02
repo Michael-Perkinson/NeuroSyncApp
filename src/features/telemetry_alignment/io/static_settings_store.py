@@ -12,7 +12,7 @@ from src.features.telemetry_alignment.io.static_input_builders import (
     build_photometry_cluster_entries,
     normalize_static_settings,
 )
-from src.shared.persistence.app_paths import config_file_path, legacy_repo_file_path
+from src.persistence.app_paths import config_file_path, legacy_repo_file_path
 
 logger = logging.getLogger(__name__)
 
