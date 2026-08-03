@@ -55,7 +55,7 @@ from src.features.telemetry_alignment.views.graph_settings_panel import (
 from src.features.telemetry_alignment.views.label_settings_dialog import (
     TelemetryLabelSettingsDialog,
 )
-from src.gui.framework.graph_plotter import (
+from src.gui.framework.figure_export import (
     apply_figure_size_and_fonts,
     build_save_path,
     save_figure,

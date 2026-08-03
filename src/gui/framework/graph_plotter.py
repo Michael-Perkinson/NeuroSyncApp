@@ -1,7 +1,7 @@
 """
 Pure matplotlib plotting functions for photometry-behaviour graphs.
 
-No UI framework dependencies — callers resolve all widget values before
+No UI framework dependencies â€” callers resolve all widget values before
 passing them in.  Every function takes an ``ax`` (matplotlib Axes) or
 ``fig`` (Figure) plus explicit data/style parameters and returns only
 plain Python / NumPy / pandas objects.
@@ -13,21 +13,21 @@ module change.
 
 from __future__ import annotations
 
-import datetime
-import math
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import AutoLocator, MultipleLocator
 
+from src.gui.framework import figure_export as _figure_export
 from src.processing.behaviour_metrics import get_time_scale
+
+apply_figure_size_and_fonts = _figure_export.apply_figure_size_and_fonts
+build_save_path = _figure_export.build_save_path
+save_figure = _figure_export.save_figure
 
 # ---------------------------------------------------------------------------
 # Time helpers
 # ---------------------------------------------------------------------------
-
 _TIME_LABELS = {
     "minutes": "Time (min)",
     "seconds": "Time (s)",
@@ -104,10 +104,10 @@ def retrieve_behaviour_records(
     Returns
     -------
     behaviours       : list[str]
-    start_times      : list[float]  — seconds
-    end_times        : list          — seconds or NaN
-    start_times_min  : list[float]  — minutes
-    end_times_min    : list          — minutes or None
+    start_times      : list[float]  â€” seconds
+    end_times        : list          â€” seconds or NaN
+    start_times_min  : list[float]  â€” minutes
+    end_times_min    : list          â€” minutes or None
     """
     records = table_df.to_dict("records")
     behaviours      = [r["Behaviour Name"] for r in records]
@@ -145,7 +145,7 @@ def process_behaviour_data(
         *checkbox_state* is True, ``df["z_scored_time"]`` is used instead.
     behaviour_occurrences:
         List of ``(start_time, end_time, pre_behaviour_time,
-        post_behaviour_time)`` tuples — all in **minutes**.
+        post_behaviour_time)`` tuples â€” all in **minutes**.
     column_used:
         Column to extract signal data from.
     time_unit:
@@ -155,10 +155,10 @@ def process_behaviour_data(
 
     Returns
     -------
-    behaviour_data_by_instance : dict  — ``{"Instance 1": [...], ...}``
+    behaviour_data_by_instance : dict  â€” ``{"Instance 1": [...], ...}``
     time_points                : np.ndarray
-    start_time_adjusted        : float  — in display units
-    end_time_adjusted          : float  — in display units
+    start_time_adjusted        : float  â€” in display units
+    end_time_adjusted          : float  â€” in display units
     """
     time_factor = get_time_scale(time_unit)
     behaviour_data_by_instance: dict = {}
@@ -263,9 +263,9 @@ def draw_sem_band(
     sem_color: str,
     label: str | None = "SEM",
 ) -> None:
-    """Fill ±SEM band around *mean* if any SEM values are non-zero.
+    """Fill Â±SEM band around *mean* if any SEM values are non-zero.
 
-    Pass ``label=None`` to keep the band out of the legend — used when
+    Pass ``label=None`` to keep the band out of the legend â€” used when
     overlaying multiple columns, where each column's trace already carries
     its own legend entry and a per-column "SEM" entry would just be noise.
     """
@@ -306,13 +306,13 @@ def draw_behaviour_boxes(
     Parameters
     ----------
     behaviour_display:
-        ``{behaviour_name: True/False}`` — pre-resolved from IntVar.get().
+        ``{behaviour_name: True/False}`` â€” pre-resolved from IntVar.get().
     time_factor:
         Already applied to *time_data* and *start/end_times_min*.
     box_height_factor:
         Fraction of the data range used as box height.
     alpha:
-        Box transparency (0–1).
+        Box transparency (0â€“1).
     start_point, end_point:
         If provided (Single Row display), restrict xlim and y-range to
         this window (already in display units).
@@ -411,122 +411,3 @@ def draw_duration_bar(
 
 
 # ---------------------------------------------------------------------------
-# Figure sizing / export
-# ---------------------------------------------------------------------------
-
-def apply_figure_size_and_fonts(
-    fig,
-    axis_width_cm: float,
-    axis_height_cm: float,
-    font_settings: dict,
-    current_xlabel: str,
-    current_ylabel: str,
-) -> None:
-    """Resize *fig* and apply font sizes for image export (in-place).
-
-    Parameters
-    ----------
-    font_settings:
-        Dict with optional keys ``xlabel_fontsize``, ``ylabel_fontsize``,
-        ``xtick_fontsize``, ``ytick_fontsize``, ``title_fontsize``,
-        ``y_axis_name``.
-    """
-    axis_width_in  = axis_width_cm  / 2.54
-    axis_height_in = axis_height_cm / 2.54
-    diagonal = math.sqrt(axis_width_in ** 2 + axis_height_in ** 2)
-    default_fs = 1.8 * diagonal
-
-    def _fs(key: str) -> float:
-        v = font_settings.get(key, "")
-        return int(v) if v else default_fs
-
-    xlabel_fs = _fs("xlabel_fontsize")
-    ylabel_fs = _fs("ylabel_fontsize")
-    xtick_fs  = _fs("xtick_fontsize")
-    ytick_fs  = _fs("ytick_fontsize")
-    title_fs  = _fs("title_fontsize")
-
-    scale = max(xlabel_fs, ylabel_fs, xtick_fs, ytick_fs) / default_fs
-
-    left_m   = 0.20 * diagonal * scale
-    right_m  = 0.30 * scale
-    top_m    = 0.10 * scale
-    bottom_m = 0.15 * diagonal * scale
-
-    fig_w = left_m + axis_width_in  + right_m
-    fig_h = bottom_m + axis_height_in + top_m
-    fig.set_size_inches(fig_w, fig_h)
-    fig.subplots_adjust(
-        left   = left_m   / fig_w,
-        right  = 1 - right_m  / fig_w,
-        top    = 1 - top_m    / fig_h,
-        bottom = bottom_m / fig_h,
-    )
-
-    ax = fig.axes[0]
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-
-    y_label = font_settings.get("y_axis_name", "") or current_ylabel
-    ax.set_xlabel(current_xlabel, fontsize=xlabel_fs)
-    ax.set_ylabel(y_label,        fontsize=ylabel_fs)
-    ax.tick_params(axis="x", labelsize=xtick_fs)
-    ax.tick_params(axis="y", labelsize=ytick_fs)
-    ax.set_title(ax.get_title(), fontsize=title_fs)
-
-
-def build_save_path(
-    file_path: str,
-    mouse_name: str,
-    figure_display: str,
-    behaviour_choice: str,
-    fmt: str,
-    recording_date: str | None = "",
-) -> Path:
-    """Return a save path for the exported figure using recording date.
-
-    Creates the ``exported_images_<mouse_name>_<recording_date>`` directory next to
-    *file_path* if it does not already exist.
-
-    Parameters
-    ----------
-    recording_date : str
-        Recording date in 'yy-mm-dd' format. If provided, used in directory and filename.
-    """
-    p = Path(file_path)
-
-    # Format directory name with recording date if available
-    if recording_date:
-        out_dir = p.parent / f"exported_images_{mouse_name}_{recording_date}"
-    else:
-        out_dir = p.parent / f"exported_images_{mouse_name}"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    if figure_display == "Behaviour Mean and SEM" and behaviour_choice:
-        base = f"{mouse_name}_{figure_display}_{behaviour_choice}"
-    else:
-        base = f"{mouse_name}_{figure_display}"
-
-    if not mouse_name:
-        base = p.stem
-
-    # Use recording date in filename if available, otherwise use timestamp
-    if recording_date:
-        date_str = recording_date
-    else:
-        date_str = datetime.datetime.now().strftime("%b%d_%H%M")
-
-    candidate = out_dir / f"{base}_{date_str}.{fmt}"
-    counter = 1
-    while candidate.exists():
-        candidate = out_dir / f"{base}_{date_str}_{counter}.{fmt}"
-        counter += 1
-
-    return candidate
-
-
-def save_figure(fig, output_path: str | Path, fmt: str, dpi: int) -> None:
-    """Save *fig* and close it."""
-    import matplotlib.pyplot as plt
-    fig.savefig(str(output_path), transparent=True, format=fmt, dpi=dpi)
-    plt.close(fig)
