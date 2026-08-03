@@ -1069,14 +1069,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         self.cluster_options_created = True
 
     def save_peak_alignment(self):
-        """
-        Save an alignment peak index to each cluster in self.cluster_dict.
-        The alignment peak index is specified in self.peak_alignment_vars.
-        If the specified index exceeds the number of peaks, defaults to the index of the last peak.
-
-        Raises:
-            ValueError: If the alignment peak index specified is not a valid integer.
-        """
+        """Save each cluster's alignment peak index from self.peak_alignment_vars, defaulting to the last peak on invalid or out-of-range input."""
         for (start, end), cluster_data in self.cluster_dict.items():
             peaks = cluster_data['peaks']
             try:

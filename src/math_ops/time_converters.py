@@ -20,17 +20,7 @@ TIME_LABELS: dict[str, str] = {
 
 
 def convert_time(value: float, from_unit: str, to_unit: str = "minutes") -> float:
-    """
-    Convert time between units.
-
-    Parameters:
-    - value (float | int): The time value to convert.
-    - from_unit (str): The current unit of the time value.
-    - to_unit (str): The target unit to convert to.
-
-    Returns:
-    - float: The converted time value.
-    """
+    """Convert a time value from from_unit to to_unit."""
     if from_unit not in CONVERSION_FACTORS or to_unit not in CONVERSION_FACTORS:
         raise ValueError(
             "Unsupported time unit. Supported units are: minutes, seconds, hours.")
@@ -38,31 +28,12 @@ def convert_time(value: float, from_unit: str, to_unit: str = "minutes") -> floa
 
 
 def get_time_label(unit: str) -> str:
-    """
-    Get the label for a given time unit.
-
-    Parameters:
-    - unit (str): The time unit.
-
-    Returns:
-    - str: The corresponding label.
-    """
+    """Return the display label for a given time unit."""
     return TIME_LABELS.get(unit, "Time (min)")
 
 
 def time_to_seconds(time_input: str | time) -> int:
-    """
-    Convert a time input to seconds.
-
-    Parameters:
-    - time_input (str | datetime.time): The time input to convert.
-
-    Returns:
-    - int: The equivalent time in seconds.
-
-    Raises:
-    - ValueError: If the input type is invalid.
-    """
+    """Convert a time input to seconds; raises ValueError for an unsupported input type."""
     if isinstance(time_input, str):
         h, m, s = map(int, time_input.split(':'))
         return h * 3600 + m * 60 + s
@@ -74,16 +45,7 @@ def time_to_seconds(time_input: str | time) -> int:
 
 
 def check_and_convert_time_column(dataframe: pd.DataFrame, target_unit: str = "minutes") -> pd.DataFrame:
-    """
-    Checks the first column of the given DataFrame for time units and converts them to the target unit if found.
-
-    Parameters:
-    - dataframe (pd.DataFrame): The pandas DataFrame.
-    - target_unit (str): The target unit for conversion (default is "minutes").
-
-    Returns:
-    - pd.DataFrame: The modified DataFrame with time converted.
-    """
+    """Convert the DataFrame's first column to target_unit if it names a recognised time unit."""
     first_column_title: str = dataframe.columns[0].lower()
 
     for unit, unit_factor in CONVERSION_FACTORS.items():

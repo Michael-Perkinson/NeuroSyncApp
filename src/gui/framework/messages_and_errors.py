@@ -67,17 +67,6 @@ def show_error(
     message: str | Exception,
     parent: QWidget | None = None,
 ) -> None:
-    """
-    Display an error message in a messagebox.
-
-    Parameters:
-    - title (str): The title of the error messagebox.
-    - message (str | Exception): The error message or exception details to display.
-
-    Returns:
-    - None
-    """
-
-    # Ensure the message is a string
+    """Display an error message in a messagebox."""
     error_message = str(message)
     QMessageBox.critical(parent, title, error_message)
