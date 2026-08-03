@@ -4,14 +4,12 @@ import logging
 import os
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -46,6 +44,28 @@ from src.dfer.df_common import (
     validate_single_df,
 )
 from src.dfer.df_plots import mpl_pfer_figure
+from src.features.raw_photometry.plotting import (
+    OPTION_TITLES as _OPTION_TITLES,
+)
+from src.features.raw_photometry.plotting import (
+    _tighten_time_axes,
+)
+from src.features.raw_photometry.plotting import (
+    mpl_dfer_results_figure_from_frame as _mpl_dfer_results_figure_from_frame,
+)
+from src.features.raw_photometry.plotting import (
+    mpl_single_option_figure as _mpl_single_option_figure,
+)
+from src.features.raw_photometry.plotting import (
+    normalise_dfer_result_frame as _normalise_dfer_result_frame,
+)
+from src.features.raw_photometry.views.graph_panel import GraphPanel, GraphReference
+from src.features.raw_photometry.workers import (
+    AnalysisWorker as _Worker,
+)
+from src.features.raw_photometry.workers import (
+    QtSignalLogHandler as _QtLogHandler,
+)
 from src.gui.framework.messages_and_errors import format_action_error, show_action_error
 from src.gui.framework.qt_view_styles import (
     APP_TABS_STYLESHEET,
@@ -117,251 +137,6 @@ def _strip_data_suffix(stem: str) -> str:
         return stem.removesuffix("_Data")
     return stem
 
-
-def _graph_time_values(axis) -> np.ndarray | None:
-    values: list[float] = []
-    for line in axis.lines:
-        x_data = np.asarray(line.get_xdata(), dtype=float)
-        if x_data.size:
-            values.extend([float(np.nanmin(x_data)), float(np.nanmax(x_data))])
-    if not values:
-        return None
-    return np.asarray(values, dtype=float)
-
-
-def _tighten_time_axes(figure: Figure) -> None:
-    for axis in figure.axes:
-        values = _graph_time_values(axis)
-        if values is None:
-            continue
-        finite = values[np.isfinite(values)]
-        if finite.size == 0:
-            continue
-        x_min = float(np.min(finite))
-        x_max = float(np.max(finite))
-        if x_min == x_max:
-            axis.set_xlim(x_min - 0.5, x_max + 0.5)
-        else:
-            pad = (x_max - x_min) * 0.005
-            axis.set_xlim(x_min - pad, x_max + pad)
-        axis.margins(x=0)
-
-
-_OPTION_TITLES = [
-    "Option 1: Good noise correction and bleach correction",
-    "Option 2: Assumes shifts in 465 baseline are independent of activity",
-    "Option 3: No noise correction",
-    "Option 4: No noise correction, no activity-dependent baseline correction",
-]
-
-
-def _normalise_dfer_result_frame(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df.columns = [str(c).strip().lstrip("#").strip() for c in df.columns]
-    return df
-
-
-def _mpl_dfer_results_figure_from_frame(
-    df: pd.DataFrame,
-    graph: str = "dfof",
-    show_405: bool = True,
-) -> Figure:
-    """Return a single-panel DFer result figure from a normalised result frame."""
-    df = _normalise_dfer_result_frame(df)
-    t_min = df["t_min"].to_numpy(dtype=float)
-    is_dual = "dFoF_470" in df.columns
-
-    fig = Figure(figsize=(12, 4), tight_layout=True)
-    ax = fig.add_subplot(1, 1, 1)
-
-    if is_dual:
-        if graph == "dfof":
-            ax.plot(
-                t_min,
-                df["dFoF_470"].to_numpy(dtype=float),
-                color="green",
-                linewidth=0.6,
-                alpha=0.55,
-                label="470nm dF/F",
-            )
-            ax.plot(
-                t_min,
-                df["dFoF_560"].to_numpy(dtype=float),
-                color="red",
-                linewidth=0.6,
-                alpha=0.4,
-                label="560nm dF/F",
-            )
-            ax.set_ylabel("dF/F")
-        else:
-            ax.plot(
-                t_min,
-                df["Z_470"].to_numpy(dtype=float),
-                color="green",
-                linewidth=0.6,
-                alpha=0.55,
-                label="470nm Z-score",
-            )
-            ax.plot(
-                t_min,
-                df["Z_560"].to_numpy(dtype=float),
-                color="red",
-                linewidth=0.6,
-                alpha=0.4,
-                label="560nm Z-score",
-            )
-            ax.set_ylabel("Z-score")
-    else:
-        if graph == "dfof":
-            if show_405:
-                ax.plot(t_min, df["dFoF_405"].to_numpy(dtype=float), color="purple", linewidth=0.6, label="405nm dF/F")
-            ax.plot(t_min, df["dFoF_465"].to_numpy(dtype=float), color="green", linewidth=0.6, label="465nm dF/F")
-            ax.set_ylabel("dF/F")
-        else:
-            if show_405:
-                ax.plot(t_min, df["Z_405"].to_numpy(dtype=float), color="purple", linewidth=0.6, label="405nm Z-score")
-            ax.plot(t_min, df["Z_465"].to_numpy(dtype=float), color="green", linewidth=0.6, label="465nm Z-score")
-            ax.set_ylabel("Z-score")
-
-    ax.set_xlabel("Time (min)")
-    ax.legend(fontsize=8, loc="upper right")
-    _tighten_time_axes(fig)
-    return fig
-
-
-def _mpl_dfer_results_figure(csv_path: str, graph: str = "dfof", show_405: bool = True) -> Figure:
-    """Read a DFer output CSV and return a single-panel matplotlib Figure.
-
-    graph: 'dfof' | 'zscore'
-    Always shows all channels together (both 470+560 for dual, 405+465 for single).
-    """
-    df = pd.read_csv(csv_path, index_col=False)
-    return _mpl_dfer_results_figure_from_frame(df, graph, show_405)
-
-
-def _mpl_single_option_figure(data: dict, idx: int, dual_display: str = "both") -> Figure:
-    """Render one DFer option as a full-canvas figure."""
-    t = data["t_min"]
-    file_type = data.get("file_type", "single")
-    title = _OPTION_TITLES[idx]
-
-    fig = Figure(figsize=(12, 4), tight_layout=True)
-    ax = fig.add_subplot(1, 1, 1)
-
-    if file_type == "single":
-        adj_key = ["smooth_adj_1", "smooth_adj_2", "smooth_adj_3", "smooth_adj_4"][idx]
-        ax.plot(t, data["smooth_465"], color="green", linewidth=0.6, label="465nm")
-        ax.plot(t, data[adj_key], color="red", linewidth=0.6, alpha=0.7, label="fitted control")
-    else:
-        key = ["adj1", "adj2", "adj3", "adj4"][idx]
-        if dual_display in {"both", "470"}:
-            ax.plot(t, data["p470"]["target_smooth"], color="green", linewidth=0.6,
-                    alpha=0.8, label="470nm")
-            ax.plot(t, data["p470"][key], color="green", linewidth=0.6,
-                    alpha=0.3, linestyle="--", label="470 fitted")
-        if dual_display in {"both", "560"}:
-            ax.plot(t, data["p560"]["target_smooth"], color="red", linewidth=0.6,
-                    alpha=0.8, label="560nm")
-            ax.plot(t, data["p560"][key], color="red", linewidth=0.6,
-                    alpha=0.3, linestyle="--", label="560 fitted")
-
-    ax.set_title(title, fontsize=10)
-    ax.set_ylabel("RFU")
-    ax.set_xlabel("Time (min)")
-    ax.legend(fontsize=8, loc="upper right")
-    _tighten_time_axes(fig)
-    return fig
-
-
-@dataclass
-class GraphReference:
-    figure: Figure
-    primary_axis: object
-    secondary_axis: object
-    start_line: object
-    end_line: object
-
-
-class GraphPanel(QWidget):
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.canvas: FigureCanvasQTAgg | None = None
-        self.toolbar: NavigationToolbar2QT | None = None
-        self._layout = QVBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(6)
-
-    def set_figure(self, figure: Figure) -> None:
-        self.clear()
-        self.canvas = FigureCanvasQTAgg(figure)
-        self.toolbar = NavigationToolbar2QT(self.canvas, self)
-        self._layout.addWidget(self.canvas, 1)
-        self._layout.addWidget(self.toolbar)
-        self.canvas.draw()
-
-    def clear(self) -> None:
-        while self._layout.count():
-            item = self._layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                if isinstance(widget, FigureCanvasQTAgg):
-                    widget._draw_pending = False
-                    widget._is_drawing = False
-                    try:
-                        widget.figure.clear()
-                    except RuntimeError:
-                        logging.getLogger(__name__).debug("Figure cleanup: Qt object already deleted")
-                widget.hide()
-                widget.setParent(None)
-                widget.deleteLater()
-        self.canvas = None
-        self.toolbar = None
-
-
-# ---------------------------------------------------------------------------
-# Background worker
-# ---------------------------------------------------------------------------
-
-class _Worker(QObject):
-    finished = Signal(object)
-    failed = Signal(object)
-
-    def __init__(self, fn, kwargs: dict) -> None:
-        super().__init__()
-        self._fn = fn
-        self._kwargs = kwargs
-
-    def run(self) -> None:
-        try:
-            result = self._fn(**self._kwargs)
-        except Exception as exc:
-            logging.getLogger(__name__).exception("Background analysis failed")
-            self.failed.emit(exc)
-        else:
-            self.finished.emit(result)
-
-
-# ---------------------------------------------------------------------------
-# Log handler → routes logger output to the in-app log widget via Signal
-# ---------------------------------------------------------------------------
-
-class _QtLogHandler(logging.Handler):
-    def __init__(self, signal: Signal) -> None:
-        super().__init__()
-        self._signal = signal
-
-    def emit(self, record: logging.LogRecord) -> None:
-        try:
-            self._signal.emit(self.format(record))
-        except RuntimeError:
-            # Qt C++ signal object already deleted (teardown race); logging
-            # from within a log handler risks recursion, so stay silent.
-            pass
-
-
-# ---------------------------------------------------------------------------
-# Shared spinbox / radio styling
-# ---------------------------------------------------------------------------
 
 def _spinbox_css(panel_name: str) -> str:
     return f"""
@@ -1293,7 +1068,6 @@ QPlainTextEdit {{
                 "Check the CSV format and ensure the analysis window contains at least 120 seconds of numeric data.",
             ),
         )
-
     def _render_option(self, idx: int) -> None:
         if self._options_data is None:
             return
