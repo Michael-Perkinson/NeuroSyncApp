@@ -5,15 +5,7 @@ import pandas as pd
 
 
 def extract_mouse_name(file_path: str) -> str | None:
-    """
-    Extracts the mouse name from the given file path, looking for patterns of letters followed by numbers.
-
-    Parameters:
-    - file_path (str): The file path to extract the mouse name from.
-
-    Returns:
-    - Optional[str]: The extracted mouse name, or None if not found.
-    """
+    """Extract the mouse name (letters followed by numbers) from a file path, or None if not found."""
     base_name = os.path.splitext(os.path.basename(file_path))[0]
     pattern = r"[A-Za-z]+\d+"
     matches = re.findall(pattern, base_name)
@@ -21,7 +13,7 @@ def extract_mouse_name(file_path: str) -> str | None:
     if matches:
         return matches[0]
 
-    return None  # Return None if no match is found
+    return None
 
 
 def get_column_titles(dataframe: pd.DataFrame) -> list[str]:

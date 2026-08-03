@@ -299,13 +299,7 @@ class DataProcessingSingleInstance(QWidget):
         self.main_frame_layout.addWidget(self.static_inputs_frame, 0, 2)
 
     def setup_notebooks(self):
-        """
-        Setup the main and settings notebooks.
-
-        Returns:
-        - notebook_graphs: The main notebook for displaying graphs.
-        - notebook_settings: The settings notebook for configuring graph settings.
-        """
+        """Create the main graphs notebook and the settings notebook."""
         notebook_graphs = QTabWidget(self)
         notebook_settings = QTabWidget(self)
         notebook_graphs.setStyleSheet(APP_TABS_STYLESHEET)
@@ -318,16 +312,7 @@ class DataProcessingSingleInstance(QWidget):
         return notebook_graphs, notebook_settings
 
     def create_tabs(self, notebook_settings):
-        """
-        Create and add tabs to the notebooks.
-
-        Parameters:
-        - notebook_settings: The settings notebook to add tabs to.
-
-        Returns:
-        - graph_settings_tab: The tab for configuring graph settings.
-        - export_options_tab: The tab for configuring export options.
-        """
+        """Add the graph-settings and export-options tabs to the settings notebook."""
         graph_settings_tab = QWidget(notebook_settings)
         export_options_tab = QWidget(notebook_settings)
 

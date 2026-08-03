@@ -455,15 +455,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         self.display_presenter.create_graphs_container(frame)
 
     def valid_clusters(self, cluster_names):
-        """
-        Returns a list of cluster names that have valid data (non-empty specified fields).
-
-        Parameters:
-        - cluster_names: List of cluster names to validate.
-
-        Returns:
-        - List of cluster names that have valid data.
-        """
+        """Return the cluster names that have non-empty data."""
         return [name for name in cluster_names if not self.has_empty_inputs(next(iter(self.data_dict.values())).get(name))]
 
     def on_cluster_selection_changed(self, event=None):
@@ -493,13 +485,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
                         cluster_info['time_period'] = 'Day'
 
     def export_raw_data_to_excel(self, cluster_number, output_filepath):
-        """
-        Export the raw data for the specified cluster to an Excel file.
-
-        Parameters:
-        - cluster_number: The number of the cluster to export data for.
-        - output_filepath: The file path where the Excel file will be saved.
-        """
+        """Export the raw data for the specified cluster to an Excel file."""
         mean_temp_data = self.mean_cluster_data[cluster_number]["mean_temp_data"]
         mean_act_data = self.mean_cluster_data[cluster_number]["mean_act_data"]
         mean_temp_data['gap'] = ''
@@ -511,12 +497,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
                 writer, sheet_name=f"Cluster_{cluster_number}_Raw", index=False)
 
     def get_peak_counts(self):
-        """
-        Retrieves and formats unique peak counts from cluster keys.
-
-        Returns:
-            list: Sorted list of unique peak counts extracted from cluster keys.
-        """
+        """Return the sorted unique peak counts extracted from cluster keys."""
         unique_peak_counts = set()
         for cluster_key in self.cluster_dict:
             peak_count = cluster_key[2]
@@ -525,12 +506,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         return sorted(unique_peak_counts)
 
     def get_stim_counts(self):
-        """
-        Retrieves and formats unique stimulation counts from cluster keys in data_dict.
-
-        Returns:
-            list: Sorted list of unique stimulation counts extracted from data_dict keys.
-        """
+        """Return the sorted unique stimulation counts extracted from data_dict keys."""
         unique_stim_counts = set()
         for clusters in self.data_dict.values():
             for cluster_name in clusters:
@@ -559,13 +535,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             self.precompute_all_clusters()
 
     def compute_data_for_stim_cluster(self, selected_stim_count, changed_static_inputs=None):
-        """
-        Compute data for the specified stim cluster and store the processed data for each period.
-
-        Parameters:
-        - selected_stim_count: The number of stims in the selected cluster.
-        - changed_static_inputs: Optional; any static inputs that have changed (default is None).
-        """
+        """Compute and store the processed data for each period of the specified stim cluster."""
         cluster_number = selected_stim_count
 
         processed_data, raw_data, native_data = self.extract_and_prepare_temp_and_act_data_for_stim(
@@ -629,15 +599,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
                 self.visualize_mean_cluster(selected_cluster_string)
 
     def find_stim_times(self, stim_number):
-        """
-        Find the adjusted pre-stim and post-stim times for a given stimulation number.
-
-        Parameters:
-            stim_number (int): The stimulation number to search for in the data.
-
-        Returns:
-            tuple: The adjusted pre-stim time and post-stim time for the given stimulation number.
-        """
+        """Return the adjusted (pre_stim_time, post_stim_time) for the given stimulation number."""
         pre_stim_time, post_stim_time = 0, 0
 
         for stim_dict in self.data_dict.values():
@@ -657,17 +619,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         return None  # Return None if the specified stim_number is not found
 
     def extract_and_prepare_temp_and_act_data_for_stim(self, stim_number):
-        """
-        Extract and prepare temperature and activity data for stim clusters.
-
-        Parameters:
-            stim_number (int): The stim number to process.
-
-        Returns:
-            three tuples: Processed data, raw data, and native data dictionaries for 'full', 'day', and 'night' periods.
-                Each dictionary contains 'temp' and 'act' keys with corresponding data.
-        """
-
+        """Return (processed, raw, native) data dicts, each keyed by 'full'/'day'/'night' with 'temp'/'act'."""
         all_clusters = _select_stim_clusters(self.data_dict, stim_number)
         clusters_by_period = _group_clusters_by_time_period(all_clusters)
 
@@ -751,15 +703,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         return _calculate_sample_rate(timestamps)
 
     def separate_clusters_by_time_period(self):
-        """
-        Separate clusters into daytime and nighttime based on their time period.
-
-        Returns:
-            tuple: A tuple containing three lists:
-                - all_clusters: List of all clusters.
-                - daytime_clusters: List of clusters during the daytime.
-                - nighttime_clusters: List of clusters during the nighttime.
-        """
+        """Return (all_clusters, daytime_clusters, nighttime_clusters)."""
         daytime_clusters = []
         nighttime_clusters = []
         all_clusters = []
@@ -794,45 +738,18 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         return _create_universal_time_axis(axis_time_start, axis_time_end, sample_rate)
 
     def is_valid_cluster(self, cluster_name, cluster_number):
-        """
-        Check if the cluster name is valid based on the cluster number.
-
-        Parameters:
-            cluster_name (str): The name of the cluster.
-            cluster_number (int): The cluster number to validate against.
-
-        Returns:
-            bool: True if the cluster name is valid for the given cluster number, False otherwise.
-        """
+        """Return whether cluster_name matches the given cluster_number."""
         return f"{cluster_number} Peak" in cluster_name or f"{cluster_number} Peaks" in cluster_name
 
     def align_and_concatenate_data(self, all_data, universal_time_axis):
         return _align_and_concatenate_data(all_data, universal_time_axis)
 
     def create_linear_time_index(self, start, end, step):
-        """
-        Create a linear time index from start to end with a given step size.
-
-        Parameters:
-            start (float): The starting time.
-            end (float): The ending time.
-            step (float): The step size for the time index.
-
-        Returns:
-            numpy.ndarray: An array representing the linear time index.
-        """
+        """Return a linear time index from start to end with the given step size."""
         return np.arange(start, end + step, step)
 
     def scale_time_column(self, time_column):
-        """
-        Scale the time column based on the selected time unit and display settings.
-
-        Parameters:
-            time_column (pandas.Series): The original time column to be scaled.
-
-        Returns:
-            pandas.Series: The scaled time column.
-        """
+        """Scale the time column based on the selected time unit and display settings."""
         time_unit = self.graph_settings_container_instance.time_unit_menu.get()
         if time_unit == "time of day" and self.selected_display.get() == "Mean Cluster Display":
             time_unit = "minutes"
@@ -1046,12 +963,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         self.adjusted = False
 
     def on_focus_out(self, event):
-        """
-        Handle the event when the focus leaves the clustering adjustment entry.
-
-        Parameters:
-            event: The event object associated with the focus out event.
-        """
+        """Handle the clustering adjustment entry losing focus."""
         value = self.view_state.adjust_clustering.strip()
         if value and not self.adjusted:
             QMessageBox.information(
@@ -1061,12 +973,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             )
 
     def create_cluster_options(self, destroy_frame=True):
-        """
-        Create the cluster options frame based on cluster sizes.
-
-        Parameters:
-            destroy_frame (bool, optional): Whether to destroy the existing frame if it exists. Defaults to True.
-        """
+        """Create the cluster options frame based on cluster sizes."""
         if not hasattr(self.graph_settings_container_instance, "behaviour_frame"):
             return
         if self.cluster_options_created:
@@ -1212,12 +1119,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             self.peak_alignment_vars[cluster_size].set('1')
 
     def choose_cluster_color(self, cluster_size):
-        """
-        Choose a color for a cluster of a specified size using a color chooser dialog.
-
-        Parameters:
-            cluster_size (int): The size of the cluster for which the color is being chosen.
-        """
+        """Open a color chooser dialog and store the chosen color for the given cluster size."""
         color = QColorDialog.getColor(parent=self)
         if color.isValid():
             color_name = color.name()
@@ -1568,15 +1470,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         )
 
     def is_cluster_in_nighttime(self, cluster_start_minutes):
-        """
-        Check if a cluster's start time falls within the nighttime periods.
-
-        Parameters:
-        - cluster_start_minutes (float): The start time of the cluster in minutes since the start of data collection.
-
-        Returns:
-        - bool: True if the cluster start time is within a nighttime period, False otherwise.
-        """
+        """Return whether a cluster's start time (minutes since data collection began) falls in a nighttime period."""
         if not self.date or not getattr(self, "nighttime_periods", None):
             return False
 
@@ -1728,15 +1622,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
         return _generate_cluster_headings(file_data, cluster_number, self.data_type)
 
     def generate_cluster_headings_from_list(self, cluster_list):
-        """
-        Generate cluster headings from a list of clusters.
-
-        Parameters:
-        - cluster_list (list): List of clusters, each represented as a dictionary.
-
-        Returns:
-        - cluster_headings (list): List of cluster headings.
-        """
+        """Return the column headings for the given list of cluster dicts."""
         cluster_headings = ['Cluster ID'] + [cluster['name']
                                              for cluster in cluster_list]
         return cluster_headings
@@ -1796,12 +1682,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             return None
 
     def _extract_button_click_handler(self):
-        """
-        Handle the extract button click event, perform data binning, and save the data to an Excel file.
-
-        Parameters:
-        - file_path_var: Variable containing the file path.
-        """
+        """Handle the extract button click: bin the data and save it to an Excel file."""
         if self.export_options_container.use_binned_data_var.get() == 1:
             self.ensure_all_mean_cluster_data()
             self.bin_all_cluster_data()
@@ -1834,12 +1715,7 @@ class TelemetryPhotomOptoProcessingApp(QWidget):
             logger.info("Telemetry export created at %s", output_file_path)
 
     def set_variable_column_widths(self, worksheet):
-        """
-        Set variable column widths for specified columns.
-
-        Parameters:
-        - worksheet (xlsxwriter.worksheet.Worksheet): The worksheet instance to set column widths for.
-        """
+        """Set variable column widths for the export worksheet."""
         worksheet.set_column(0, 4, 15)
         worksheet.set_column(5, 5, 5)
         worksheet.set_column(6, 6, 27)

@@ -1,16 +1,4 @@
-"""
-behaviour_settings_io.py
-
-This module provides functions for handling JSON files, focusing on saving and loading
-behaviour settings to/from JSON. It integrates with pandas DataFrames for streamlined
-data processing.
-
-Functions:
-- open_json_to_dict: Opens a JSON file and returns its contents as a dictionary.
-- save_dict_to_json: Saves a dictionary to a JSON file.
-- save_behaviour_static_inputs: Saves behaviour settings from a DataFrame to a JSON file.
-- load_behaviour_static_inputs: Loads behaviour settings from a JSON file into a dictionary.
-"""
+"""Save and load behaviour settings between a DataFrame and JSON."""
 
 import json
 import logging
@@ -23,19 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 def save_behaviour_static_inputs(dataframe: pd.DataFrame, filename: str | os.PathLike[str]) -> None:
-    """
-    Save behaviour settings from a DataFrame to a JSON file.
-
-    Parameters:
-    - dataframe (pd.DataFrame): The DataFrame containing behaviour settings.
-    - filename (str): The path to the JSON file to save the settings.
-    """
+    """Save behaviour settings from a DataFrame to a JSON file."""
     if dataframe.empty:
-        # Handle empty DataFrame
         save_dict_to_json({}, filename)
         return
 
-    # Process the DataFrame to create the JSON structure
     behaviour_data = {
         behaviour_name: (pre_time, post_time, bin_size)
         for behaviour_name, pre_time, post_time, bin_size
@@ -50,13 +30,7 @@ def save_behaviour_static_inputs(dataframe: pd.DataFrame, filename: str | os.Pat
 
 
 def save_dict_to_json(data: dict[str, Any], filename: str | os.PathLike[str]) -> None:
-    """
-    Save a dictionary to a JSON file.
-
-    Parameters:
-    - data (Dict[str, Any]): The data to save.
-    - filename (str): The path to the file where the data will be saved.
-    """
+    """Save a dictionary to a JSON file."""
     try:
         with open(filename, 'w', encoding='utf-8') as json_file:
             json.dump(data, json_file, indent=4)
@@ -65,16 +39,7 @@ def save_dict_to_json(data: dict[str, Any], filename: str | os.PathLike[str]) ->
 
 
 def load_behaviour_static_inputs(filename: str | os.PathLike[str]) -> dict[str, dict[str, Any]]:
-    """
-    Load behaviour settings from a JSON file into a dictionary.
-
-    Parameters:
-    - filename (str): The path to the JSON file.
-
-    Returns:
-    - Dict[str, Dict[str, Any]]: A dictionary containing the behaviour settings
-      or an empty dictionary if the file doesn't exist or is invalid.
-    """
+    """Load behaviour settings from a JSON file, or {} if the file is missing or invalid."""
     behaviour_data = open_json_to_dict(filename)
 
     if not behaviour_data:
@@ -92,16 +57,7 @@ def load_behaviour_static_inputs(filename: str | os.PathLike[str]) -> dict[str, 
 
 
 def open_json_to_dict(filename: str | os.PathLike[str]) -> dict[str, Any]:
-    """
-    Open a JSON file and return its data as a dictionary.
-
-    Parameters:
-    - filename (str): The path to the JSON file.
-
-    Returns:
-    - Dict[str, Any]: A dictionary containing the file data, or an empty dictionary
-      if the file doesn't exist or cannot be parsed.
-    """
+    """Open a JSON file and return its data as a dictionary, or {} if missing or unparsable."""
     if not os.path.exists(filename):
         return {}
 

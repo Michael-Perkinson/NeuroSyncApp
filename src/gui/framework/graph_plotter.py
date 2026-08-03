@@ -193,7 +193,7 @@ def process_behaviour_data(
         start_time_adjusted = -pre_time  * time_factor
         end_time_adjusted   =  post_time * time_factor
 
-    # Compute time_points once, outside the loop, based on last iteration's bounds and reference_length
+    # Intentionally uses the last occurrence's bounds as the shared time axis for all instances.
     if reference_length is not None and behaviour_occurrences:
         start_point = behaviour_occurrences[-1][0] - behaviour_occurrences[-1][2]
         end_point = behaviour_occurrences[-1][0] + behaviour_occurrences[-1][3]

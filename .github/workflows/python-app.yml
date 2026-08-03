@@ -39,7 +39,7 @@ jobs:
           pyinstaller --onefile main.py ^
             --name "NeuroSyncApp_${{ github.ref_name }}" ^
             --icon icon\icon.ico ^
-            --add-data "src\gui\shared\assets\arrow_down.svg;src\gui\shared\assets" ^
+            --add-data "src\gui\framework\assets\arrow_down.svg;src\gui\framework\assets" ^
             --distpath "dist" ^
             --hidden-import=PySide6.QtCore ^
             --hidden-import=PySide6.QtGui ^
@@ -122,7 +122,7 @@ jobs:
           pyinstaller --windowed main.py \
             --name "NeuroSyncApp" \
             --icon icon/icon.icns \
-            --add-data "src/gui/shared/assets/arrow_down.svg:src/gui/shared/assets" \
+            --add-data "src/gui/framework/assets/arrow_down.svg:src/gui/framework/assets" \
             --distpath "dist" \
             --hidden-import=PySide6.QtCore \
             --hidden-import=PySide6.QtGui \

@@ -31,15 +31,7 @@ def select_preferred_signal_column(dataframe: pd.DataFrame):
 
 
 def load_data_file(file_path: str) -> pd.DataFrame:
-    """
-    Loads a CSV or Excel file into a DataFrame.
-
-    Parameters:
-    - file_path (str): The path to the file.
-
-    Returns:
-    - pd.DataFrame: The loaded data.
-    """
+    """Load a CSV or Excel file into a DataFrame."""
     if file_path.endswith('.csv'):
         return _load_csv(file_path)
     elif file_path.endswith('.xlsx'):
@@ -50,15 +42,7 @@ def load_data_file(file_path: str) -> pd.DataFrame:
 
 
 def _load_csv(file_path: str) -> pd.DataFrame:
-    """
-    Loads a CSV file while handling cases where the first row might contain column headers.
-
-    Parameters:
-    - file_path (str): The path to the CSV file.
-
-    Returns:
-    - pd.DataFrame: The loaded data.
-    """
+    """Load a CSV file, skipping a leading header row if one is detected."""
     with open(file_path, 'r') as file:
         column_titles = next(file).strip().split(',')
         for i, line in enumerate(file, start=1):
@@ -70,15 +54,7 @@ def _load_csv(file_path: str) -> pd.DataFrame:
 
 
 def _load_excel(file_path: str) -> pd.DataFrame:
-    """
-    Loads an Excel file while handling cases where the first row might contain column headers.
-
-    Parameters:
-    - file_path (str): The path to the Excel file.
-
-    Returns:
-    - pd.DataFrame: The loaded data.
-    """
+    """Load an Excel file, skipping a leading header row if one is detected."""
     column_titles = pd.read_excel(file_path, nrows=1).columns.tolist()
 
     for i in range(5):  # Check the first 5 rows
