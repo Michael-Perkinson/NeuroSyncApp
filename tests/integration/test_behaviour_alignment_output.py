@@ -33,13 +33,11 @@ from src.features.behaviour_alignment.data_processing_widget import (
 # Paths
 # ---------------------------------------------------------------------------
 EXAMPLE_DIR = (
-    Path(__file__).parent.parent.parent
-    / "example_data"
-    / "photometry_behaviour"
+    Path(__file__).parent.parent.parent / "example_data" / "photometry_behaviour"
 )
 PHOTOMETRY_CSV = EXAMPLE_DIR / "example_Data ST5435.csv"
-BEHAVIOUR_CSV  = EXAMPLE_DIR / "example_coding_behaviour.csv"
-EXPECTED_XLSX  = (
+BEHAVIOUR_CSV = EXAMPLE_DIR / "example_coding_behaviour.csv"
+EXPECTED_XLSX = (
     EXAMPLE_DIR
     / "example_Data ST5435_NeuroBehaviorSync"
     / "example_Data ST5435_dFoF_465.xlsx"
@@ -124,17 +122,15 @@ def output_xlsx(tmp_path_factory):
 
     for beh_name, grp in beh_df.groupby("behaviour"):
         starts = grp["start"].tolist()
-        ends   = grp["end"].tolist()
+        ends = grp["end"].tolist()
         durations_min = [(e - s) / 60 for s, e in zip(starts, ends)]
         n = len(durations_min)
         mean_dur = float(np.nanmean(durations_min))
-        sem_dur  = (
-            float(np.nanstd(durations_min) / np.sqrt(n)) if n > 1 else 0.0
-        )
+        sem_dur = float(np.nanstd(durations_min) / np.sqrt(n)) if n > 1 else 0.0
         app.duration_data_cache[beh_name] = {
-            "mean_duration":      mean_dur,
-            "sem_duration":       sem_dur,
-            "mean_sem_df":        None,
+            "mean_duration": mean_dur,
+            "sem_duration": sem_dur,
+            "mean_sem_df": None,
             "number_of_instances": n,
         }
 
@@ -143,24 +139,32 @@ def output_xlsx(tmp_path_factory):
     for _, row in beh_df.iterrows():
         beh_name = row["behaviour"]
         s = BEHAVIOUR_SETTINGS.get(beh_name, _DEFAULT_SETTINGS)
-        rows.append((
-            str(PHOTOMETRY_CSV),
-            "dFoF_465",
-            beh_name,
-            "Continuous",
-            s["pre"],
-            s["post"],
-            s["bin"],
-            row["start"],
-            row["end"],
-        ))
+        rows.append(
+            (
+                str(PHOTOMETRY_CSV),
+                "dFoF_465",
+                beh_name,
+                "Continuous",
+                s["pre"],
+                s["post"],
+                s["bin"],
+                row["start"],
+                row["end"],
+            )
+        )
 
     display_df = pd.DataFrame(
         rows,
         columns=[
-            "File Path", "Selected Column", "Behaviour Name", "Behaviour Type",
-            "Pre Behaviour Time", "Post Behaviour Time", "Bin Size",
-            "Start Time", "End Time",
+            "File Path",
+            "Selected Column",
+            "Behaviour Name",
+            "Behaviour Type",
+            "Pre Behaviour Time",
+            "Post Behaviour Time",
+            "Bin Size",
+            "Start Time",
+            "End Time",
         ],
     )
     key = str(uuid.uuid4())
@@ -182,21 +186,21 @@ def output_xlsx(tmp_path_factory):
     for _, row in display_df.iterrows():
         beh_name = row["Behaviour Name"]
         instance = {
-            "pre_behaviour_time":  row["Pre Behaviour Time"],
+            "pre_behaviour_time": row["Pre Behaviour Time"],
             "post_behaviour_time": row["Post Behaviour Time"],
-            "bin_size":            row["Bin Size"],
+            "bin_size": row["Bin Size"],
             "behaviour_start_time": float(row["Start Time"]),
         }
         params.setdefault(beh_name, []).append(instance)
         behaviours_to_export.add(beh_name)
 
     params["behaviours_to_export"] = behaviours_to_export
-    params["params_to_extract"]    = []
+    params["params_to_extract"] = []
 
     # ── 6. run ────────────────────────────────────────────────────────────
     app.extract_data_from_photometry(str(csv_copy), params)
 
-    out_dir  = tmp_dir / (PHOTOMETRY_CSV.stem + "_NeuroBehaviorSync")
+    out_dir = tmp_dir / (PHOTOMETRY_CSV.stem + "_NeuroBehaviorSync")
     out_xlsx = out_dir / f"{PHOTOMETRY_CSV.stem}_dFoF_465.xlsx"
 
     yield out_xlsx
@@ -209,7 +213,6 @@ def output_xlsx(tmp_path_factory):
 # ---------------------------------------------------------------------------
 @pytest.mark.integration
 class TestBehaviourAlignmentOutput:
-
     # ── file existence ────────────────────────────────────────────────────
     def test_output_file_exists(self, output_xlsx):
         assert output_xlsx.exists(), f"Expected output not found: {output_xlsx}"
@@ -245,15 +248,19 @@ class TestBehaviourAlignmentOutput:
 
     # ── Event Duration ────────────────────────────────────────────────────
     def test_event_duration_shape(self, output_xlsx):
-        produced = pd.read_excel(str(output_xlsx), sheet_name="Event Duration", header=None)
-        expected = pd.read_excel(str(EXPECTED_XLSX), sheet_name="Event Duration", header=None)
-        assert produced.shape == expected.shape
+        produced = pd.read_excel(
+            str(output_xlsx), sheet_name="Event Duration", header=None
+        )
+        expected = pd.read_excel(
+            str(EXPECTED_XLSX), sheet_name="Event Duration", header=None
+        )
+        assert produced.shape == (expected.shape[0], expected.shape[1] + 2)
 
     def test_event_duration_numeric_values(self, output_xlsx):
         produced_arr = _read_numeric(str(output_xlsx), "Event Duration")
         expected_arr = _read_numeric(str(EXPECTED_XLSX), "Event Duration")
         np.testing.assert_allclose(
-            produced_arr,
+            produced_arr[:, : expected_arr.shape[1]],
             expected_arr,
             rtol=1e-3,
             atol=1e-3,
@@ -261,10 +268,25 @@ class TestBehaviourAlignmentOutput:
             err_msg="Numeric mismatch in Event Duration sheet",
         )
 
+    def test_event_duration_whole_trace_zscore_stats(self, output_xlsx):
+        produced = pd.read_excel(str(output_xlsx), sheet_name="Event Duration")
+        source = pd.read_csv(PHOTOMETRY_CSV)["dFoF_465"].to_numpy(dtype=float)
+
+        assert produced["Mean dF/F for whole-trace Z-score"].dropna().iloc[
+            0
+        ] == pytest.approx(np.mean(source))
+        assert produced["STD for whole-trace Z-score"].dropna().iloc[
+            0
+        ] == pytest.approx(np.std(source))
+
     # ── Summary Results ───────────────────────────────────────────────────
     def test_summary_results_shape(self, output_xlsx):
-        produced = pd.read_excel(str(output_xlsx), sheet_name="Summary Results", header=None)
-        expected = pd.read_excel(str(EXPECTED_XLSX), sheet_name="Summary Results", header=None)
+        produced = pd.read_excel(
+            str(output_xlsx), sheet_name="Summary Results", header=None
+        )
+        expected = pd.read_excel(
+            str(EXPECTED_XLSX), sheet_name="Summary Results", header=None
+        )
         assert produced.shape == expected.shape
 
     def test_summary_results_numeric_values(self, output_xlsx):

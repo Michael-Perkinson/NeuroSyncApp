@@ -7,6 +7,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.processing.behaviour_metrics import compute_full_trace_zscore
+
 from .df_common import (
     BUTTER_CUTOFF,
     BUTTER_ORDER,
@@ -146,14 +148,8 @@ def run_dual_analysis(
     dfof_470 = (p470["target_smooth"] - fit470) / fit470
     dfof_560 = (p560["target_smooth"] - fit560) / fit560
 
-    mu470, sig470 = float(np.mean(dfof_470)), float(np.std(dfof_470))
-    mu560, sig560 = float(np.mean(dfof_560)), float(np.std(dfof_560))
-    if sig470 == 0:
-        sig470 = float(np.finfo(float).eps)
-    if sig560 == 0:
-        sig560 = float(np.finfo(float).eps)
-    z_470 = (dfof_470 - mu470) / sig470
-    z_560 = (dfof_560 - mu560) / sig560
+    z_470, _, _ = compute_full_trace_zscore(dfof_470)
+    z_560, _, _ = compute_full_trace_zscore(dfof_560)
 
     out_file_path = str(expected_analysis_output_path(selectedfile, file_type="dual"))
     np.savetxt(

@@ -18,6 +18,7 @@ from scipy.integrate import simpson
 # Per-event metrics
 # ---------------------------------------------------------------------------
 
+
 def calculate_auc(data: np.ndarray | list, dx: float = 0.1) -> float:
     """Area under curve using Simpson's rule.
 
@@ -53,6 +54,7 @@ def calculate_mean_dff(data: np.ndarray | list) -> float:
 # ---------------------------------------------------------------------------
 # Duration metrics
 # ---------------------------------------------------------------------------
+
 
 def calculate_duration_metrics(
     start_times: list[float],
@@ -97,6 +99,7 @@ def calculate_duration_metrics(
 # ---------------------------------------------------------------------------
 # Mean / SEM across instances
 # ---------------------------------------------------------------------------
+
 
 def calculate_mean_sem(dataframe: pd.DataFrame, ignore_col: str) -> pd.DataFrame:
     """Row-wise mean and SEM across all columns except *ignore_col*.
@@ -172,6 +175,7 @@ def generate_mean_sem_df(
 # Binned metrics
 # ---------------------------------------------------------------------------
 
+
 def calculate_metrics_for_bins(
     instances_data: list[list],
     expected_num_bins: int,
@@ -203,8 +207,10 @@ def calculate_metrics_for_bins(
         bin_data = [instance[bin_idx] for instance in instances_data]
         values = [metric_func(d) for d in bin_data]
 
-        if metric_name == "auc" and values and isinstance(
-            values[0], (list, np.ndarray)
+        if (
+            metric_name == "auc"
+            and values
+            and isinstance(values[0], (list, np.ndarray))
         ):
             values = [v[0] for v in values]
 
@@ -229,6 +235,18 @@ def zscore_column_key(column: str) -> str:
     independently rather than only the primary column.
     """
     return f"{PRIMARY_ZSCORE_COLUMN}::{column}"
+
+
+def compute_full_trace_zscore(
+    data: np.ndarray | pd.Series | list,
+) -> tuple[np.ndarray, float, float]:
+    """Z-score a complete trace and return the mean and SD actually used."""
+    values = np.asarray(data, dtype=float)
+    trace_mean = float(np.mean(values))
+    trace_std = float(np.std(values))
+    if trace_std == 0:
+        trace_std = float(np.finfo(float).eps)
+    return (values - trace_mean) / trace_std, trace_mean, trace_std
 
 
 def compute_z_score(
@@ -289,6 +307,7 @@ def compute_z_score(
 # ---------------------------------------------------------------------------
 # Time conversion
 # ---------------------------------------------------------------------------
+
 
 def convert_time(unit: str, time_in_seconds: float) -> float:
     """Convert a time value from seconds to *unit*.

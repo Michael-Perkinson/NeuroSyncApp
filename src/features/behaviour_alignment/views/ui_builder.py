@@ -21,6 +21,12 @@ from src.gui.views.export_options_panel import ExportOptionsPanel
 from src.panels.graph_settings_panel import GraphSettingsPanel
 
 
+def _trace_colour_control_labels(columns: list[str]) -> tuple[str, str]:
+    """Return trace/SEM control labels for the first selected signal."""
+    primary = columns[0] if columns else "Primary"
+    return f"{primary} Trace Colour:", f"{primary} SEM Colour:"
+
+
 class BehaviourUiBuilder:
     """Owns app-specific widget setup for graph and settings panels."""
 
@@ -69,7 +75,9 @@ class BehaviourUiBuilder:
         self._ensure_layout(graph_settings_tab).addWidget(
             self.app.graph_settings_container_instance
         )
-        self._ensure_layout(export_options_tab).addWidget(self.app.export_options_container)
+        self._ensure_layout(export_options_tab).addWidget(
+            self.app.export_options_container
+        )
 
         graph_tab = QWidget(notebook_graphs)
         table_tab = QWidget(notebook_graphs)
@@ -135,10 +143,13 @@ class BehaviourUiBuilder:
             "Single Row Display",
             "Behaviour Mean and SEM",
         ]
-        self.app.figure_display_dropdown = ComboBoxControl(parent=graphs_container_frame)
+        self.app.figure_display_dropdown = ComboBoxControl(
+            parent=graphs_container_frame
+        )
         self.app.figure_display_dropdown.set_options(self.app.figure_display_choices)
         self.app.figure_display_dropdown.bind(
-            "<<ComboboxSelected>>", self.app.plot_service.handle_figure_display_selection
+            "<<ComboboxSelected>>",
+            self.app.plot_service.handle_figure_display_selection,
         )
         toolbar_layout.addWidget(self.app.figure_display_dropdown)
 
@@ -167,19 +178,24 @@ class BehaviourUiBuilder:
         layout.setHorizontalSpacing(10)
         layout.setVerticalSpacing(8)
 
+        selected_columns = _selected_columns(self.app)
+        trace_label, sem_label = _trace_colour_control_labels(selected_columns)
+
         row = 0
-        layout.addWidget(QLabel("Primary Trace Colour:", popup), row, 0)
+        layout.addWidget(QLabel(trace_label, popup), row, 0)
         primary_trace_button = QPushButton(popup)
         self._style_color_button(
             primary_trace_button, self.app.settings_manager.selected_trace_color
         )
         primary_trace_button.clicked.connect(
-            lambda: self._pick_color(primary_trace_button, self._set_primary_trace_color)
+            lambda: self._pick_color(
+                primary_trace_button, self._set_primary_trace_color
+            )
         )
         layout.addWidget(primary_trace_button, row, 1)
         row += 1
 
-        layout.addWidget(QLabel("Primary SEM Colour:", popup), row, 0)
+        layout.addWidget(QLabel(sem_label, popup), row, 0)
         primary_sem_button = QPushButton(popup)
         self._style_color_button(
             primary_sem_button, self.app.settings_manager.selected_sem_color
@@ -190,7 +206,7 @@ class BehaviourUiBuilder:
         layout.addWidget(primary_sem_button, row, 1)
         row += 1
 
-        for column in _selected_columns(self.app)[1:]:
+        for column in selected_columns[1:]:
             layout.addWidget(QLabel(f"{column} Colour:", popup), row, 0)
             button = QPushButton(popup)
             current_color = self.app.column_colors.get(
@@ -228,6 +244,7 @@ class BehaviourUiBuilder:
     def _style_color_button(button: QPushButton, color: str) -> None:
         from PySide6.QtCore import Qt
         from PySide6.QtGui import QColor
+
         qc = QColor(color)
         brightness = (0.299 * qc.red() + 0.587 * qc.green() + 0.114 * qc.blue()) / 255
         fg = "white" if brightness < 0.56 else "#17324D"

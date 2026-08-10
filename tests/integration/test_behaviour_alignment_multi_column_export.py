@@ -24,12 +24,10 @@ from src.features.behaviour_alignment.data_processing_widget import (
 )
 
 EXAMPLE_DIR = (
-    Path(__file__).parent.parent.parent
-    / "example_data"
-    / "photometry_behaviour"
+    Path(__file__).parent.parent.parent / "example_data" / "photometry_behaviour"
 )
 PHOTOMETRY_CSV = EXAMPLE_DIR / "example_Data ST5435.csv"
-BEHAVIOUR_CSV  = EXAMPLE_DIR / "example_coding_behaviour.csv"
+BEHAVIOUR_CSV = EXAMPLE_DIR / "example_coding_behaviour.csv"
 
 _DEFAULT_SETTINGS = {"pre": "60", "post": "60", "bin": "30"}
 PRIMARY_COLUMN = "dFoF_465"
@@ -93,16 +91,31 @@ def _build_app_and_run_export(
     for _, row in beh_df.iterrows():
         beh_name = row["behaviour"]
         s = _DEFAULT_SETTINGS
-        rows.append((
-            str(PHOTOMETRY_CSV), columns[0], beh_name, "Continuous",
-            s["pre"], s["post"], s["bin"], row["start"], row["end"],
-        ))
+        rows.append(
+            (
+                str(PHOTOMETRY_CSV),
+                columns[0],
+                beh_name,
+                "Continuous",
+                s["pre"],
+                s["post"],
+                s["bin"],
+                row["start"],
+                row["end"],
+            )
+        )
     display_df = pd.DataFrame(
         rows,
         columns=[
-            "File Path", "Selected Column", "Behaviour Name", "Behaviour Type",
-            "Pre Behaviour Time", "Post Behaviour Time", "Bin Size",
-            "Start Time", "End Time",
+            "File Path",
+            "Selected Column",
+            "Behaviour Name",
+            "Behaviour Type",
+            "Pre Behaviour Time",
+            "Post Behaviour Time",
+            "Bin Size",
+            "Start Time",
+            "End Time",
         ],
     )
     key = str(uuid.uuid4())
@@ -146,7 +159,9 @@ def _build_app_and_run_export(
 @pytest.fixture(scope="module")
 def multi_column_output_xlsx(tmp_path_factory):
     app, out_xlsx = _build_app_and_run_export(
-        tmp_path_factory, "behaviour_alignment_multi", [PRIMARY_COLUMN, SECONDARY_COLUMN]
+        tmp_path_factory,
+        "behaviour_alignment_multi",
+        [PRIMARY_COLUMN, SECONDARY_COLUMN],
     )
     yield out_xlsx
     app.deleteLater()
@@ -186,28 +201,64 @@ class TestMultiColumnExport:
         assert len(sheets) == len(set(sheets)), f"Duplicate sheet names: {sheets}"
 
         primary_sheets = [
-            s for s in sheets if s.endswith(f"_{PRIMARY_COLUMN}") and not s.startswith("Summary")
+            s
+            for s in sheets
+            if s.endswith(f"_{PRIMARY_COLUMN}") and not s.startswith("Summary")
         ]
         secondary_sheets = [
-            s for s in sheets if s.endswith(f"_{SECONDARY_COLUMN}") and not s.startswith("Summary")
+            s
+            for s in sheets
+            if s.endswith(f"_{SECONDARY_COLUMN}") and not s.startswith("Summary")
         ]
-        assert primary_sheets, f"No sheets suffixed with primary column found in {sheets}"
-        assert secondary_sheets, f"No sheets suffixed with secondary column found in {sheets}"
+        assert primary_sheets, (
+            f"No sheets suffixed with primary column found in {sheets}"
+        )
+        assert secondary_sheets, (
+            f"No sheets suffixed with secondary column found in {sheets}"
+        )
         assert len(primary_sheets) == len(secondary_sheets), (
             f"Mismatched behaviour-sheet counts per column: "
             f"primary={primary_sheets} secondary={secondary_sheets}"
         )
 
     def test_single_summary_sheet_only(self, multi_column_output_xlsx):
-        # Extra signal columns add behaviour detail sheets, not extra summary
-        # sheets. There must be exactly one summary, and it must come first.
         sheets = pd.ExcelFile(str(multi_column_output_xlsx)).sheet_names
         summary_sheets = [s for s in sheets if s.startswith("Summary")]
         assert summary_sheets == ["Summary Results"], (
             f"Expected a single 'Summary Results' sheet, got {summary_sheets}"
         )
         assert sheets[0] == "Summary Results", f"Summary not first: {sheets}"
-        assert not any(SECONDARY_COLUMN in s for s in summary_sheets)
+
+    def test_summary_contains_distinct_sections_for_both_signals(
+        self, multi_column_output_xlsx
+    ):
+        summary = pd.read_excel(
+            str(multi_column_output_xlsx), sheet_name="Summary Results", header=None
+        )
+        first_column = summary.iloc[:, 0].astype(str)
+        primary_index = first_column[first_column == f"Signal: {PRIMARY_COLUMN}"].index[
+            0
+        ]
+        secondary_index = first_column[
+            first_column == f"Signal: {SECONDARY_COLUMN}"
+        ].index[0]
+
+        primary_rows = summary.iloc[primary_index + 1 : secondary_index]
+        secondary_rows = summary.iloc[secondary_index + 1 :]
+        primary_metrics = primary_rows[primary_rows.iloc[:, 0] == "mean_dff"].iloc[
+            :, 1:
+        ]
+        secondary_metrics = secondary_rows[
+            secondary_rows.iloc[:, 0] == "mean_dff"
+        ].iloc[:, 1:]
+
+        assert not primary_metrics.empty
+        assert primary_metrics.shape == secondary_metrics.shape
+        assert not np.allclose(
+            primary_metrics.to_numpy(dtype=float),
+            secondary_metrics.to_numpy(dtype=float),
+            equal_nan=True,
+        )
 
     def test_summary_and_event_duration_lead(self, multi_column_output_xlsx):
         # The two headline sheets sit at the front, before any detail sheet.
@@ -217,21 +268,46 @@ class TestMultiColumnExport:
     def test_primary_and_secondary_sheet_data_differ(self, multi_column_output_xlsx):
         sheets = pd.ExcelFile(str(multi_column_output_xlsx)).sheet_names
         primary_sheet = next(
-            s for s in sheets if s.endswith(f"_{PRIMARY_COLUMN}") and not s.startswith("Summary")
+            s
+            for s in sheets
+            if s.endswith(f"_{PRIMARY_COLUMN}") and not s.startswith("Summary")
         )
         secondary_sheet = next(
-            s for s in sheets if s.endswith(f"_{SECONDARY_COLUMN}") and not s.startswith("Summary")
+            s
+            for s in sheets
+            if s.endswith(f"_{SECONDARY_COLUMN}") and not s.startswith("Summary")
         )
 
-        primary_df = pd.read_excel(str(multi_column_output_xlsx), sheet_name=primary_sheet)
-        secondary_df = pd.read_excel(str(multi_column_output_xlsx), sheet_name=secondary_sheet)
+        primary_df = pd.read_excel(
+            str(multi_column_output_xlsx), sheet_name=primary_sheet
+        )
+        secondary_df = pd.read_excel(
+            str(multi_column_output_xlsx), sheet_name=secondary_sheet
+        )
 
         primary_numeric = primary_df.select_dtypes(include=[np.number]).to_numpy()
         secondary_numeric = secondary_df.select_dtypes(include=[np.number]).to_numpy()
         assert primary_numeric.shape == secondary_numeric.shape
-        assert not np.allclose(
-            primary_numeric, secondary_numeric, equal_nan=True
-        ), "Primary and secondary column sheets contain identical data"
+        assert not np.allclose(primary_numeric, secondary_numeric, equal_nan=True), (
+            "Primary and secondary column sheets contain identical data"
+        )
+
+    def test_event_duration_has_whole_trace_zscore_stats_for_both_signals(
+        self, multi_column_output_xlsx
+    ):
+        duration = pd.read_excel(
+            str(multi_column_output_xlsx), sheet_name="Event Duration"
+        )
+        source = pd.read_csv(PHOTOMETRY_CSV)
+        for column in (PRIMARY_COLUMN, SECONDARY_COLUMN):
+            mean_label = f"Mean dF/F for whole-trace Z-score ({column})"
+            std_label = f"STD for whole-trace Z-score ({column})"
+            assert duration[mean_label].dropna().iloc[0] == pytest.approx(
+                np.mean(source[column].to_numpy(dtype=float))
+            )
+            assert duration[std_label].dropna().iloc[0] == pytest.approx(
+                np.std(source[column].to_numpy(dtype=float))
+            )
 
 
 @pytest.mark.integration
@@ -242,7 +318,9 @@ class TestBaselineSingleColumnExport:
         assert baseline_single_column_xlsx.exists()
 
     def test_event_duration_has_baseline_columns(self, baseline_single_column_xlsx):
-        df = pd.read_excel(str(baseline_single_column_xlsx), sheet_name="Event Duration")
+        df = pd.read_excel(
+            str(baseline_single_column_xlsx), sheet_name="Event Duration"
+        )
         columns = list(df.columns)
         assert any("Mean df/f for baseline" in str(c) for c in columns), columns
         assert any("STD for baseline" in str(c) for c in columns), columns
@@ -261,25 +339,41 @@ class TestBaselineMultiColumnExport:
         sheets = pd.ExcelFile(str(baseline_multi_column_xlsx)).sheet_names
         assert len(sheets) == len(set(sheets)), f"Duplicate sheet names: {sheets}"
         primary_sheets = [
-            s for s in sheets if s.endswith(f"_{PRIMARY_COLUMN}") and not s.startswith("Summary")
+            s
+            for s in sheets
+            if s.endswith(f"_{PRIMARY_COLUMN}") and not s.startswith("Summary")
         ]
         secondary_sheets = [
-            s for s in sheets if s.endswith(f"_{SECONDARY_COLUMN}") and not s.startswith("Summary")
+            s
+            for s in sheets
+            if s.endswith(f"_{SECONDARY_COLUMN}") and not s.startswith("Summary")
         ]
         assert primary_sheets and secondary_sheets
         assert len(primary_sheets) == len(secondary_sheets)
 
-    def test_event_duration_has_per_column_baseline_stats(self, baseline_multi_column_xlsx):
+    def test_event_duration_has_per_column_baseline_stats(
+        self, baseline_multi_column_xlsx
+    ):
         df = pd.read_excel(str(baseline_multi_column_xlsx), sheet_name="Event Duration")
         columns = list(df.columns)
-        assert any(PRIMARY_COLUMN in str(c) and "Mean df/f" in str(c) for c in columns), columns
-        assert any(SECONDARY_COLUMN in str(c) and "Mean df/f" in str(c) for c in columns), columns
-        assert any(PRIMARY_COLUMN in str(c) and "STD" in str(c) for c in columns), columns
-        assert any(SECONDARY_COLUMN in str(c) and "STD" in str(c) for c in columns), columns
+        assert any(
+            PRIMARY_COLUMN in str(c) and "Mean df/f" in str(c) for c in columns
+        ), columns
+        assert any(
+            SECONDARY_COLUMN in str(c) and "Mean df/f" in str(c) for c in columns
+        ), columns
+        assert any(PRIMARY_COLUMN in str(c) and "STD" in str(c) for c in columns), (
+            columns
+        )
+        assert any(SECONDARY_COLUMN in str(c) and "STD" in str(c) for c in columns), (
+            columns
+        )
 
     def test_baseline_means_differ_between_columns(self, baseline_multi_column_xlsx):
         df = pd.read_excel(str(baseline_multi_column_xlsx), sheet_name="Event Duration")
-        primary_mean_col = next(c for c in df.columns if PRIMARY_COLUMN in c and "Mean df/f" in c)
+        primary_mean_col = next(
+            c for c in df.columns if PRIMARY_COLUMN in c and "Mean df/f" in c
+        )
         secondary_mean_col = next(
             c for c in df.columns if SECONDARY_COLUMN in c and "Mean df/f" in c
         )
@@ -290,16 +384,26 @@ class TestBaselineMultiColumnExport:
             "each column should be baselined independently"
         )
 
-    def test_primary_and_secondary_behaviour_sheets_differ(self, baseline_multi_column_xlsx):
+    def test_primary_and_secondary_behaviour_sheets_differ(
+        self, baseline_multi_column_xlsx
+    ):
         sheets = pd.ExcelFile(str(baseline_multi_column_xlsx)).sheet_names
         primary_sheet = next(
-            s for s in sheets if s.endswith(f"_{PRIMARY_COLUMN}") and not s.startswith("Summary")
+            s
+            for s in sheets
+            if s.endswith(f"_{PRIMARY_COLUMN}") and not s.startswith("Summary")
         )
         secondary_sheet = next(
-            s for s in sheets if s.endswith(f"_{SECONDARY_COLUMN}") and not s.startswith("Summary")
+            s
+            for s in sheets
+            if s.endswith(f"_{SECONDARY_COLUMN}") and not s.startswith("Summary")
         )
-        primary_df = pd.read_excel(str(baseline_multi_column_xlsx), sheet_name=primary_sheet)
-        secondary_df = pd.read_excel(str(baseline_multi_column_xlsx), sheet_name=secondary_sheet)
+        primary_df = pd.read_excel(
+            str(baseline_multi_column_xlsx), sheet_name=primary_sheet
+        )
+        secondary_df = pd.read_excel(
+            str(baseline_multi_column_xlsx), sheet_name=secondary_sheet
+        )
         primary_numeric = primary_df.select_dtypes(include=[np.number]).to_numpy()
         secondary_numeric = secondary_df.select_dtypes(include=[np.number]).to_numpy()
         assert primary_numeric.shape == secondary_numeric.shape

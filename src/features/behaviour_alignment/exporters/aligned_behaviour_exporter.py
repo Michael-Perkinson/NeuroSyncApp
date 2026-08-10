@@ -20,6 +20,7 @@ from src.processing.behaviour_metrics import (
     calculate_auc,
     calculate_max_amp,
     calculate_mean_dff,
+    compute_full_trace_zscore,
     zscore_column_key,
 )
 from src.processing.behaviour_parser import (
@@ -43,7 +44,9 @@ def _unique_sheet_name(name: str, used_names: set[str], suffix: str = "") -> str
     than silently overwriting one sheet's data with another's.
     """
     max_base_length = max(31 - len(suffix), 1)
-    candidate = _INVALID_SHEET_CHARS.sub("_", truncate_sheet_title(name, max_base_length) + suffix)[:31]
+    candidate = _INVALID_SHEET_CHARS.sub(
+        "_", truncate_sheet_title(name, max_base_length) + suffix
+    )[:31]
     if candidate not in used_names:
         used_names.add(candidate)
         return candidate
@@ -97,11 +100,34 @@ class AlignedBehaviourExporter:
         baseline_stds = self.app.baseline_data_std or {}
         multi_column = len(columns) > 1
         for column in columns:
-            mean_label = "Mean df/f for baseline" + (f" ({column})" if multi_column else "")
+            mean_label = "Mean df/f for baseline" + (
+                f" ({column})" if multi_column else ""
+            )
             std_label = "STD for baseline" + (f" ({column})" if multi_column else "")
             padding = [np.nan] * (len(duration_df) - 1)
             duration_df[mean_label] = [baseline_means.get(column)] + padding
             duration_df[std_label] = [baseline_stds.get(column)] + padding
+        return duration_df
+
+    def _handle_full_trace_zscore_export(
+        self, duration_df: pd.DataFrame, columns: list[str]
+    ) -> pd.DataFrame:
+        """Append the whole-trace mean/SD used by DFer's Z-score calculation."""
+        duration_df = duration_df.copy()
+        multi_column = len(columns) > 1
+        for column in columns:
+            _, trace_mean, trace_std = compute_full_trace_zscore(
+                self.app.dataframe[column]
+            )
+            suffix = f" ({column})" if multi_column else ""
+            mean_label = f"Mean dF/F for whole-trace Z-score{suffix}"
+            std_label = f"STD for whole-trace Z-score{suffix}"
+            duration_df[mean_label] = np.nan
+            duration_df[std_label] = np.nan
+            if not duration_df.empty:
+                first_index = duration_df.index[0]
+                duration_df.loc[first_index, mean_label] = trace_mean
+                duration_df.loc[first_index, std_label] = trace_std
         return duration_df
 
     def _get_metric_functions(self) -> dict:
@@ -127,53 +153,71 @@ class AlignedBehaviourExporter:
 
     def _export_binned_data(
         self,
-        sorted_behaviours: list[str],
-        behaviours_results: dict,
-        time_ranges: dict,
+        signal_results: list[tuple[str, dict, dict]],
         params: dict,
         file_path: str,
         folder_path: str,
         detail_df_list: list[tuple[pd.DataFrame, str]],
         duration_df: pd.DataFrame,
     ) -> None:
-        df_summary = generate_summary_data(
-            sorted_behaviours,
-            behaviours_results,
-            params,
-            self._get_metric_functions(),
-            time_ranges,
+        summary_parts: list[pd.DataFrame] = []
+        multi_column = len(signal_results) > 1
+        formatting_behaviours: dict = {}
+        for column, behaviours_results, time_ranges in signal_results:
+            formatting_behaviours.update(behaviours_results)
+            signal_summary = generate_summary_data(
+                sorted(behaviours_results.keys()),
+                behaviours_results,
+                params,
+                self._get_metric_functions(),
+                time_ranges,
+            )
+            if multi_column:
+                signal_label = pd.DataFrame(
+                    [[f"Signal: {column}"] + [np.nan] * (signal_summary.shape[1] - 1)]
+                )
+                summary_parts.extend([signal_label, signal_summary])
+            else:
+                summary_parts.append(signal_summary)
+
+        max_columns = max((part.shape[1] for part in summary_parts), default=0)
+        df_summary = pd.concat(
+            [part.reindex(columns=range(max_columns)) for part in summary_parts],
+            ignore_index=True,
         )
-        # Sheet order: a single "Summary Results" (prepended by
-        # export_combined_excel) then "Event Duration" at the front, followed by
-        # every per-behaviour detail sheet. There is one summary only — extra
-        # signal columns add their own behaviour detail sheets, not a second
-        # summary.
+        # Keep one headline summary sheet, with a labelled section per signal.
         df_list = [(duration_df, "Event Duration")]
         df_list.extend(detail_df_list)
 
         output_file_name = self._get_output_file_name(file_path, folder_path)
-        export_combined_excel(df_summary, df_list, output_file_name, behaviours_results)
+        export_combined_excel(
+            df_summary, df_list, output_file_name, formatting_behaviours
+        )
 
     def extract_data_from_photometry(self, file_path: str, params: dict) -> None:
         """Extract and export photometry-aligned behaviour data."""
         folder_path = create_extraction_folder(file_path)
         behaviours_to_export = params.get("behaviours_to_export", [])
 
-        selected_columns = (
-            self.app.selected_columns_var.get() or [self.app.selected_column_var.get()]
-        )
+        selected_columns = self.app.selected_columns_var.get() or [
+            self.app.selected_column_var.get()
+        ]
         multi_column = len(selected_columns) > 1
 
         duration_df = self._extract_duration_data()
+        duration_df = self._handle_full_trace_zscore_export(
+            duration_df, selected_columns
+        )
         if self.app.checkbox_state:
-            duration_df = self._handle_zscore_checkbox_export(duration_df, selected_columns)
+            duration_df = self._handle_zscore_checkbox_export(
+                duration_df, selected_columns
+            )
 
         detail_df_list: list[tuple[pd.DataFrame, str]] = []
-        primary_behaviours_results: dict = {}
-        primary_time_ranges: dict = {}
+        signal_results: list[tuple[str, dict, dict]] = []
         used_sheet_names: set[str] = {"Event Duration", "Summary Results"}
 
-        for index, column in enumerate(selected_columns):
+        for column in selected_columns:
             use_zscore = self.app.checkbox_state
             column_z_data = (
                 self.app.dataframe[zscore_column_key(column)] if use_zscore else None
@@ -190,9 +234,7 @@ class AlignedBehaviourExporter:
             )
             sorted_behaviours = sorted(behaviours_results.keys())
 
-            if index == 0:
-                primary_behaviours_results = behaviours_results
-                primary_time_ranges = time_ranges
+            signal_results.append((column, behaviours_results, time_ranges))
 
             df_list = create_df_for_behaviours(
                 behaviours_results,
@@ -210,9 +252,7 @@ class AlignedBehaviourExporter:
             detail_df_list.extend(df_list)
 
         self._export_binned_data(
-            sorted(primary_behaviours_results.keys()),
-            primary_behaviours_results,
-            primary_time_ranges,
+            signal_results,
             params,
             file_path,
             folder_path,

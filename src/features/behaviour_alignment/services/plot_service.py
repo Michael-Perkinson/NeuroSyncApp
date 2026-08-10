@@ -1,4 +1,4 @@
-﻿"""GUI-side plot mode orchestration for photometry-behaviour app."""
+"""GUI-side plot mode orchestration for photometry-behaviour app."""
 
 from __future__ import annotations
 
@@ -35,7 +35,12 @@ from src.processing.behaviour_plotting import (
 from src.processing.image_export import build_image_export_request
 
 _EXTRA_TRACE_COLORS = [
-    "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
 ]
 
 logger = logging.getLogger(__name__)
@@ -48,7 +53,9 @@ def _selected_columns(app) -> list[str]:
     unchecked every column) so callers can bail out instead of indexing
     into an empty list or looking up an empty-string dataframe column.
     """
-    columns = app.selected_columns_var.get() if hasattr(app, "selected_columns_var") else None
+    columns = (
+        app.selected_columns_var.get() if hasattr(app, "selected_columns_var") else None
+    )
     if columns:
         return columns
     primary = app.selected_column_var.get()
@@ -77,6 +84,15 @@ def _column_colors(app, column_labels: list[str]) -> list[str]:
     return colors
 
 
+def _signal_y_axis_label(column_labels: list[str], *, z_scored: bool) -> str:
+    """Return the axis label matching the signal values being plotted."""
+    if z_scored:
+        return "Z-score"
+    if len(column_labels) > 1:
+        return "dF/F"
+    return column_labels[0] if column_labels else ""
+
+
 def handle_figure_display_selection(app, event=None) -> None:
     """Render the selected figure display mode."""
     if app.dataframe is None:
@@ -84,11 +100,10 @@ def handle_figure_display_selection(app, event=None) -> None:
 
     selected_option = app.figure_display_dropdown.get()
 
-    if (
-        not app.is_file_parsed
-        and app.data_selection_frame.baseline_button_pressed
-    ):
-        logger.warning("A behaviour display was requested before parsing a behaviour file.")
+    if not app.is_file_parsed and app.data_selection_frame.baseline_button_pressed:
+        logger.warning(
+            "A behaviour display was requested before parsing a behaviour file."
+        )
         app.data_already_adjusted = True
 
     if hasattr(app, "figure_canvas") and app.figure_canvas is not None:
@@ -157,12 +172,16 @@ def plot_z_scored_data(app, ax) -> None:
 
     selected_columns = _selected_columns(app)
     if not selected_columns or "z_scored_time" not in app.dataframe:
-        logger.warning("Z-score plot skipped because selected data columns are unavailable.")
+        logger.warning(
+            "Z-score plot skipped because selected data columns are unavailable."
+        )
         return
 
     zscore_keys = [zscore_column_key(column) for column in selected_columns]
     if not all(key in app.dataframe for key in zscore_keys):
-        logger.warning("Z-score plot skipped because computed z-score columns are unavailable.")
+        logger.warning(
+            "Z-score plot skipped because computed z-score columns are unavailable."
+        )
         return
 
     z_scored_data = app.dataframe[zscore_keys[0]]
@@ -185,9 +204,7 @@ def plot_z_scored_data(app, ax) -> None:
         app.behaviour_table_panel.update_table(current_df)
 
         behaviours, _, _, start_times_min, end_times_min = (
-            app.graph_helper_service.retrieve_and_process_behaviour_data(
-                current_df
-            )
+            app.graph_helper_service.retrieve_and_process_behaviour_data(current_df)
         )
         app.graph_helper_service.initialize_or_check_time_attributes(
             start_times_min, end_times_min
@@ -281,7 +298,7 @@ def plot_full_trace(app, ax) -> None:
 
     line_width = float(app.graph_settings_container_instance.line_width_entry.get())
     colors = _column_colors(app, selected_columns)
-    y_label = selected_columns[0] if len(selected_columns) == 1 else "df/F"
+    y_label = _signal_y_axis_label(selected_columns, z_scored=False)
     for column, color in zip(selected_columns, colors):
         draw_trace(
             ax,
@@ -344,11 +361,13 @@ def plot_single_row(app, ax) -> None:
         time_data, return_label=True
     )
 
-    onset_line_style = app.graph_settings_container_instance.onset_line_style_combobox.get()
+    onset_line_style = (
+        app.graph_settings_container_instance.onset_line_style_combobox.get()
+    )
     line_width = float(app.graph_settings_container_instance.line_width_entry.get())
     colors = _column_colors(app, column_labels)
     multi_column = len(selected_columns) > 1
-    y_label = column_labels[0] if not multi_column else "df/F"
+    y_label = _signal_y_axis_label(column_labels, z_scored=bool(app.checkbox_state))
     for column, label, color in zip(selected_columns, column_labels, colors):
         draw_trace(
             ax,
@@ -419,7 +438,7 @@ def plot_mean_and_sem_trace(app, ax) -> None:
     )
     multi_column = len(columns_to_plot) > 1
     colors = _column_colors(app, column_labels)
-    y_label = "df/F" if multi_column else None
+    y_label = _signal_y_axis_label(column_labels, z_scored=bool(app.checkbox_state))
 
     primary_mean_sem_df = None
     primary_behaviour_data = None
@@ -466,13 +485,19 @@ def plot_mean_and_sem_trace(app, ax) -> None:
             transform=ax.transAxes,
             ha="right",
             va="top",
-            bbox={"facecolor": "white", "edgecolor": "black", "boxstyle": "square,pad=0.5"},
+            bbox={
+                "facecolor": "white",
+                "edgecolor": "black",
+                "boxstyle": "square,pad=0.5",
+            },
         )
 
     app.min_x_for_behaviour_mean_and_sem = start_time_adjusted
     app.max_x_for_behaviour_mean_and_sem = end_time_adjusted
 
-    onset_line_style = app.graph_settings_container_instance.onset_line_style_combobox.get()
+    onset_line_style = (
+        app.graph_settings_container_instance.onset_line_style_combobox.get()
+    )
     ax.axvline(
         x=0,
         color=app.graph_settings_container_instance.selected_line_color,
@@ -548,7 +573,9 @@ def add_duration_box(app, ax, mean_sem_df) -> None:
 
     graphed_behaviour = app.behaviour_choice_graph.get()
     if graphed_behaviour not in app.duration_data_cache:
-        logger.warning("Duration data for %s was not found in cache.", graphed_behaviour)
+        logger.warning(
+            "Duration data for %s was not found in cache.", graphed_behaviour
+        )
         return
 
     cached_data = app.duration_data_cache[graphed_behaviour]
@@ -557,8 +584,12 @@ def add_duration_box(app, ax, mean_sem_df) -> None:
     mean_duration = cached_data["mean_duration"] * time_factor
     sem_duration = cached_data["sem_duration"] * time_factor
 
-    height_modifier = float(app.graph_settings_container_instance.duration_box_placement.get())
-    size_factor = float(app.graph_settings_container_instance.bar_graph_size_entry.get())
+    height_modifier = float(
+        app.graph_settings_container_instance.duration_box_placement.get()
+    )
+    size_factor = float(
+        app.graph_settings_container_instance.bar_graph_size_entry.get()
+    )
 
     bar_y, bar_height = compute_bar_position(mean_sem_df, height_modifier, size_factor)
     app.bar_items = draw_duration_bar(
@@ -592,7 +623,9 @@ def update_duration_box(app, ax=None, mean_sem_df=None) -> None:
 
     try:
         cached_data = app.duration_data_cache[app.current_cache_key]
-        mean_sem_df = mean_sem_df if mean_sem_df is not None else cached_data["mean_sem_df"]
+        mean_sem_df = (
+            mean_sem_df if mean_sem_df is not None else cached_data["mean_sem_df"]
+        )
     except KeyError:
         add_duration_box(app, ax, mean_sem_df)
         return
@@ -602,8 +635,12 @@ def update_duration_box(app, ax=None, mean_sem_df=None) -> None:
     mean_duration = cached_data["mean_duration"] * time_factor
     sem_duration = cached_data["sem_duration"] * time_factor
 
-    height_modifier = float(app.graph_settings_container_instance.duration_box_placement.get())
-    size_factor = float(app.graph_settings_container_instance.bar_graph_size_entry.get())
+    height_modifier = float(
+        app.graph_settings_container_instance.duration_box_placement.get()
+    )
+    size_factor = float(
+        app.graph_settings_container_instance.bar_graph_size_entry.get()
+    )
     bar_y, bar_height = compute_bar_position(mean_sem_df, height_modifier, size_factor)
 
     old_items = set(ax.get_children())
@@ -668,7 +705,9 @@ def save_and_close_axis_range(app, popup=None, close: bool = True) -> None:
                 "Axis minimum and maximum values must be numeric.",
             )
             return
-        if (x_range and x_range[0] >= x_range[1]) or (y_range and y_range[0] >= y_range[1]):
+        if (x_range and x_range[0] >= x_range[1]) or (
+            y_range and y_range[0] >= y_range[1]
+        ):
             QMessageBox.warning(
                 app,
                 "Axis range is invalid",
@@ -694,9 +733,13 @@ def save_and_close_axis_range(app, popup=None, close: bool = True) -> None:
             popup.close()
 
 
-def handle_zeroing(app, behaviours, start_times_min, end_times_min, converted_time_data):
+def handle_zeroing(
+    app, behaviours, start_times_min, end_times_min, converted_time_data
+):
     """Zero behaviour times and return adjusted start/end/time arrays."""
-    selected_behaviour = app.graph_settings_container_instance.selected_behaviour_to_zero.get()
+    selected_behaviour = (
+        app.graph_settings_container_instance.selected_behaviour_to_zero.get()
+    )
     time_unit = app.graph_settings_container_instance.time_unit_menu.get()
     time_factor = app.graph_helper_service.get_time_scale(time_unit)
     baseline_start_time_min = parse_optional_float(
@@ -786,7 +829,7 @@ def save_image(app) -> None:
         request.figure_display,
         request.behaviour_choice,
         request.image_format,
-        recording_date=app.date if hasattr(app, 'date') else "",
+        recording_date=app.date if hasattr(app, "date") else "",
     )
     save_figure(fig_copy, output_path, request.image_format, request.dpi)
 
@@ -863,5 +906,3 @@ class BehaviourPlotService:
                 self.app,
                 "Check the image settings and output-folder permissions, then try again.",
             )
-
-

@@ -1,4 +1,5 @@
 """Tests for src/processing/behaviour_metrics.py — currently 0% covered."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -12,6 +13,7 @@ from src.processing.behaviour_metrics import (
     calculate_mean_dff,
     calculate_mean_sem,
     calculate_metrics_for_bins,
+    compute_full_trace_zscore,
     compute_z_score,
     convert_time,
     generate_mean_sem_df,
@@ -204,6 +206,22 @@ class TestComputeZScore:
         df = pd.DataFrame({"Time": [0.0, 1.0, 2.0], "Signal": [1.0, 2.0, 3.0]})
         result = compute_z_score(df, "Signal", 0.0, 1.5)
         assert len(result) == 4
+
+
+class TestComputeFullTraceZScore:
+    def test_returns_zscore_and_population_statistics(self):
+        z_data, mean, std = compute_full_trace_zscore([1.0, 2.0, 3.0])
+
+        assert mean == pytest.approx(2.0)
+        assert std == pytest.approx(np.std([1.0, 2.0, 3.0]))
+        assert z_data == pytest.approx((np.array([1.0, 2.0, 3.0]) - mean) / std)
+
+    def test_constant_trace_uses_nonzero_divisor(self):
+        z_data, mean, std = compute_full_trace_zscore([4.0, 4.0])
+
+        assert mean == pytest.approx(4.0)
+        assert std == pytest.approx(np.finfo(float).eps)
+        assert z_data == pytest.approx([0.0, 0.0])
 
 
 class TestConvertTime:

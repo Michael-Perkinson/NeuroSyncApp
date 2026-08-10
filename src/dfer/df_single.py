@@ -7,6 +7,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.processing.behaviour_metrics import compute_full_trace_zscore
+
 from .df_common import (
     BUTTER_CUTOFF,
     BUTTER_ORDER,
@@ -136,14 +138,8 @@ def run_single_analysis(
     dfof_465 = (smooth_465 - smooth_adjusted_405) / smooth_adjusted_405
     dfof_405 = (dfof_adj_for_405[analysis_path] - scaled_quad) / scaled_quad
 
-    mu465, sigma465 = float(np.mean(dfof_465)), float(np.std(dfof_465))
-    mu405, sigma405 = float(np.mean(dfof_405)), float(np.std(dfof_405))
-    if sigma465 == 0:
-        sigma465 = float(np.finfo(float).eps)
-    if sigma405 == 0:
-        sigma405 = float(np.finfo(float).eps)
-    z_465 = (dfof_465 - mu465) / sigma465
-    z_405 = (dfof_405 - mu405) / sigma405
+    z_465, _, _ = compute_full_trace_zscore(dfof_465)
+    z_405, _, _ = compute_full_trace_zscore(dfof_405)
 
     out_file_path = str(expected_analysis_output_path(selectedfile, file_type="single"))
     np.savetxt(
