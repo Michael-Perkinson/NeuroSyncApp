@@ -4,17 +4,18 @@ NeuroSyncApp is a PySide6 desktop app for processing raw photometry recordings a
 
 The app opens to a dashboard. The default first tool is **Analyse Raw Data**.
 
-## Active Tools
+## Available Tools
 
 | Tool | App ID | Purpose |
 | --- | --- | --- |
 | Analyse Raw Data | `raw_analysis` | Inspect raw photometry CSVs, choose an analysis window, preview DFer options, run DFer, and run PFer peak finding. |
-| Align Photometry and Behaviour | `single_animal` | Align a photometry trace with coded behaviour events, plot full/single-row/mean-SEM views, and export aligned metrics. |
+| Align Photometry and Behaviour | `single_animal` | Align photometry with coded behaviour events, use Full Trace Display, Single Row Display, and Behaviour Mean and SEM views, and export aligned metrics. |
 | Align Telemetry Data | `telemetry_photom_opto` | Align telemetry, photometry, and optogenetic recordings; detect clusters; export workbook summaries. |
+| Combine Data | `combine_data` | Dashboard placeholder; the Qt version is not yet available. |
 
 `combine_data` is still listed in the dashboard as a placeholder and has not been ported to Qt yet.
 
-## Install
+## Installation
 
 ### End Users
 
@@ -30,7 +31,7 @@ No Python install is needed for release builds.
 
 `pyproject.toml` is the source of truth for dependencies. `requirements.txt` is no longer used.
 
-Use Python 3.14 for the current tested dependency set. The package metadata allows Python 3.12 through 3.14, but release builds and package snapshots target Python 3.14.
+Use Python 3.12 through 3.14. The examples below use Python 3.14. The release workflow currently builds with Python 3.14; local development and the test suite also support the versions declared in `pyproject.toml`.
 
 Windows:
 
@@ -58,26 +59,9 @@ Build dependencies are separate:
 python -m pip install -e ".[build]"
 ```
 
-## Tested Package Snapshots
+`pyproject.toml` is the only dependency definition. Install the optional `dev` or `build` extras when you need testing or packaging tools; there is no separate `requirements/` snapshot directory.
 
-The `requirements/` folder contains resolved pip-list snapshots for Python 3.14:
-
-- `requirements/windows-py314.txt`
-- `requirements/macos-py314.txt`
-
-These are not the primary install path. Use them only when you need to recreate the tested package set exactly:
-
-```bash
-python -m pip install -r requirements/windows-py314.txt
-```
-
-The snapshots were validated with pip wheel resolution for:
-
-- Windows: `win_amd64`
-- macOS Apple Silicon: `macosx_14_0_arm64`
-- macOS Intel: `macosx_14_0_x86_64`
-
-## Run
+## Running the App
 
 Launch the dashboard:
 
@@ -95,7 +79,7 @@ python main.py --tool telemetry_photom_opto
 
 The dashboard remembers the last active supported tool and opens it next time.
 
-## First App: Analyse Raw Data
+## Analyse Raw Data
 
 This is the default first screen.
 
@@ -109,8 +93,9 @@ This is the default first screen.
 5. Click **Apply** to update the red/blue window markers and regenerate DFer option previews.
 6. Open the **DFer Options** graph tab to inspect options 1-4.
 7. In **DFer Settings**, select the final DFer option and click **Run final analysis**.
-8. Use **DFer Results** to view dF/F or Z-score output and save plots.
-9. For PFer, select a DFer output CSV in the PFer settings, choose baseline/prominence settings, then click **Run peak finder**.
+8. In **DFer Options**, use the Signals selector to show **Both**, **470nm**, or **560nm** for dual-channel recordings.
+9. Use **DFer Results** to view dF/F or Z-score output, optionally show the 405 nm reference, and save plots.
+10. For PFer, select a DFer output CSV in the PFer settings, choose baseline/prominence settings, then click **Run peak finder**.
 
 DFer/PFer outputs are written beside the selected recording or into the app-created output folders. The app log panel shows progress and saved paths.
 
@@ -120,7 +105,7 @@ Use this tool when you already have a processed photometry trace and a behaviour
 
 1. Open **Align Photometry and Behaviour** from the dashboard.
 2. In **Data Selection**, choose the photometry file.
-3. Select one or more signal columns.
+3. Select one or more signal columns. Multiple signals can be overlaid with independent trace and SEM colours.
 4. Optionally set and save a baseline window for z-scoring.
 5. In **Behaviour Input**, import the behaviour CSV.
 6. On first use, map the behaviour, start-time, and end-time columns from your CSV.
@@ -132,7 +117,9 @@ Use this tool when you already have a processed photometry trace and a behaviour
 9. Use **Graph Settings** for colours, line width, axis limits, duration bars, time units, and zeroing the x-axis to a selected behaviour.
 10. Use **Export Options** to export aligned data and save figures.
 
-Exports include workbook outputs with metric sheets such as AUC, max amplitude, mean dF/F, binned data, and raw aligned traces depending on the selected options.
+If behaviour times fall outside the photometry recording, the app warns you to double-check the time unit and video-coding offset before continuing.
+
+Exports include a `Summary Results` sheet with metric sections for AUC, maximum amplitude, mean dF/F, and binned data, plus per-behaviour sheets containing aligned traces. Multi-signal summaries remain on one clearly sectioned `Summary Results` sheet; compact filenames use tags such as `dual_dfof` or `dual_Z`.
 
 ## Align Telemetry Data
 
@@ -143,13 +130,14 @@ Use this tool for telemetry, photometry, and optogenetic alignment workflows.
 3. Add or confirm associated temperature and activity files.
 4. Enter the light-off/start time values needed for alignment.
 5. Configure pre/post cluster windows and bin sizes in **Static Inputs**.
-6. Generate or refresh cluster displays from the graph controls.
-7. Use cluster checkboxes, colours, peak alignment, and graph settings to refine the display.
-8. Use **Export Options** to create the telemetry workbook export and save figures.
+6. Review the **Graph** and **Table** views, and use the temperature and activity controls to overlay associated signals.
+7. Generate or refresh the photometry peak clusters or optogenetic stimulation clusters from the graph controls.
+8. Use cluster checkboxes, colours, peak alignment, and graph settings to refine the display.
+9. Use **Export Options** to create the telemetry workbook export and save figures.
 
-The telemetry exporter writes Excel workbooks with summary, cluster, signal, and raw sheets.
+The telemetry exporter writes Excel workbooks with summary, cluster, signal, and raw sheets. Telemetry and photometry recordings are grouped by detected peak count; optogenetic recordings are grouped by stimulation category.
 
-## Tests
+## Testing
 
 Run the test suite from an activated environment:
 
@@ -214,7 +202,7 @@ Example input files live in `example_data/`:
 
 These are useful for smoke-testing the UI and export flows.
 
-## Dependency Notes
+## Dependencies
 
 Direct runtime dependencies are kept intentionally small:
 

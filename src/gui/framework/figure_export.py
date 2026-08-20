@@ -67,10 +67,7 @@ def build_save_path(
 ) -> Path:
     """Build a collision-free image path and create its output directory."""
     source_path = Path(file_path)
-    directory_suffix = (
-        f"{mouse_name}_{recording_date}" if recording_date else mouse_name
-    )
-    output_directory = source_path.parent / f"exported_images_{directory_suffix}"
+    output_directory = source_path.parent / f"exported_images_{mouse_name}"
     output_directory.mkdir(parents=True, exist_ok=True)
 
     if figure_display == "Behaviour Mean and SEM" and behaviour_choice:
