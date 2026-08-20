@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 from matplotlib.colors import to_rgba
 from matplotlib.figure import Figure
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog, QLabel, QWidget
 
 from src.features.behaviour_alignment.data_processing_widget import (
     DataProcessingSingleInstance,
@@ -17,10 +17,12 @@ from src.features.behaviour_alignment.services.plot_service import (
     generate_behaviour_graph,
 )
 from src.features.behaviour_alignment.views.ui_builder import (
+    BehaviourUiBuilder,
     _colour_control_labels,
     _trace_colour_control_labels,
 )
 from src.gui.framework.qt_graph_canvas import create_styled_figure
+from src.gui.framework.qt_view_styles import PALETTE
 
 
 def test_behaviour_qt_app_instantiates():
@@ -43,6 +45,43 @@ def test_trace_colour_controls_group_trace_and_sem_by_signal():
         ("dFoF_465 Trace Colour:", "dFoF_465 SEM Colour:"),
         ("dFoF_405 Trace Colour:", "dFoF_405 SEM Colour:"),
     ]
+
+
+def test_trace_colours_popup_uses_readable_light_dialog_styles(monkeypatch):
+    _app = QApplication.instance() or QApplication([])
+    graph_canvas = QWidget()
+    app = SimpleNamespace(
+        graph_canvas=graph_canvas,
+        selected_columns_var=SimpleNamespace(get=lambda: ["dFoF_470", "dFoF_560"]),
+        selected_column_var=SimpleNamespace(get=lambda: "dFoF_470"),
+        settings_manager=SimpleNamespace(
+            selected_trace_color="#008000",
+            selected_sem_color="#808080",
+        ),
+        column_colors={},
+        column_sem_colors={},
+        plot_service=SimpleNamespace(handle_figure_display_selection=lambda _event: None),
+    )
+    captured = {}
+    monkeypatch.setattr(
+        QDialog,
+        "exec",
+        lambda dialog: captured.setdefault("dialog", dialog) or 0,
+    )
+
+    BehaviourUiBuilder(app).open_trace_colors_popup()
+
+    dialog = captured["dialog"]
+    assert f"background: {PALETTE['card_bg']}" in dialog.styleSheet()
+    assert f"color: {PALETTE['text']}" in dialog.styleSheet()
+    assert [label.text() for label in dialog.findChildren(QLabel)] == [
+        "dFoF_470 Trace Colour:",
+        "dFoF_470 SEM Colour:",
+        "dFoF_560 Trace Colour:",
+        "dFoF_560 SEM Colour:",
+    ]
+    dialog.deleteLater()
+    graph_canvas.deleteLater()
 
 
 def test_signal_y_axis_label_matches_plotted_values():

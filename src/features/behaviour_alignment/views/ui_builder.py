@@ -19,7 +19,11 @@ from src.features.behaviour_alignment.services.plot_service import (
     _column_sem_colors,
     _selected_columns,
 )
-from src.gui.framework.qt_view_styles import panel_stylesheet
+from src.gui.framework.qt_view_styles import (
+    PALETTE,
+    apply_button_role,
+    panel_stylesheet,
+)
 from src.gui.framework.tk_compat_controls import ComboBoxControl, ObservableValue
 from src.gui.views.export_options_panel import ExportOptionsPanel
 from src.panels.graph_settings_panel import GraphSettingsPanel
@@ -186,6 +190,17 @@ class BehaviourUiBuilder:
         """
         popup = QDialog(self.app.graph_canvas)
         popup.setWindowTitle("Trace Colours")
+        popup.setObjectName("traceColoursDialog")
+        popup.setStyleSheet(
+            f"""
+QDialog#traceColoursDialog {{
+    background: {PALETTE["card_bg"]};
+}}
+QDialog#traceColoursDialog QLabel {{
+    color: {PALETTE["text"]};
+}}
+"""
+        )
         layout = QGridLayout(popup)
         layout.setHorizontalSpacing(10)
         layout.setVerticalSpacing(8)
@@ -246,6 +261,7 @@ class BehaviourUiBuilder:
             row += 1
 
         close_button = QPushButton("Close", popup)
+        apply_button_role(close_button, "secondary")
         close_button.clicked.connect(popup.accept)
         layout.addWidget(close_button, row, 0, 1, 2)
 

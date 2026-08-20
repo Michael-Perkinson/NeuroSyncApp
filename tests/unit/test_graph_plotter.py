@@ -6,11 +6,36 @@ from types import SimpleNamespace
 
 import matplotlib.image as mpimg
 import numpy as np
+import pandas as pd
 import pytest
 from matplotlib.figure import Figure
 
 from src.features.behaviour_alignment.services.plot_service import save_image
-from src.gui.framework.graph_plotter import build_save_path
+from src.gui.framework.graph_plotter import build_save_path, draw_behaviour_boxes
+
+
+@pytest.mark.parametrize("values", [[-2.0, 0.0, 4.0], [2.0, 3.0, 4.0]])
+def test_behaviour_box_starts_at_signal_minimum(values):
+    figure = Figure()
+    axis = figure.add_subplot(111)
+    data = pd.Series(values)
+    time_data = pd.Series([0.0, 1.0, 2.0])
+
+    boxes = draw_behaviour_boxes(
+        axis,
+        data,
+        time_data,
+        ["Approach"],
+        [0.5],
+        [1.5],
+        {"Approach": "#123456"},
+        {"Approach": True},
+        1.0,
+        0.5,
+        0.5,
+    )
+
+    assert boxes["Approach"][0].get_y() == min(values)
 
 
 class TestBuildSavePath:

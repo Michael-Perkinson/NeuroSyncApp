@@ -311,6 +311,7 @@ def draw_behaviour_boxes(
         Already applied to *time_data* and *start/end_times_min*.
     box_height_factor:
         Fraction of the data range used as box height.
+        The box starts at the minimum plotted signal value.
     alpha:
         Box transparency (0â€“1).
     start_point, end_point:
@@ -342,7 +343,7 @@ def draw_behaviour_boxes(
         end_x   = end_min   if end_min   is not None else end_point
         width   = max((end_x - x_pos if end_x is not None else min_box_width), min_box_width)
         height  = box_height_factor * ((max_y - min_y) * 1.05)
-        y_pos   = min_y - abs(0.05 * min_y)
+        y_pos   = min_y
         color   = behaviour_colors.get(behaviour, "#888888")
 
         box = Rectangle(
