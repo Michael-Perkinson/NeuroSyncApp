@@ -10,6 +10,7 @@ from src.excel_ops.behaviour_exporter import (
 )
 from src.processing.behaviour_parser import (
     extract_behaviour_results,
+    find_out_of_range_behaviour_times,
     read_behaviour_csv,
 )
 
@@ -93,6 +94,98 @@ def test_read_behaviour_csv_infers_blank_common_column_mappings(monkeypatch):
     assert column_names["Start Time"] == "start"
     assert column_names["End Time"] == "end"
     assert df.loc[0, "behaviour"] == "Explore"
+
+
+def test_behaviour_times_outside_photometry_range_are_reported():
+    behaviour_df = pd.DataFrame(
+        {
+            "start": [1200.0, 1210.0],
+            "end": [1205.0, 1215.0],
+        }
+    )
+    column_names = {"Start Time": "start", "End Time": "end"}
+
+    out_of_range = find_out_of_range_behaviour_times(
+        behaviour_df,
+        column_names,
+        photometry_start_seconds=0.0,
+        photometry_end_seconds=1200.0,
+    )
+
+    assert out_of_range == pytest.approx((1200.0, 1215.0))
+
+
+def test_behaviour_times_inside_photometry_range_are_accepted():
+    behaviour_df = pd.DataFrame(
+        {
+            "start": [20.0, 40.0],
+            "end": [25.0, 45.0],
+        }
+    )
+    column_names = {"Start Time": "start", "End Time": "end"}
+
+    assert (
+        find_out_of_range_behaviour_times(
+            behaviour_df,
+            column_names,
+            photometry_start_seconds=0.0,
+            photometry_end_seconds=1200.0,
+        )
+        is None
+    )
+
+
+def test_manual_behaviour_import_warns_about_time_unit_mismatch(monkeypatch):
+    from types import SimpleNamespace
+
+    from src.features.behaviour_alignment.services.manual_session_service import (
+        BehaviourManualSessionService,
+    )
+
+    app = SimpleNamespace(
+        checkbox_state=False,
+        data_selection_frame=SimpleNamespace(baseline_button_pressed=False),
+        behaviour_table_panel=SimpleNamespace(clear_table=lambda: None),
+        dataframe=_build_photometry_frame(np.array([0.0, 1200.0])),
+        behaviour_event_input_frame=SimpleNamespace(
+            synchronize_start_time_entry=SimpleNamespace(get=lambda: "0")
+        ),
+    )
+    service = BehaviourManualSessionService(app)
+    behaviour_df = pd.DataFrame(
+        {"start": [1200.0], "end": [1215.0], "behaviour": ["Explore"]}
+    )
+    column_names = {
+        "Behaviours/events": "behaviour",
+        "Start Time": "start",
+        "End Time": "end",
+    }
+    warnings = []
+
+    monkeypatch.setattr(
+        "src.features.behaviour_alignment.services.manual_session_service.load_behaviour_static_inputs",
+        lambda _path: {},
+    )
+    monkeypatch.setattr(
+        "src.features.behaviour_alignment.services.manual_session_service.QMessageBox.warning",
+        lambda _parent, title, message: warnings.append((title, message)),
+    )
+    monkeypatch.setattr(
+        service,
+        "read_and_process_file",
+        lambda _path: (behaviour_df, column_names),
+    )
+    monkeypatch.setattr(
+        service,
+        "process_each_row",
+        lambda *_args: ([], set(), {}),
+    )
+    monkeypatch.setattr(service, "calculate_and_store_behaviour_metrics", lambda *_args: None)
+    monkeypatch.setattr(service, "update_ui_with_manual_data", lambda *_args: None)
+
+    assert service.parse_manual_data("behaviour.csv") is True
+    assert warnings
+    assert "Double-check the behaviour time unit" in warnings[0][1]
 
 
 def test_export_time_axis_uses_actual_3_33hz_sample_rate():

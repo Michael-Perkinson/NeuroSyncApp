@@ -35,20 +35,6 @@ class BehaviourOptionsPanel:
 
         behaviour_list_label = QLabel("Behaviours", controls_row)
         controls_layout.addWidget(behaviour_list_label)
-
-        select_all_button = QPushButton(
-            "Select All", self.app.graph_settings_container_instance.behaviour_frame
-        )
-        select_all_button.clicked.connect(self.app.static_inputs_service.select_all)
-        controls_layout.addWidget(select_all_button)
-
-        deselect_all_button = QPushButton(
-            "Deselect All", self.app.graph_settings_container_instance.behaviour_frame
-        )
-        deselect_all_button.clicked.connect(
-            self.app.static_inputs_service.deselect_all
-        )
-        controls_layout.addWidget(deselect_all_button)
         controls_layout.addStretch(1)
         self.app.graph_settings_container_instance.behaviour_frame_layout.addWidget(controls_row)
 

@@ -58,6 +58,11 @@ src/gui/shared/.neurosync/
 
 # Local planning notes
 MAC_COMPAT_PLAN.md
+CLAUDE.md
+AGENTS.md
+.agents/
+.codex/
+docs/agents/
 
 # Example/raw data outputs
 example_data/*

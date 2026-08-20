@@ -182,6 +182,7 @@ class DataProcessingSingleInstance(QWidget):
         self._bind_state_var(self.selected_column_var, "selected_column")
         self.selected_columns_var = ObservableValue([])
         self.column_colors: dict[str, str] = {}
+        self.column_sem_colors: dict[str, str] = {}
 
     def init_behaviour_vars(self):
         """Initialize behaviour-related variables."""

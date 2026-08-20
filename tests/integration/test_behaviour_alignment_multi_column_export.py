@@ -148,9 +148,14 @@ def _build_app_and_run_export(
     app.extract_data_from_photometry(str(csv_copy), params)
 
     out_dir = tmp_dir / (PHOTOMETRY_CSV.stem + "_NeuroBehaviorSync")
-    out_name = f"{PHOTOMETRY_CSV.stem}_{columns[0]}"
-    if checkbox_state:
-        out_name += f"_baseline_{baseline_start}"
+    if len(columns) == 1:
+        out_name = f"{PHOTOMETRY_CSV.stem}_{columns[0]}"
+        if checkbox_state:
+            out_name += f"_baseline_{baseline_start}"
+    elif checkbox_state:
+        out_name = f"{PHOTOMETRY_CSV.stem}_dual_Z_baseline_{baseline_start}"
+    else:
+        out_name = f"{PHOTOMETRY_CSV.stem}_dual_dfof"
     out_xlsx = out_dir / f"{out_name}.xlsx"
 
     return app, out_xlsx

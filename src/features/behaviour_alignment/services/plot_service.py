@@ -84,6 +84,28 @@ def _column_colors(app, column_labels: list[str]) -> list[str]:
     return colors
 
 
+def _column_sem_colors(app, column_labels: list[str]) -> list[str]:
+    """Resolve one SEM colour per selected signal.
+
+    The primary signal keeps the dedicated SEM colour from the settings
+    panel. Extra signals default to their trace colour so each trace/band
+    pair remains visually associated until the user customises the SEM.
+    """
+    if not column_labels:
+        return []
+
+    primary_color = app.settings_manager.selected_sem_color
+    overrides = getattr(app, "column_sem_colors", None) or {}
+    trace_colors = _column_colors(app, column_labels)
+    return [
+        primary_color,
+        *[
+            overrides.get(column, trace_colors[index])
+            for index, column in enumerate(column_labels[1:], start=1)
+        ],
+    ]
+
+
 def _signal_y_axis_label(column_labels: list[str], *, z_scored: bool) -> str:
     """Return the axis label matching the signal values being plotted."""
     if z_scored:
@@ -438,12 +460,13 @@ def plot_mean_and_sem_trace(app, ax) -> None:
     )
     multi_column = len(columns_to_plot) > 1
     colors = _column_colors(app, column_labels)
+    sem_colors = _column_sem_colors(app, column_labels)
     y_label = _signal_y_axis_label(column_labels, z_scored=bool(app.checkbox_state))
 
     primary_mean_sem_df = None
     primary_behaviour_data = None
-    for index, (column, label, color) in enumerate(
-        zip(columns_to_plot, column_labels, colors)
+    for index, (column, label, color, sem_color) in enumerate(
+        zip(columns_to_plot, column_labels, colors, sem_colors)
     ):
         behaviour_data_by_instance, time_points, _, _ = (
             app.graph_helper_service.process_behaviour_data(
@@ -458,6 +481,7 @@ def plot_mean_and_sem_trace(app, ax) -> None:
             start_time_adjusted,
             end_time_adjusted,
             color=color if multi_column else None,
+            sem_color=sem_color if multi_column else None,
             label=label if multi_column else None,
             y_label=y_label,
         )
@@ -526,6 +550,7 @@ def generate_behaviour_graph(
     color: str | None = None,
     label: str | None = None,
     y_label: str | None = None,
+    sem_color: str | None = None,
 ):
     """Plot mean and SEM trace and return the mean/SEM dataframe."""
     mean_sem_df = generate_mean_sem_df(
@@ -557,7 +582,7 @@ def generate_behaviour_graph(
         converted_time_data,
         mean_sem_df["Mean"],
         mean_sem_df["SEM"],
-        color or app.settings_manager.selected_sem_color,
+        sem_color or app.settings_manager.selected_sem_color,
         # Single column keeps the "SEM" legend entry; when overlaying multiple
         # columns the per-column trace label is enough, so keep the band out
         # of the legend to avoid repeated "SEM" entries.

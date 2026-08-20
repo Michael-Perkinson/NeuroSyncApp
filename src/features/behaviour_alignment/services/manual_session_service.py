@@ -18,7 +18,11 @@ from src.gui.framework.messages_and_errors import show_action_error
 from src.gui.framework.tk_compat_controls import ObservableValue
 from src.persistence.app_paths import config_file_path
 from src.processing.behaviour_metrics import calculate_duration_metrics
-from src.processing.behaviour_parser import process_behaviour_rows, read_behaviour_csv
+from src.processing.behaviour_parser import (
+    find_out_of_range_behaviour_times,
+    process_behaviour_rows,
+    read_behaviour_csv,
+)
 from src.string_ops.string_utils import normalize_deduplicate_and_order_strings
 
 
@@ -44,6 +48,7 @@ class BehaviourManualSessionService:
             behaviour_settings = load_behaviour_static_inputs(config_file_path("behaviour_settings.json"))
             self.app.behaviour_table_panel.clear_table()
             df, column_names = self.read_and_process_file(file_path)
+            self._warn_if_behaviour_times_outside_photometry(df, column_names)
             table_data, behaviour_names, behaviour_durations = self.process_each_row(
                 df, column_names, behaviour_settings, file_path
             )
@@ -74,6 +79,52 @@ class BehaviourManualSessionService:
         column_names = self.app.column_mapping_store.get_normalized_column_names()
         time_unit = self.app.time_input_unit_var.get().lower()
         return read_behaviour_csv(file_path, column_names, time_unit)
+
+    def _warn_if_behaviour_times_outside_photometry(
+        self, behaviour_dataframe: pd.DataFrame, column_names: dict
+    ) -> None:
+        photometry = getattr(self.app, "dataframe", None)
+        if photometry is None or photometry.empty:
+            return
+
+        photometry_times_min = pd.to_numeric(
+            photometry.iloc[:, 0], errors="coerce"
+        ).dropna()
+        if photometry_times_min.empty:
+            return
+
+        try:
+            synchronize_start_time = float(
+                self.app.behaviour_event_input_frame.synchronize_start_time_entry.get()
+            )
+        except (TypeError, ValueError):
+            return
+
+        photometry_start_seconds = float(photometry_times_min.min()) * 60
+        photometry_end_seconds = float(photometry_times_min.max()) * 60
+        out_of_range = find_out_of_range_behaviour_times(
+            behaviour_dataframe,
+            column_names,
+            photometry_start_seconds,
+            photometry_end_seconds,
+            synchronize_start_time,
+        )
+        if out_of_range is None:
+            return
+
+        behaviour_start, behaviour_end = out_of_range
+        QMessageBox.warning(
+            self.app,
+            "Behaviour time range check",
+            (
+                "Some behaviour timestamps fall outside the loaded photometry "
+                f"range ({photometry_start_seconds:.1f}–{photometry_end_seconds:.1f} s). "
+                f"The imported behaviour range is {behaviour_start:.1f}–"
+                f"{behaviour_end:.1f} s.\n\n"
+                "Double-check the behaviour time unit (seconds vs minutes) "
+                "and the Video Coding Start Time (s) before continuing."
+            ),
+        )
 
     def process_each_row(self, df, column_names, behaviour_settings, file_path):
         synchronize_start_time = float(

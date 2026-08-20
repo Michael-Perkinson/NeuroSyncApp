@@ -2,9 +2,14 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
+import matplotlib.image as mpimg
+import numpy as np
 import pytest
+from matplotlib.figure import Figure
 
+from src.features.behaviour_alignment.services.plot_service import save_image
 from src.gui.framework.graph_plotter import build_save_path
 
 
@@ -212,3 +217,44 @@ class TestBuildSavePath:
         filename = Path(output_path).name
         assert filename.startswith("M001_Plot")
         assert filename.endswith(".png")
+
+
+def test_behaviour_save_image_can_save_the_same_live_plot_twice(tmp_path):
+    class Value:
+        def __init__(self, value):
+            self.value = value
+
+        def get(self):
+            return self.value
+
+    figure = Figure()
+    axis = figure.add_subplot(111)
+    axis.plot([0, 1], [0, 1])
+    app = SimpleNamespace(
+        fig=figure,
+        file_path_var=Value(str(tmp_path / "mouse.csv")),
+        mouse_name="mouse_A",
+        date="26-08-20",
+        figure_display_dropdown=Value("Full Trace Display"),
+        behaviour_choice_graph=Value(""),
+        export_options_container=SimpleNamespace(
+            height_entry=Value(""),
+            width_entry=Value(""),
+            image_format_combobox=Value("PNG"),
+            dpi_entry=Value("300"),
+            font_settings={},
+        ),
+    )
+
+    save_image(app)
+    save_image(app)
+
+    output_directory = tmp_path / "exported_images_mouse_A_26-08-20"
+    outputs = sorted(output_directory.glob("*.png"))
+    assert len(outputs) == 2
+    assert all(path.stat().st_size > 0 for path in outputs)
+
+    image = mpimg.imread(outputs[0])
+    assert image.shape[-1] == 4
+    assert np.allclose(image[..., 3], 1.0)
+    assert np.allclose(image[0, 0, :3], 1.0)

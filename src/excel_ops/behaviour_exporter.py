@@ -286,7 +286,7 @@ def prepare_combined_data(df_summary: pd.DataFrame) -> list[pd.DataFrame]:
 def build_output_file_name(
     file_path: str,
     folder_path: str,
-    selected_column: str,
+    selected_column: str | list[str],
     checkbox_state: bool,
     baseline_start: str = "",
 ) -> str:
@@ -299,14 +299,16 @@ def build_output_file_name(
     folder_path:
         Output directory.
     selected_column:
-        Signal column name appended to the stem.
+        Signal column name, or selected signal columns in display order,
+        appended to the stem.
     checkbox_state:
         If ``True``, ``_baseline_<baseline_start>`` is appended.
     baseline_start:
         Raw string from the baseline-start entry widget (used verbatim).
     """
     stem = Path(file_path).stem
-    name = f"{stem}_{selected_column}"
+    signal_suffix = _selected_signal_suffix(selected_column, checkbox_state)
+    name = f"{stem}_{signal_suffix}" if signal_suffix else stem
     if checkbox_state:
         name += f"_baseline_{baseline_start}"
     return str(Path(folder_path) / f"{name}.xlsx")
@@ -315,19 +317,39 @@ def build_output_file_name(
 def build_separate_summary_file_name(
     file_path: str,
     folder_path: str,
-    selected_column: str,
+    selected_column: str | list[str],
     checkbox_state: bool,
     baseline_start: str = "",
     use_binned_data: bool = False,
 ) -> str:
     """Return the full path for a non-combined summary CSV."""
     stem = Path(file_path).stem
-    name = f"{stem}_{selected_column}"
+    signal_suffix = _selected_signal_suffix(selected_column, checkbox_state)
+    name = f"{stem}_{signal_suffix}" if signal_suffix else stem
     if checkbox_state:
         name += f"_baseline_{baseline_start}"
     if use_binned_data:
         name += "_binned"
     return str(Path(folder_path) / f"{name}_summary.csv")
+
+
+def _selected_signal_suffix(
+    selected_column: str | list[str], checkbox_state: bool = False
+) -> str:
+    """Build a compact filename suffix for one or more selected signals."""
+    columns = [selected_column] if isinstance(selected_column, str) else selected_column
+    columns = [str(column) for column in columns if str(column)]
+    if len(columns) <= 1:
+        return columns[0] if columns else ""
+
+    signal_count = "dual" if len(columns) == 2 else "multi"
+    if checkbox_state:
+        signal_kind = "Z"
+    elif all(column.lower().startswith("dfof") for column in columns):
+        signal_kind = "dfof"
+    else:
+        signal_kind = "signal"
+    return f"{signal_count}_{signal_kind}"
 
 
 # ---------------------------------------------------------------------------
@@ -546,6 +568,31 @@ def bold_behavior_name_rows(ws, behaviours_results: dict) -> None:
                 cell.font = Font(bold=True)
 
 
+def style_signal_section_rows(ws) -> None:
+    """Make multi-signal summary section labels span the visible table width."""
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+    banner_fill = PatternFill(fill_type="solid", fgColor="17324D")
+    banner_font = Font(bold=True, color="FFFFFF", size=12)
+    banner_border = Border(bottom=Side(style="thin", color="17324D"))
+    banner_alignment = Alignment(horizontal="left", vertical="center")
+
+    for row in ws.iter_rows(
+        min_row=1,
+        min_col=1,
+        max_col=ws.max_column,
+        max_row=ws.max_row,
+    ):
+        if not isinstance(row[0].value, str) or not row[0].value.startswith("Signal:"):
+            continue
+        for cell in row:
+            cell.fill = banner_fill
+            cell.font = banner_font
+            cell.border = banner_border
+            cell.alignment = banner_alignment
+        ws.row_dimensions[row[0].row].height = 22
+
+
 def remove_borders(ws) -> None:
     from openpyxl.styles import Border, Side
     no_border = Border(
@@ -574,6 +621,8 @@ def format_excel(output_file_name: str, behaviours_results: dict) -> None:
                 bold_first_column(ws)
                 bold_behavior_name_rows(ws, behaviours_results)
             remove_borders(ws)
+            if sheet_name == "Summary Results":
+                style_signal_section_rows(ws)
         wb.save(output_file_name)
     finally:
         wb.close()

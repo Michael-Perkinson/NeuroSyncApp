@@ -143,10 +143,13 @@ class AlignedBehaviourExporter:
             if self.app.checkbox_state
             else ""
         )
+        selected_columns = self.app.selected_columns_var.get() or [
+            self.app.selected_column_var.get()
+        ]
         return build_output_file_name(
             file_path,
             folder_path,
-            self.app.selected_column_var.get(),
+            selected_columns,
             self.app.checkbox_state,
             baseline_start,
         )

@@ -94,8 +94,22 @@ def build_save_path(
 
 
 def save_figure(fig, output_path: str | Path, fmt: str, dpi: int) -> None:
-    """Save and close a figure."""
+    """Save a figure on an opaque white canvas and close it."""
     import matplotlib.pyplot as plt
 
-    fig.savefig(str(output_path), transparent=True, format=fmt, dpi=dpi)
-    plt.close(fig)
+    try:
+        fig.patch.set_facecolor("white")
+        fig.patch.set_alpha(1.0)
+        for axis in fig.axes:
+            axis.set_facecolor("white")
+            axis.patch.set_alpha(1.0)
+        fig.savefig(
+            str(output_path),
+            transparent=False,
+            facecolor="white",
+            edgecolor="white",
+            format=fmt,
+            dpi=dpi,
+        )
+    finally:
+        plt.close(fig)

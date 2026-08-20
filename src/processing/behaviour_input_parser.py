@@ -99,6 +99,37 @@ def read_behaviour_csv(
     return df, column_names
 
 
+def find_out_of_range_behaviour_times(
+    dataframe: pd.DataFrame,
+    column_names: dict,
+    photometry_start_seconds: float,
+    photometry_end_seconds: float,
+    synchronize_start_time: float = 0.0,
+) -> tuple[float, float] | None:
+    """Return the shifted behaviour time range when it exceeds photometry.
+
+    Behaviour CSV timestamps are normalized to seconds before this check.
+    Missing end times (point events) are ignored, while valid start and end
+    values are shifted by the video-coding synchronization offset.
+    """
+    times: list[float] = []
+    for logical_name in ("Start Time", "End Time"):
+        column = column_names.get(logical_name)
+        if not column or column not in dataframe.columns:
+            continue
+        values = pd.to_numeric(dataframe[column], errors="coerce").dropna()
+        times.extend(float(value) for value in values)
+
+    if not times:
+        return None
+
+    minimum = min(times) + float(synchronize_start_time)
+    maximum = max(times) + float(synchronize_start_time)
+    if minimum < photometry_start_seconds or maximum > photometry_end_seconds:
+        return minimum, maximum
+    return None
+
+
 def get_behaviour_name(row: pd.Series, column_names: dict) -> str:
     """Extract and clean the behaviour name from a DataFrame row."""
     raw = row[column_names["Behaviours/events"]]

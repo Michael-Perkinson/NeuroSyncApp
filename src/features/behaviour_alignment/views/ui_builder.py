@@ -14,7 +14,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.features.behaviour_alignment.services.plot_service import _selected_columns
+from src.features.behaviour_alignment.services.plot_service import (
+    _column_colors,
+    _column_sem_colors,
+    _selected_columns,
+)
 from src.gui.framework.qt_view_styles import panel_stylesheet
 from src.gui.framework.tk_compat_controls import ComboBoxControl, ObservableValue
 from src.gui.views.export_options_panel import ExportOptionsPanel
@@ -25,6 +29,14 @@ def _trace_colour_control_labels(columns: list[str]) -> tuple[str, str]:
     """Return trace/SEM control labels for the first selected signal."""
     primary = columns[0] if columns else "Primary"
     return f"{primary} Trace Colour:", f"{primary} SEM Colour:"
+
+
+def _colour_control_labels(columns: list[str]) -> list[tuple[str, str]]:
+    """Return trace/SEM labels grouped in selected-signal order."""
+    return [
+        (f"{column} Trace Colour:", f"{column} SEM Colour:")
+        for column in columns
+    ]
 
 
 class BehaviourUiBuilder:
@@ -168,9 +180,9 @@ class BehaviourUiBuilder:
     def open_trace_colors_popup(self) -> None:
         """Open a colour-picker popup, one row per currently selected column.
 
-        The primary column keeps its existing separate trace/SEM colours;
-        every additional ticked column gets its own single swatch (used for
-        both its trace line and SEM band).
+        Each selected column gets separate trace and SEM controls, grouped
+        together so the relationship between a line and its uncertainty band
+        is obvious.
         """
         popup = QDialog(self.app.graph_canvas)
         popup.setWindowTitle("Trace Colours")
@@ -179,46 +191,58 @@ class BehaviourUiBuilder:
         layout.setVerticalSpacing(8)
 
         selected_columns = _selected_columns(self.app)
-        trace_label, sem_label = _trace_colour_control_labels(selected_columns)
-
+        labels = _colour_control_labels(selected_columns)
+        trace_colors = _column_colors(self.app, selected_columns)
+        sem_colors = _column_sem_colors(self.app, selected_columns)
         row = 0
-        layout.addWidget(QLabel(trace_label, popup), row, 0)
-        primary_trace_button = QPushButton(popup)
-        self._style_color_button(
-            primary_trace_button, self.app.settings_manager.selected_trace_color
-        )
-        primary_trace_button.clicked.connect(
-            lambda: self._pick_color(
-                primary_trace_button, self._set_primary_trace_color
-            )
-        )
-        layout.addWidget(primary_trace_button, row, 1)
-        row += 1
+        for index, column in enumerate(selected_columns):
+            trace_label, sem_label = labels[index]
+            is_primary = index == 0
 
-        layout.addWidget(QLabel(sem_label, popup), row, 0)
-        primary_sem_button = QPushButton(popup)
-        self._style_color_button(
-            primary_sem_button, self.app.settings_manager.selected_sem_color
-        )
-        primary_sem_button.clicked.connect(
-            lambda: self._pick_color(primary_sem_button, self._set_primary_sem_color)
-        )
-        layout.addWidget(primary_sem_button, row, 1)
-        row += 1
-
-        for column in selected_columns[1:]:
-            layout.addWidget(QLabel(f"{column} Colour:", popup), row, 0)
-            button = QPushButton(popup)
-            current_color = self.app.column_colors.get(
-                column, self.app.settings_manager.selected_trace_color
+            layout.addWidget(QLabel(trace_label, popup), row, 0)
+            trace_button = QPushButton(popup)
+            trace_color = (
+                self.app.settings_manager.selected_trace_color
+                if is_primary
+                else trace_colors[index]
             )
-            self._style_color_button(button, current_color)
-            button.clicked.connect(
-                lambda _checked=False, col=column, btn=button: self._pick_color(
-                    btn, lambda color: self.app.column_colors.update({col: color})
+            self._style_color_button(trace_button, trace_color)
+            trace_setter = (
+                self._set_primary_trace_color
+                if is_primary
+                else lambda color, col=column: self.app.column_colors.update(
+                    {col: color}
                 )
             )
-            layout.addWidget(button, row, 1)
+            trace_button.clicked.connect(
+                lambda _checked=False, btn=trace_button, setter=trace_setter: self._pick_color(
+                    btn, setter
+                )
+            )
+            layout.addWidget(trace_button, row, 1)
+            row += 1
+
+            layout.addWidget(QLabel(sem_label, popup), row, 0)
+            sem_button = QPushButton(popup)
+            sem_color = (
+                self.app.settings_manager.selected_sem_color
+                if is_primary
+                else sem_colors[index]
+            )
+            self._style_color_button(sem_button, sem_color)
+            sem_setter = (
+                self._set_primary_sem_color
+                if is_primary
+                else lambda color, col=column: self.app.column_sem_colors.update(
+                    {col: color}
+                )
+            )
+            sem_button.clicked.connect(
+                lambda _checked=False, btn=sem_button, setter=sem_setter: self._pick_color(
+                    btn, setter
+                )
+            )
+            layout.addWidget(sem_button, row, 1)
             row += 1
 
         close_button = QPushButton("Close", popup)

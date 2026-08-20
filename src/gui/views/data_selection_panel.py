@@ -163,14 +163,16 @@ class DataSelectionPanel(QFrame):
 
         baseline_layout.addWidget(QLabel("Start Time (s):", self.baseline_note_frame))
         self.baseline_start_entry = LineEditControl(parent=self.baseline_note_frame)
-        self.baseline_start_entry.setMaximumWidth(90)
+        self.baseline_start_entry.setFixedWidth(110)
+        self.baseline_start_entry.setFixedHeight(30)
         self.baseline_start_entry.configure(state="disabled")
         self.baseline_start_entry.bind("<KeyRelease>", self.reset_baseline_button_state)
         baseline_layout.addWidget(self.baseline_start_entry)
 
         baseline_layout.addWidget(QLabel("End Time (s):", self.baseline_note_frame))
         self.baseline_end_entry = LineEditControl(parent=self.baseline_note_frame)
-        self.baseline_end_entry.setMaximumWidth(90)
+        self.baseline_end_entry.setFixedWidth(110)
+        self.baseline_end_entry.setFixedHeight(30)
         self.baseline_end_entry.configure(state="disabled")
         self.baseline_end_entry.bind("<KeyRelease>", self.reset_baseline_button_state)
         baseline_layout.addWidget(self.baseline_end_entry)

@@ -29,6 +29,8 @@ def create_styled_figure() -> tuple[Figure, object]:
     ax = fig.add_subplot(111)
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
     return fig, ax
 
 
