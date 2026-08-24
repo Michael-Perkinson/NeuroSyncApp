@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, time
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,7 @@ from src.processing.telemetry_processing import (
     _parse_clock_time,
     _resolve_sheet_name,
     align_and_concatenate_data,
+    bin_data_dynamic,
     calculate_nighttime_periods,
     compute_photometry_mean,
     create_linear_time_index,
@@ -22,6 +24,7 @@ from src.processing.telemetry_processing import (
     process_photometry_data,
     upsample_telemetry_data,
 )
+from src.processing.telemetry_recording_io import _extract_sheet_table
 
 
 class TestGetUniversalTimes:
@@ -50,6 +53,14 @@ class TestAlignAndConcatenateData:
         result = align_and_concatenate_data([], np.array([0.0, 1.0, 2.0]))
         assert list(result.columns) == ["Time (s)"]
 
+    def test_empty_time_axis_returns_time_column_only(self):
+        df = self._make_frame([0.0], [10.0], "C1")
+
+        result = align_and_concatenate_data([df], np.array([]))
+
+        assert result.empty
+        assert list(result.columns) == ["Time (s)"]
+
     def test_frame_without_time_min_column_is_skipped(self):
         df = pd.DataFrame({"Other": [1.0, 2.0], "Data": [3.0, 4.0]})
         result = align_and_concatenate_data([df], np.array([0.0, 1.0]))
@@ -67,6 +78,37 @@ class TestAlignAndConcatenateData:
         result = align_and_concatenate_data([df1, df2], np.array([0.0, 1.0, 2.0]))
         assert "C1" in result.columns
         assert "C2" in result.columns
+
+
+class TestBinDataDynamic:
+    def test_empty_dataframe_returns_empty_binned_result(self):
+        data = pd.DataFrame(columns=["Time (s)", "Mean", "SEM"])
+
+        result = bin_data_dynamic(data, bin_size_sec=10)
+
+        assert result.empty
+        assert result.columns.tolist() == ["Bin Range", "Mean", "SEM"]
+
+
+class TestExtractSheetTable:
+    def test_time_column_without_marker_raises_value_error(self, monkeypatch):
+        worksheet = pd.DataFrame(
+            {
+                "Time": [0.0, 1.0],
+                "TEMP": [36.5, 36.6],
+            }
+        )
+        monkeypatch.setattr(
+            "src.processing.telemetry_recording_io.pd.ExcelFile",
+            lambda _path: SimpleNamespace(sheet_names=["TEMP"]),
+        )
+        monkeypatch.setattr(
+            "src.processing.telemetry_recording_io.pd.read_excel",
+            lambda *_args, **_kwargs: worksheet,
+        )
+
+        with pytest.raises(ValueError, match="Couldn't locate the 'Time' label"):
+            _extract_sheet_table("telemetry.xlsx", "TEMP")
 
 
 class TestComputePhotometryMean:

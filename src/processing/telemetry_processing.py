@@ -82,6 +82,9 @@ def align_and_concatenate_data(
         Concatenated DataFrame with ``'Time (s)'`` as the first column
         followed by one column per input DataFrame (named after its cluster).
     """
+    if len(universal_time_axis) == 0:
+        return pd.DataFrame(columns=["Time (s)"])
+
     aligned_data = []
     min_length_after_alignment = float("inf")
 
@@ -243,6 +246,9 @@ def bin_data_dynamic(data: pd.DataFrame, bin_size_sec: int) -> pd.DataFrame:
     pd.DataFrame
         Columns: ``'Bin Range'``, ``'Mean'``, ``'SEM'``.
     """
+    if data.empty:
+        return pd.DataFrame(columns=["Bin Range", "Mean", "SEM"])
+
     time_col = data.columns[0]
 
     bin_edges = list(

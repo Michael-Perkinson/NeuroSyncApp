@@ -917,17 +917,20 @@ class TelemetryPlotService:
         cluster_indices = list(self.app.cluster_dict.keys())[cluster_number - 1]
         start_index, end_index, _ = cluster_indices
 
-        original_start_time = self.app.time_column[start_index]
-        original_end_time = self.app.time_column[end_index]
+        time_column = self.app.time_column.reset_index(drop=True)
+        data_column = self.app.data_column.reset_index(drop=True)
+        original_start_time = time_column.iloc[start_index]
+        original_end_time = time_column.iloc[min(end_index, len(time_column) - 1)]
 
         adjusted_start_time = max(0, original_start_time - pre_time)
-        adjusted_end_time = min(self.app.time_column.iloc[-1], original_end_time + post_time)
-        adjusted_start_index = (self.app.time_column - adjusted_start_time).abs().idxmin()
-        adjusted_end_index = (self.app.time_column - adjusted_end_time).abs().idxmin()
+        adjusted_end_time = min(time_column.iloc[-1], original_end_time + post_time)
+        adjusted_start_index = (time_column - adjusted_start_time).abs().idxmin()
+        adjusted_end_index = (time_column - adjusted_end_time).abs().idxmin()
 
-        time_column = self.app.time_column.iloc[adjusted_start_index:adjusted_end_index]
-        data_column = self.app.data_column.iloc[adjusted_start_index:adjusted_end_index]
-        return time_column, data_column
+        return (
+            time_column.iloc[adjusted_start_index : adjusted_end_index + 1],
+            data_column.iloc[adjusted_start_index : adjusted_end_index + 1],
+        )
 
     def visualize_photometry_data_with_overlays(
         self,

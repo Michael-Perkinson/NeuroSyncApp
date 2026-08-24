@@ -252,7 +252,10 @@ def _extract_sheet_table(file_path: str | Path, sheet_name: str) -> pd.DataFrame
             raise ValueError("Couldn't locate the 'Time' label in the data.")
         start_data_index = time_label_row.index[0] + 1
     else:
-        start_data_index = data[data["Time"] == "Time"].index[0] + 1
+        time_label_row = data[data["Time"] == "Time"]
+        if time_label_row.empty:
+            raise ValueError("Couldn't locate the 'Time' label in the data.")
+        start_data_index = time_label_row.index[0] + 1
 
     data = data.iloc[start_data_index:]
     data.columns = [str(col).upper() for col in data.columns]

@@ -283,6 +283,9 @@ class TelemetryAssociatedFileLocator:
         else:
             raise ValueError(f"Unsupported file extension: {file_extension}")
 
+        if stim_data_df.empty:
+            raise ValueError("Optogenetics file contains no stimulation records.")
+
         if hasattr(self.app.label_settings_button, "hide"):
             self.app.label_settings_button.hide()
         elif hasattr(self.app.label_settings_button, "grid_remove"):

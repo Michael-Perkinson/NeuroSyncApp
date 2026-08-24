@@ -450,6 +450,20 @@ def test_current_photometry_data_uses_full_trace_baseline_reference():
     assert captured["baseline_reference"].tolist() == [4.0, 4.0, 5.0]
 
 
+def test_single_cluster_display_handles_cluster_that_reaches_eof():
+    app = _App()
+    app.cluster_dict = {(3, 5, 1): {}}
+    app.time_column = pd.Series([0.0, 1.0, 2.0, 3.0, 4.0])
+    app.data_column = pd.Series([0.0, 0.0, 0.0, 5.0, 5.0])
+
+    time_column, data_column = TelemetryPlotService(app).get_single_cluster_data(
+        "Cluster 1"
+    )
+
+    assert time_column.tolist() == [3.0, 4.0]
+    assert data_column.tolist() == [5.0, 5.0]
+
+
 def test_trim_toggle_refresh_rebuilds_cluster_static_data_without_precompute():
     app = _App()
     app.data_type = "photometry"
