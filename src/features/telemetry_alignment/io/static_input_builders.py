@@ -57,7 +57,7 @@ def build_photometry_cluster_entries(
         cluster_name = cluster_data["name"]
 
         start_time = time_column.iloc[start_index]
-        end_time = time_column.iloc[end_index]
+        end_time = time_column.iloc[min(end_index, len(time_column) - 1)]
 
         cluster_base_name = cluster_name.rsplit("_", 1)[0]
         stored_inputs = cluster_settings.get(cluster_base_name)

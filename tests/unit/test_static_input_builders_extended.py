@@ -7,6 +7,7 @@ from src.features.telemetry_alignment.io.static_input_builders import (
     build_opto_cluster_entries,
     build_photometry_cluster_entries,
 )
+from src.processing.cluster_detection import identify_clusters
 
 
 def _minimal_cluster_dict(cluster_name="1 Peak in Cluster_1"):
@@ -98,6 +99,23 @@ class TestBuildPhotometryClusterEntriesStoredValues:
         assert entry["pre_cluster_time"] == "90"
         assert entry["post_cluster_time"] == "120"
         assert entry["bin_size"] == "15"
+
+
+def test_open_photometry_cluster_at_eof_uses_last_time_sample():
+    time_column = _time_column()
+    data_column = pd.Series([0.0, 0.0, 1.0, 2.0, 2.0])
+    _, cluster_dict = identify_clusters(time_column, data_column, peak_indices=[3])
+
+    entries, used_defaults = build_photometry_cluster_entries(
+        cluster_dict,
+        time_column,
+        {"clusters": {}, "stimulations": {}},
+    )
+
+    entry = next(iter(entries.values()))
+    assert used_defaults is True
+    assert entry["start_time"] == 3.0
+    assert entry["end_time"] == 4.0
 
 
 class TestBuildOptoClusterEntriesStoredValues:
