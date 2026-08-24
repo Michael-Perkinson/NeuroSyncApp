@@ -132,6 +132,11 @@ class TelemetryDisplayPresenter:
                 f"Cluster {index + 1}" for index in range(len(self.app.cluster_dict))
             ]
             self.app.cluster_dropdown["values"] = cluster_ids
+            if not cluster_ids:
+                self.app.selected_cluster.set("")
+                self.app.cluster_dropdown.configure(state="disabled")
+                self.app.period_dropdown.configure(state="disabled")
+                return
             self.app.selected_cluster.set(cluster_ids[0])
             self.app.cluster_dropdown.configure(state="normal")
             self.app.period_dropdown.configure(state="disabled")
@@ -258,6 +263,11 @@ class TelemetryDisplayPresenter:
                     "universal_time_axis_temp_min"
                 ]
             )
+
+        if scaled_time_column.empty:
+            plt.close(fig)
+            self.display_no_data_figure()
+            return
 
         ax.set_xlim(scaled_time_column.iloc[0], scaled_time_column.iloc[-1])
         ax.set_xlabel("Time")

@@ -13,6 +13,7 @@ from src.processing.telemetry_processing import (
     _resolve_sheet_name,
     align_and_concatenate_data,
     bin_data_dynamic,
+    calculate_sample_rate,
     calculate_nighttime_periods,
     compute_photometry_mean,
     create_linear_time_index,
@@ -37,6 +38,12 @@ class TestGetUniversalTimes:
         start, end = get_universal_times(5.0, 0.0, 0.0)
         assert start == pytest.approx(5.0)
         assert end == pytest.approx(5.0)
+
+
+class TestCalculateSampleRate:
+    def test_empty_timestamps_raise_clear_value_error(self):
+        with pytest.raises(ValueError, match="positive telemetry sample interval"):
+            calculate_sample_rate([])
 
 
 class TestAlignAndConcatenateData:
@@ -112,6 +119,10 @@ class TestExtractSheetTable:
 
 
 class TestComputePhotometryMean:
+    def test_empty_input_raises_clear_value_error(self):
+        with pytest.raises(ValueError, match="At least one photometry dataframe"):
+            compute_photometry_mean([])
+
     def _make_photometry_df(self, times, values):
         return pd.DataFrame({"Time (min)": times, "dFoF": values})
 

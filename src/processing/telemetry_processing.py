@@ -143,6 +143,9 @@ def compute_photometry_mean(photometry_data_list: list[pd.DataFrame]) -> pd.Data
     pd.DataFrame
         Merged DataFrame with additional ``'Mean'`` and ``'SEM'`` columns.
     """
+    if not photometry_data_list:
+        raise ValueError("At least one photometry dataframe is required.")
+
     all_photometry_data = photometry_data_list[0].copy()
     time_col = all_photometry_data.columns[0]
     all_photometry_data = all_photometry_data.sort_values(by=time_col)
@@ -414,6 +417,9 @@ def calculate_stim_timings(
 
 def calculate_sample_rate(timestamps) -> float:
     """Calculate the mean sample interval from a list of timestamps or floats."""
+    if len(timestamps) == 0:
+        raise ValueError("Could not calculate a positive telemetry sample interval.")
+
     if isinstance(timestamps[0], (datetime, pd.Timestamp, np.datetime64)):
         parsed_timestamps = pd.to_datetime(pd.Series(timestamps), errors="coerce")
         time_diffs = (

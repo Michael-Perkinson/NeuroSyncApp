@@ -555,6 +555,8 @@ class TelemetryPlotService:
         self.app.delete_current_figure()
         scaled_time_column = self.app.scale_time_column(time_column)
         fig, ax = plt.subplots(figsize=(6, 4))
+        if scaled_time_column.empty:
+            return fig, ax, scaled_time_column
 
         time_unit = self.app.graph_settings_container_instance.time_unit_menu.get()
         selected_display = getattr(self.app.selected_display, "get", lambda: "Full Trace Display")()

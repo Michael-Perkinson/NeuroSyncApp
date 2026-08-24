@@ -554,3 +554,65 @@ def test_mean_cluster_display_lazily_computes_selected_cluster():
         "mean_act": "act",
         "photometry_rows": 1,
     }
+
+
+def test_single_cluster_mode_handles_empty_cluster_set():
+    class _Combo(dict):
+        def currentText(self):
+            return "Single Cluster Display"
+
+        def configure(self, **_kwargs):
+            pass
+
+    app = types.SimpleNamespace(
+        display_dropdown=_Combo(),
+        cluster_dropdown=_Combo(),
+        period_dropdown=_Combo(),
+        cluster_dict={},
+        selected_cluster=_Value(""),
+        selected_display=_Value(""),
+        selected_period=_Value(""),
+    )
+
+    TelemetryDisplayPresenter(app).on_cluster_display_selection_changed(None)
+
+    assert app.cluster_dropdown["values"] == []
+
+
+def test_mean_cluster_plot_handles_empty_photometry_axis():
+    app = types.SimpleNamespace(
+        data_type="photometry",
+        delete_current_figure=lambda: None,
+        scale_time_column=lambda values: pd.Series(values).reset_index(drop=True),
+    )
+    no_data = []
+    presenter = TelemetryDisplayPresenter(app)
+    presenter.display_no_data_figure = lambda: no_data.append(True)
+
+    presenter.plot_mean_cluster(
+        None,
+        None,
+        pd.DataFrame({"Time (min)": pd.Series(dtype=float)}),
+    )
+
+    assert no_data == [True]
+
+
+def test_prepare_figure_handles_empty_time_column():
+    app = types.SimpleNamespace(
+        delete_current_figure=lambda: None,
+        scale_time_column=lambda values: pd.Series(values).reset_index(drop=True),
+        graph_settings_container_instance=types.SimpleNamespace(
+            time_unit_menu=_Value("minutes"),
+        ),
+        selected_display=_Value("Full Trace Display"),
+    )
+
+    fig, _ax, scaled_time_column = TelemetryPlotService(app).prepare_figure(
+        pd.Series(dtype=float)
+    )
+
+    try:
+        assert scaled_time_column.empty
+    finally:
+        plt.close(fig)

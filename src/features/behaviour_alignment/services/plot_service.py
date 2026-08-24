@@ -442,6 +442,9 @@ def plot_mean_and_sem_trace(app, ax) -> None:
         post_behaviour_times,
     ) = app.graph_helper_service.fetch_behaviour_data()
 
+    if not behaviour_occurrences or not pre_behaviour_times or not post_behaviour_times:
+        return
+
     start_times = [occurrence[0] for occurrence in behaviour_occurrences]
     end_times = [occurrence[1] for occurrence in behaviour_occurrences]
     start_time_adjusted = -pre_behaviour_times[0]

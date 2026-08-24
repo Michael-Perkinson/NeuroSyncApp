@@ -104,6 +104,11 @@ def build_opto_cluster_entries(
     cluster_count = {}
 
     for cluster_size, timings in stim_timings:
+        if not timings:
+            raise ValueError(
+                f"Stimulation cluster {cluster_size} has no stimulation timings."
+            )
+
         if cluster_size not in cluster_count:
             cluster_count[cluster_size] = 0
         cluster_count[cluster_size] += 1

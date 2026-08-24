@@ -46,6 +46,9 @@ def time_to_seconds(time_input: str | time) -> int:
 
 def check_and_convert_time_column(dataframe: pd.DataFrame, target_unit: str = "minutes") -> pd.DataFrame:
     """Convert the DataFrame's first column to target_unit if it names a recognised time unit."""
+    if dataframe.shape[1] == 0:
+        return dataframe
+
     first_column_title: str = dataframe.columns[0].lower()
 
     for unit, unit_factor in CONVERSION_FACTORS.items():
@@ -64,6 +67,9 @@ def check_and_convert_time_column(dataframe: pd.DataFrame, target_unit: str = "m
 
 def is_time_data(dataframe, subset_size=20, tolerance_ratio=0.9):
     """Checks if the first column represents consistent time data."""
+    if dataframe.shape[1] == 0:
+        return False
+
     first_column = dataframe.iloc[:, 0]
     if pd.api.types.is_numeric_dtype(first_column):
         diffs = first_column.diff().dropna()

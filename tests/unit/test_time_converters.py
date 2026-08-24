@@ -88,6 +88,14 @@ class TestTimeToSeconds:
 
 
 class TestCheckAndConvertTimeColumn:
+    def test_empty_frame_without_columns_is_left_unchanged(self):
+        dataframe = pd.DataFrame()
+
+        result = check_and_convert_time_column(dataframe.copy())
+
+        assert result.empty
+        assert result.columns.tolist() == []
+
     def test_seconds_column_converted_to_minutes(self):
         df = pd.DataFrame({"Time (seconds)": [0, 60, 120], "val": [1, 2, 3]})
         result = check_and_convert_time_column(df.copy(), target_unit="minutes")
@@ -111,6 +119,9 @@ class TestCheckAndConvertTimeColumn:
 
 
 class TestIsTimeData:
+    def test_frame_without_columns_is_not_time_data(self):
+        assert is_time_data(pd.DataFrame()) is False
+
     def test_regular_time_series_detected(self):
         df = pd.DataFrame({"time": np.arange(0, 100, 0.1), "val": 1})
         assert is_time_data(df) is True

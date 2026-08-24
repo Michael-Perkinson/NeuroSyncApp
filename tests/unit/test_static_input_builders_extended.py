@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from src.features.telemetry_alignment.io.static_input_builders import (
     build_opto_cluster_entries,
@@ -190,3 +191,9 @@ class TestBuildOptoClusterEntriesDefaults:
         assert entry["pre_stim_time"] == "60"
         assert entry["post_stim_time"] == "60"
         assert entry["bin_size"] == "10"
+
+    def test_empty_stimulation_timings_raise_clear_value_error(self):
+        with pytest.raises(ValueError, match="no stimulation timings"):
+            build_opto_cluster_entries(
+                [(0, [])], {"clusters": {}, "stimulations": {}}
+            )

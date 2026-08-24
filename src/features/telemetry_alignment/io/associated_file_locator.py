@@ -259,6 +259,8 @@ class TelemetryAssociatedFileLocator:
         self.app.detected_peaks = detected_peaks
         self.app.clusters_final = clusters_final
         self.app.grouped_clusters = grouped_clusters
+        if time_column.empty or data_column.empty:
+            raise ValueError("Photometry file contains no photometry samples.")
         self.app.duration_main_data = time_column.iloc[-1] - time_column.iloc[0]
 
         self.app.plot_service.visualize_photometry_data_with_overlays(

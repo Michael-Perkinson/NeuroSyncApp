@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import types
 
+import pandas as pd
 import pytest
 
 from src.features.telemetry_alignment.io.associated_file_locator import (
@@ -50,3 +51,22 @@ def test_empty_opto_metadata_file_reports_missing_stimulation_records(tmp_path):
 
     with pytest.raises(ValueError, match="no stimulation records"):
         TelemetryAssociatedFileLocator(app).handle_opto_data_file()
+
+
+def test_empty_photometry_trace_reports_missing_samples():
+    app = types.SimpleNamespace(
+        update_column_headings=lambda: None,
+        plot_service=types.SimpleNamespace(
+            precalculate_data_versions=lambda: None,
+            get_current_photometry_data=lambda: (
+                pd.Series(dtype=float),
+                pd.Series(dtype=float),
+                [],
+                [],
+                {},
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="no photometry samples"):
+        TelemetryAssociatedFileLocator(app).process_photometry_data_file()
