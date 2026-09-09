@@ -207,6 +207,12 @@ class TestComputeZScore:
         result = compute_z_score(df, "Signal", 0.0, 1.5)
         assert len(result) == 4
 
+    def test_rejects_baseline_without_samples(self):
+        df = pd.DataFrame({"Time": [0.0, 1.0, 2.0], "Signal": [1.0, 2.0, 3.0]})
+
+        with pytest.raises(ValueError, match="contains no signal samples"):
+            compute_z_score(df, "Signal", 10.0, 11.0)
+
 
 class TestComputeFullTraceZScore:
     def test_returns_zscore_and_population_statistics(self):

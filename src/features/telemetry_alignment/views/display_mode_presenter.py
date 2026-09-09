@@ -367,8 +367,18 @@ class TelemetryDisplayPresenter:
         post_time = float(cluster_data["post_cluster_time"]) / 60
 
         adjusted_start_time = max(0, original_start_time - pre_time)
-        adjusted_end_time = min(
-            self.app.temp_data["Time (min)"].max(), original_end_time + post_time
+        telemetry_end_times = [
+            telemetry_data["Time (min)"].max()
+            for telemetry_data in (self.app.temp_data, self.app.act_data)
+            if telemetry_data is not None
+            and not telemetry_data.empty
+            and "Time (min)" in telemetry_data
+        ]
+        requested_end_time = original_end_time + post_time
+        adjusted_end_time = (
+            min(max(telemetry_end_times), requested_end_time)
+            if telemetry_end_times
+            else requested_end_time
         )
 
         time_column, data_column = self.app.plot_service.get_single_cluster_data(

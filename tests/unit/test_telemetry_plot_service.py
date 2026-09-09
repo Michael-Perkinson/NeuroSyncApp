@@ -579,6 +579,48 @@ def test_single_cluster_mode_handles_empty_cluster_set():
     assert app.cluster_dropdown["values"] == []
 
 
+def test_single_cluster_display_supports_activity_without_temperature():
+    embedded = []
+    figure, axis = plt.subplots()
+    app = types.SimpleNamespace(
+        delete_current_figure=lambda: None,
+        file_path_var=_Value("record.csv"),
+        data_dict={
+            "record.csv": {
+                "1 Peak in Cluster_1": {
+                    "start_time": 1.0,
+                    "end_time": 2.0,
+                    "pre_cluster_time": "6",
+                    "post_cluster_time": "12",
+                }
+            }
+        },
+        temp_data=None,
+        act_data=pd.DataFrame({"Time (min)": [0.0, 1.0, 2.0], "Data": [1.0, 2.0, 3.0]}),
+        plot_service=types.SimpleNamespace(
+            get_single_cluster_data=lambda *_args: (
+                pd.Series([0.0, 1.0]),
+                pd.Series([1.0, 2.0]),
+            ),
+            prepare_figure=lambda *_args, **_kwargs: (figure, axis, pd.Series([0.0, 1.0])),
+            create_photometry_figure=lambda *_args, **_kwargs: None,
+            overlay_act_on_figure=lambda *_args, **_kwargs: None,
+        ),
+        graph_settings_container_instance=types.SimpleNamespace(
+            temperature_data_var=_Value(False),
+            activity_data_var=_Value(True),
+        ),
+        embed_figure_in_canvas=lambda fig, _canvas: embedded.append(fig),
+        graph_canvas=None,
+    )
+
+    try:
+        TelemetryDisplayPresenter(app).visualize_single_cluster("Cluster 1")
+        assert embedded == [figure]
+    finally:
+        plt.close(figure)
+
+
 def test_mean_cluster_plot_handles_empty_photometry_axis():
     app = types.SimpleNamespace(
         data_type="photometry",
@@ -614,5 +656,70 @@ def test_prepare_figure_handles_empty_time_column():
 
     try:
         assert scaled_time_column.empty
+    finally:
+        plt.close(fig)
+
+
+def test_prepare_figure_scales_nighttime_shading_with_display_units():
+    app = types.SimpleNamespace(
+        delete_current_figure=lambda: None,
+        scale_time_column=lambda values: pd.Series(values) * 60,
+        get_time_scale=lambda unit: {"minutes": 1.0, "seconds": 60.0, "hours": 1 / 60}.get(unit, 1.0),
+        graph_settings_container_instance=types.SimpleNamespace(
+            time_unit_menu=_Value("seconds"),
+            remove_first_60_minutes_var=_Value(False),
+        ),
+        selected_display=_Value("Full Trace Display"),
+        nighttime_periods=[],
+        temp_and_act_start_time_var=_Value("00:00:00"),
+        start_time_timedelta=None,
+        date="24-01-01",
+        data_type="photometry",
+    )
+    app.nighttime_periods = []
+    app.nighttime_periods = [(pd.Timestamp("01:00:00").time(), pd.Timestamp("02:00:00").time())]
+
+    fig, ax, scaled_time_column = TelemetryPlotService(app).prepare_figure(
+        pd.Series([0.0, 120.0]), show_nighttime=True
+    )
+
+    try:
+        assert scaled_time_column.tolist() == [0.0, 7200.0]
+        assert len(ax.patches) == 1
+        vertices = ax.patches[0].get_xy()
+        assert vertices[0][0] == 3600.0
+        assert vertices[2][0] == 7200.0
+    finally:
+        plt.close(fig)
+
+
+def test_prepare_figure_keeps_nighttime_shading_in_minutes_for_time_of_day():
+    app = types.SimpleNamespace(
+        delete_current_figure=lambda: None,
+        scale_time_column=lambda values: pd.Series(values),
+        get_time_scale=lambda unit: None if unit == "time of day" else 1.0,
+        graph_settings_container_instance=types.SimpleNamespace(
+            time_unit_menu=_Value("time of day"),
+            remove_first_60_minutes_var=_Value(False),
+        ),
+        selected_display=_Value("Full Trace Display"),
+        nighttime_periods=[
+            (pd.Timestamp("01:00:00").time(), pd.Timestamp("02:00:00").time())
+        ],
+        temp_and_act_start_time_var=_Value("00:00:00"),
+        start_time_timedelta=None,
+        date="24-01-01",
+        data_type="photometry",
+    )
+
+    fig, ax, _scaled_time_column = TelemetryPlotService(app).prepare_figure(
+        pd.Series([0.0, 120.0]), show_nighttime=True
+    )
+
+    try:
+        assert len(ax.patches) == 1
+        vertices = ax.patches[0].get_xy()
+        assert vertices[0][0] == 60.0
+        assert vertices[2][0] == 120.0
     finally:
         plt.close(fig)

@@ -96,6 +96,15 @@ class TestBinDataDynamic:
         assert result.empty
         assert result.columns.tolist() == ["Bin Range", "Mean", "SEM"]
 
+    def test_single_row_returns_one_bin(self):
+        data = pd.DataFrame({"Time (s)": [0.0], "Mean": [1.0], "SEM": [0.0]})
+
+        result = bin_data_dynamic(data, bin_size_sec=10)
+
+        assert result.to_dict("records") == [
+            {"Bin Range": "0 - 10", "Mean": 1.0, "SEM": 0.0}
+        ]
+
 
 class TestExtractSheetTable:
     def test_time_column_without_marker_raises_value_error(self, monkeypatch):
@@ -317,6 +326,21 @@ class TestExtractAndTrimData:
         df = self._make_df()
         result = extract_and_trim_data(df, "08:00:00", 0.0, 2.0, 60.0)
         assert "Time (min)" in result.columns
+
+    def test_fractional_offset_preserves_requested_sample_count(self):
+        df = pd.DataFrame(
+            {
+                "Date Time": pd.date_range(
+                    "2023-06-15 08:00:00", periods=1000, freq="100ms"
+                ),
+                "Data": range(1000),
+            }
+        )
+
+        result = extract_and_trim_data(df, "08:00:00", 0.001, 1.0, 0.1)
+
+        assert len(result) == 600
+        assert result["Data"].iloc[[0, -1]].tolist() == [1, 600]
 
 
 class TestExtractDataWithBuffer:

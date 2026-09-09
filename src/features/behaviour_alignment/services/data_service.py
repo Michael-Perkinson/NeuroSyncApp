@@ -71,6 +71,18 @@ class BehaviourDataService:
             )
             return None
 
+        time_column = self.app.dataframe.iloc[:, 0]
+        baseline_mask = (time_column >= current_baseline_start) & (
+            time_column < current_baseline_end
+        )
+        if not baseline_mask.any():
+            QMessageBox.warning(
+                self.app,
+                "Baseline is outside the recording",
+                "The baseline range must overlap the loaded recording.",
+            )
+            return None
+
         if (
             self.app.z_score_computed
             and self.app.previous_baseline_start == current_baseline_start

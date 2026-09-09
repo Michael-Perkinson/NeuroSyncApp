@@ -68,6 +68,11 @@ class TelemetryPlotService:
         if not getattr(self.app, "nighttime_periods", None):
             return
 
+        time_unit = self.app.graph_settings_container_instance.time_unit_menu.get()
+        time_factor = self.app.get_time_scale(time_unit)
+        if time_factor is None:
+            time_factor = 1.0
+
         start_time_value = self._get_recording_start_time_str()
         parsed_start_time = pd.to_datetime(
             start_time_value, format="%H:%M:%S", errors="coerce"
@@ -78,6 +83,7 @@ class TelemetryPlotService:
         start_time = parsed_start_time.time()
         recording_date = datetime.strptime(self.app.date, "%y-%m-%d").date()
         display_offset_minutes = self._get_display_time_offset_minutes()
+        display_time_column = time_column * time_factor
 
         for night_start_time, night_end_time in self.app.nighttime_periods:
             night_start_datetime = datetime.combine(recording_date, night_start_time)
@@ -93,14 +99,16 @@ class TelemetryPlotService:
                 night_end_datetime - datetime.combine(recording_date, start_time)
             ).total_seconds() / 60 - display_offset_minutes
 
-            if night_end_minutes < time_column.iloc[0]:
+            night_start_display = night_start_minutes * time_factor
+            night_end_display = night_end_minutes * time_factor
+            if night_end_display < display_time_column.iloc[0]:
                 continue
-            night_start_minutes = max(night_start_minutes, time_column.iloc[0])
-            night_end_minutes = min(night_end_minutes, time_column.iloc[-1])
-            if night_start_minutes <= time_column.iloc[-1]:
+            night_start_display = max(night_start_display, display_time_column.iloc[0])
+            night_end_display = min(night_end_display, display_time_column.iloc[-1])
+            if night_start_display <= display_time_column.iloc[-1]:
                 ax.axvspan(
-                    night_start_minutes,
-                    night_end_minutes,
+                    night_start_display,
+                    night_end_display,
                     color="gray",
                     alpha=0.3,
                     label="Nighttime",
@@ -613,7 +621,7 @@ class TelemetryPlotService:
             )
 
         if show_nighttime:
-            self.add_nighttime_shading_to_plot(ax, scaled_time_column)
+            self.add_nighttime_shading_to_plot(ax, time_column)
 
         ax.plot(
             scaled_time_column.iloc[peak_indices],

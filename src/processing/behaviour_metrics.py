@@ -285,6 +285,9 @@ def compute_z_score(
     baseline_data = dataframe.loc[baseline_mask, selected_column].reset_index(drop=True)
     raw_data = dataframe.loc[post_mask, selected_column].reset_index(drop=True)
 
+    if baseline_data.empty:
+        raise ValueError("The z-score baseline window contains no signal samples.")
+
     baseline_mean = float(np.mean(baseline_data))
     baseline_std = float(np.std(baseline_data))
     if baseline_std == 0:

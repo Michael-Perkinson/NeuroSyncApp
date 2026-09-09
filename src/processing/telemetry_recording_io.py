@@ -342,10 +342,11 @@ def extract_and_trim_data(
         )
 
     start_index = dataframe.index.get_loc(matching_rows.index[0])
-    num_data_points = int(((duration + offset) * 60) / sample_rate)
+    rows_to_trim = int(np.ceil((offset * 60) / sample_rate))
+    requested_data_points = int(np.ceil((duration * 60) / sample_rate))
+    num_data_points = rows_to_trim + requested_data_points
     extracted_data = dataframe.iloc[start_index : start_index + num_data_points]
 
-    rows_to_trim = int(np.ceil((offset * 60) / sample_rate))
     trimmed_df = extracted_data.iloc[rows_to_trim:].copy()
     trimmed_df["Time (min)"] = [(i * (sample_rate / 60)) for i in range(len(trimmed_df))]
     return trimmed_df

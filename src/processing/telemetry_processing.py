@@ -257,6 +257,8 @@ def bin_data_dynamic(data: pd.DataFrame, bin_size_sec: int) -> pd.DataFrame:
     bin_edges = list(
         _float_range(data[time_col].iloc[0], data[time_col].iloc[-1] + bin_size_sec, bin_size_sec)
     )
+    if len(bin_edges) == 1:
+        bin_edges.append(bin_edges[0] + bin_size_sec)
 
     if (bin_edges[-1] - bin_edges[-2]) < bin_size_sec:
         bin_edges.pop(-1)
