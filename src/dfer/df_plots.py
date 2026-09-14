@@ -8,6 +8,7 @@ from matplotlib.figure import Figure
 
 from .bokeh_html_plots import render_html
 from .df_common import set_axis_labels
+from .pfer_detection import signal_specs
 
 # ---------------------------------------------------------------------------
 # Matplotlib inline figures (used by the Qt UI for in-app display)
@@ -134,40 +135,40 @@ def mpl_pfer_figure(dfer_csv: str, stats_csv: str) -> Figure:
     dfer_df = pd.read_csv(dfer_csv, index_col=False)
     dfer_df.columns = [str(c).strip().lstrip("#").strip() for c in dfer_df.columns]
     t_min = dfer_df["t_min"].to_numpy(dtype=float)
-    is_dual = "dFoF_470" in dfer_df.columns
+    paths = [path.strip() for path in str(stats_csv).splitlines() if path.strip()]
+    if not paths:
+        raise ValueError("At least one PFer statistics CSV is required.")
+    _, specs = signal_specs(dfer_df)
+    if len(paths) > len(specs):
+        raise ValueError("PFer statistics files do not match the DFer result channels.")
 
-    stats_df = pd.read_csv(stats_csv, index_col=False)
-    stats_df.columns = [str(c).strip().lstrip("#").strip() for c in stats_df.columns]
+    fig = Figure(figsize=(12, 4 * len(paths)), tight_layout=True)
+    for index, stats_path in enumerate(paths):
+        stats_df = pd.read_csv(stats_path, index_col=False)
+        stats_df.columns = [str(c).strip().lstrip("#").strip() for c in stats_df.columns]
+        spec = specs[index]
+        signal_col = spec["signal_col"]
+        color = spec["color"]
+        label = f"{spec['name']}nm dF/F"
 
-    if is_dual:
-        signal_col = "dFoF_470" if "dFoF_470" in dfer_df.columns else "dFoF_560"
-        color = "green" if signal_col == "dFoF_470" else "red"
-        label = "470nm dF/F" if signal_col == "dFoF_470" else "560nm dF/F"
-    else:
-        signal_col = "dFoF_465"
-        color = "green"
-        label = "465nm dF/F"
+        trace = dfer_df[signal_col].to_numpy(dtype=float)
 
-    trace = dfer_df[signal_col].to_numpy(dtype=float) if signal_col in dfer_df.columns else None
+        ax = fig.add_subplot(len(paths), 1, index + 1)
 
-    fig = Figure(figsize=(12, 4), tight_layout=True)
-    ax = fig.add_subplot(1, 1, 1)
-
-    if trace is not None:
         ax.plot(t_min, trace, color=color, linewidth=0.6, label=label)
 
-    if "peak_time_min" in stats_df.columns and "peak_amplitude" in stats_df.columns:
-        peak_t = stats_df["peak_time_min"].to_numpy(dtype=float)
-        peak_a = stats_df["peak_amplitude"].to_numpy(dtype=float)
-        trough_t = stats_df["trough_time_min"].to_numpy(dtype=float)
-        trough_a = stats_df["trough_amplitude"].to_numpy(dtype=float)
-        ax.scatter(peak_t, peak_a, marker="v", color="red", s=40, zorder=5, label="peaks")
-        ax.scatter(trough_t, trough_a, marker="^", color="black", s=30, zorder=5, label="troughs")
+        if "peak_time_min" in stats_df.columns and "peak_amplitude" in stats_df.columns:
+            peak_t = stats_df["peak_time_min"].to_numpy(dtype=float)
+            peak_a = stats_df["peak_amplitude"].to_numpy(dtype=float)
+            trough_t = stats_df["trough_time_min"].to_numpy(dtype=float)
+            trough_a = stats_df["trough_amplitude"].to_numpy(dtype=float)
+            ax.scatter(peak_t, peak_a, marker="v", color="red", s=40, zorder=5, label="peaks")
+            ax.scatter(trough_t, trough_a, marker="^", color="black", s=30, zorder=5, label="troughs")
 
-    ax.set_xlabel("Time (min)")
-    ax.set_ylabel("dF/F")
-    ax.set_title(f"Detected peaks — {Path(stats_csv).stem}")
-    ax.legend(fontsize=8, loc="upper right")
+        ax.set_xlabel("Time (min)")
+        ax.set_ylabel("dF/F")
+        ax.set_title(f"Detected peaks — {Path(stats_path).stem}")
+        ax.legend(fontsize=8, loc="upper right")
     return fig
 
 

@@ -108,7 +108,6 @@ def run_pfer(
     for spec in specs:
         signal_name = spec["name"]
         signal_trace = df[spec["signal_col"]].to_numpy(dtype=float)
-        signal_trace = signal_trace - np.percentile(signal_trace, 2)
 
         baseline_source = df[spec["baseline_col"]].to_numpy(dtype=float)
         baseline_source = baseline_source - np.percentile(baseline_source, 2)

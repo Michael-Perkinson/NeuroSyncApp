@@ -36,10 +36,10 @@ class PFerResult(TypedDict):
 
 
 def baseline_mask(t_vec: np.ndarray, w_start: str, w_end: str) -> np.ndarray:
-    if not w_start:
+    if not w_start and not w_end:
         return np.ones_like(t_vec, dtype=bool)
 
-    win_start_min = float(w_start) / 60.0
+    win_start_min = float(w_start) / 60.0 if w_start else float(t_vec.min())
     win_end_min = float(w_end) / 60.0 if w_end else float(t_vec.max())
 
     if win_end_min - win_start_min < 5.0:
@@ -151,7 +151,7 @@ def _waveforms_for_peaks(
     if not sigs:
         return sigs, None, None
 
-    waveform_time = np.linspace(-0.085, 0.165, num=waveform_len) * 60
+    waveform_time = np.arange(-WAVEFORM_HALF, WAVEFORM_TAIL) * float(np.median(np.diff(t_vec))) * 60
     mean_wave = np.asarray(np.mean(sigs, axis=0), dtype=float)
     return sigs, waveform_time, mean_wave
 
@@ -232,6 +232,8 @@ def analyze_signal(
         peak_prom = peak_prom[:n][legit]
         peak_width = peak_width[:n][legit]
 
+    n_pairs = min(len(peaks), len(troughs))
+    peaks, troughs = peaks[:n_pairs], troughs[:n_pairs]
     peak_amp = signal_trace[peaks]
     trough_amp = signal_trace[troughs]
     peak_min = t_vec[peaks]
@@ -256,6 +258,17 @@ def analyze_signal(
     end_ok = (peak_min < end_thresh) & (trough_min < end_thresh)
     peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t = _apply_peak_mask(
         end_ok, peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t)
+
+    # Peak acceptance uses the local event; final rise measurements use the
+    # valley between retained peaks, including dips beside rejected shoulders.
+    troughs = np.asarray([
+        int(start) + int(np.argmin(signal_trace[int(start):int(peak)]))
+        for start, peak in zip(np.r_[0, peaks[:-1]], peaks)
+    ], dtype=int)
+    trough_amp = signal_trace[troughs]
+    trough_min = t_vec[troughs]
+    amplitudes = peak_amp - trough_amp
+    rise_t = (peak_min - trough_min) * 60
 
     sigs, waveform_time, mean_wave = _waveforms_for_peaks(signal_trace, t_vec, peak_min)
     baseline_amp_mean = _baseline_amplitude_mean(baseline_trace, baseline_peaks, baseline_troughs)

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import logging
+import time
+from pathlib import Path
 
 import pytest
+import numpy as np
+import pandas as pd
 from PySide6.QtWidgets import QApplication
 
 import src.features.raw_photometry.photometry_processing_widget as raw_app
@@ -455,3 +459,75 @@ def test_pfer_output_paths_are_beside_dfer_csv(tmp_path):
     assert _waveform_output_path(outdir, dfer_csv.stem, "465", False) == (
         outdir / "mouse_a_Data_Peak_WAVEFORM.csv"
     )
+
+
+@pytest.mark.parametrize("dual", [False, True])
+def test_pfer_real_worker_from_dfer_and_standalone(tmp_path, monkeypatch, dual):
+    app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    messages = []
+    monkeypatch.setattr(raw_app.QMessageBox, "warning", lambda *args: messages.append(args[2]))
+    monkeypatch.setattr(raw_app.QMessageBox, "critical", lambda *args: messages.append(args[2]))
+
+    def wait_for_worker():
+        deadline = time.monotonic() + 30
+        while widget._thread is not None:
+            app.processEvents()
+            time.sleep(0.01)
+            assert time.monotonic() < deadline, "Analysis worker timed out"
+
+    try:
+        assert not widget.btn_run_pfer.isEnabled()
+        t = np.arange(0, 600, 0.1)
+        control = 1000 + 2 * np.sin(t / 30)
+        signal = control + 100 * np.exp(-((t - 200) / 3) ** 2) + 100 * np.exp(-((t - 400) / 3) ** 2)
+        folder = tmp_path / "recording"
+        folder.mkdir()
+        raw = folder / "raw.csv"
+        columns = (
+            {"TimeStamp": t * 1000, "CH1-410": control, "CH1-470": signal, "CH1-560": signal}
+            if dual else {"#time(seconds)": t, "405nm": control, "465nm": signal}
+        )
+        pd.DataFrame(columns).to_csv(raw, index=False)
+        widget._load_photometry_file(str(raw))
+        wait_for_worker()
+        widget.btn_run_final.click()
+        wait_for_worker()
+        result = widget._dfer_result_csv
+        assert result and Path(result).exists()
+        assert widget._pfer_selected_csv == result
+        assert widget._pfer_file_label.text() == Path(result).name
+        assert widget._pfer_file_label.toolTip() == result
+        widget.btn_run_pfer.click()
+        wait_for_worker()
+        assert widget.notebook_graphs.isTabEnabled(3)
+        outputs = list(Path(result).parent.glob("*Peak_STATS.csv"))
+        assert len(outputs) == (2 if dual else 1)
+        assert all(len(pd.read_csv(output)) > 0 for output in outputs)
+        assert not messages
+        widget.prepare_for_unload()
+
+        widget = RawPhotometryProcessingQt()
+        monkeypatch.setattr(raw_app.QFileDialog, "getOpenFileName", lambda *args: (result, ""))
+        widget.btn_select_pfer.click()
+        assert widget._selected_file is None
+        assert widget.btn_run_pfer.isEnabled()
+        widget.btn_run_pfer.click()
+        wait_for_worker()
+        assert widget.notebook_graphs.isTabEnabled(3)
+        assert not messages
+        opened = []
+        monkeypatch.setattr(widget, "_open_folder", lambda path, label: opened.append(path))
+        widget._open_pfer_output_folder()
+        assert opened == [str(Path(result).parent)]
+
+        monkeypatch.setattr(raw_app.QFileDialog, "getOpenFileName", lambda *args: (str(raw), ""))
+        widget.btn_select_pfer.click()
+        assert messages and "processed with DFer first" in messages[-1]
+        assert widget._pfer_selected_csv == result
+        widget._load_photometry_file(str(raw))
+        wait_for_worker()
+        assert widget._pfer_selected_csv is None
+        assert not widget.btn_run_pfer.isEnabled()
+    finally:
+        widget.prepare_for_unload()

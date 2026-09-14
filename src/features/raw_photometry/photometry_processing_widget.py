@@ -44,6 +44,7 @@ from src.dfer.df_common import (
     validate_single_df,
 )
 from src.dfer.df_plots import mpl_pfer_figure
+from src.dfer.pfer_detection import signal_specs
 from src.features.raw_photometry.plotting import (
     OPTION_TITLES as _OPTION_TITLES,
 )
@@ -672,6 +673,7 @@ QPlainTextEdit {{
         panel.setObjectName("pferSettingsPanel")
         panel.setStyleSheet(
             panel_stylesheet("pferSettingsPanel")
+            + section_stylesheet("pferInputCard")
             + section_stylesheet("pferBaselineCard")
             + section_stylesheet("pferParamsCard")
             + section_stylesheet("pferRunCard")
@@ -687,6 +689,26 @@ QPlainTextEdit {{
         title.setStyleSheet(title_stylesheet())
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
+
+        input_card = QFrame(panel)
+        input_card.setObjectName("pferInputCard")
+        input_layout = QVBoxLayout(input_card)
+        input_layout.setContentsMargins(8, 8, 8, 8)
+        input_layout.setSpacing(6)
+        self.btn_select_pfer = QPushButton("Select DFer CSV…", input_card)
+        apply_button_role(self.btn_select_pfer)
+        self.btn_select_pfer.clicked.connect(self._select_pfer_file)
+        input_layout.addWidget(self.btn_select_pfer)
+        self._pfer_file_label = QLabel("No DFer result selected", input_card)
+        self._pfer_file_label.setWordWrap(True)
+        input_layout.addWidget(self._pfer_file_label)
+        input_help = QLabel(
+            "Select an existing DFer result, or run DFer to use its output.", input_card
+        )
+        input_help.setWordWrap(True)
+        input_help.setStyleSheet(subtitle_stylesheet())
+        input_layout.addWidget(input_help)
+        layout.addWidget(input_card)
 
         # ── Baseline window ────────────────────────────────────────────────
         base_card = QFrame(panel)
@@ -722,6 +744,15 @@ QPlainTextEdit {{
         param_title = QLabel("Peak-finding parameters", param_card)
         param_title.setStyleSheet(section_title_stylesheet())
         param_layout.addWidget(param_title)
+
+        trough_help = QLabel(
+            "Troughs mark the lowest point between retained peaks. "
+            "The first trough uses the recording start to the first retained peak.",
+            param_card,
+        )
+        trough_help.setWordWrap(True)
+        trough_help.setStyleSheet(subtitle_stylesheet())
+        param_layout.addWidget(trough_help)
 
         param_form = QFormLayout()
         param_form.setHorizontalSpacing(8)
@@ -760,12 +791,13 @@ QPlainTextEdit {{
         self.btn_run_pfer = QPushButton("Run peak finder", run_card)
         apply_button_role(self.btn_run_pfer)
         self.btn_run_pfer.clicked.connect(self._on_run_pfer)
+        self.btn_run_pfer.setEnabled(False)
         btn_row.addWidget(self.btn_run_pfer)
 
         btn_open_pfer = QPushButton("Open PFer results", run_card)
         apply_button_role(btn_open_pfer)
         btn_open_pfer.clicked.connect(
-            lambda: self._open_current_output_folder("PFer results")
+            self._open_pfer_output_folder
         )
         btn_row.addWidget(btn_open_pfer)
         run_layout.addLayout(btn_row)
@@ -795,7 +827,8 @@ QPlainTextEdit {{
 
     def _set_busy(self, busy: bool) -> None:
         self.btn_run_final.setEnabled(not busy)
-        self.btn_run_pfer.setEnabled(not busy)
+        self.btn_run_pfer.setEnabled(not busy and bool(self._pfer_selected_csv))
+        self.btn_select_pfer.setEnabled(not busy)
         self.btn_apply_window.setEnabled(not busy)
         if busy:
             QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -871,7 +904,7 @@ QPlainTextEdit {{
         self._options_data = None
         self._dfer_result_csv = None
         self._dfer_result_frame = None
-        self._pfer_selected_csv = None
+        self._set_pfer_input(None)
         self.notebook_graphs.setTabEnabled(1, True)
         self.notebook_graphs.setTabEnabled(2, False)
         self.notebook_graphs.setTabEnabled(3, False)
@@ -1184,6 +1217,7 @@ QPlainTextEdit {{
         w_start, w_end = self._window_inputs()
         option = self._selected_option()
         self._save_dfer_option_selection(option)
+        self._set_pfer_input(None)
         self._set_busy(True)
         self._start_worker(
             run_analysis,
@@ -1205,6 +1239,7 @@ QPlainTextEdit {{
             return
         self._set_busy(False)
         self._dfer_result_csv = str(out_csv) if out_csv else None
+        self._set_pfer_input(self._dfer_result_csv)
         self._dfer_result_frame = None
         if self._dfer_result_csv:
             self._dfer_result_label.setText(
@@ -1247,6 +1282,46 @@ QPlainTextEdit {{
 
     # ── PFer ───────────────────────────────────────────────────────────────
 
+    def _set_pfer_input(self, file_path: str | None) -> None:
+        self._pfer_selected_csv = file_path
+        self._pfer_file_label.setText(
+            Path(file_path).name if file_path else "No DFer result selected"
+        )
+        self._pfer_file_label.setToolTip(file_path or "")
+        self.btn_run_pfer.setEnabled(bool(file_path))
+        self.notebook_graphs.setTabEnabled(3, False)
+
+    def _select_pfer_file(self) -> None:
+        initial_folder = (
+            str(Path(self._pfer_selected_csv).parent)
+            if self._pfer_selected_csv
+            else self.settings_manager.default_data_folder_path or ""
+        )
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select DFer result CSV", initial_folder, "CSV Files (*.csv)"
+        )
+        if not file_path:
+            return
+        try:
+            frame = pd.read_csv(file_path, nrows=3)
+            frame.columns = [str(c).strip().lstrip("#").strip() for c in frame.columns]
+            if "t_min" not in frame.columns or len(frame) < 3:
+                raise ValueError("Expected a DFer result with t_min and at least 3 data rows.")
+            signal_specs(frame)
+        except Exception as exc:
+            show_action_error(
+                "DFer result not recognised", "PFer could not load the selected CSV",
+                exc, self, "Select a processed DFer result. Raw recordings must be processed with DFer first.",
+            )
+            return
+        self._set_pfer_input(str(Path(file_path).resolve()))
+
+    def _open_pfer_output_folder(self) -> None:
+        if not self._pfer_selected_csv:
+            QMessageBox.warning(self, "No output folder", "Select a DFer output CSV first.")
+            return
+        self._open_folder(str(Path(self._pfer_selected_csv).parent), "PFer results")
+
     def _on_run_pfer(self) -> None:
         if not self._pfer_selected_csv:
             QMessageBox.warning(self, "No file", "Please select a DFer output CSV first.")
@@ -1273,7 +1348,7 @@ QPlainTextEdit {{
         if not out_csv:
             QMessageBox.information(self, "PFer complete", "Peak finding complete.")
             return
-        stats_csv = str(out_csv).splitlines()[0]
+        stats_csv = str(out_csv)
         try:
             fig = mpl_pfer_figure(self._pfer_selected_csv, stats_csv)
             self.pfer_graph.set_figure(fig)
