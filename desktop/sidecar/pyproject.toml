@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neurosyncapp-sidecar"
+version = "0.1.0"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+  "matplotlib>=3.10,<4",
+  "numpy>=2.4,<3",
+  "openpyxl>=3.1.5,<4",
+  "pandas>=3.0,<4",
+  "platformdirs>=4.3.6,<5",
+  "scipy>=1.17,<2",
+  "XlsxWriter>=3.1.9,<4"
+]
+
+[project.scripts]
+neurosync-sidecar = "neurosync_sidecar.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["neurosync_sidecar*"]
