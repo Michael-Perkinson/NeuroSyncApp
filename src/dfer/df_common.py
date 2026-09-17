@@ -9,12 +9,14 @@ import pandas as pd
 from scipy import signal
 from scipy.signal import butter, savgol_filter
 
+from src.file_management.ofrs_reader import read_ofrs
+
 logger = logging.getLogger(__name__)
 
 # Shared signal-processing defaults for DFer smoothing and filtering.
-BUTTER_CUTOFF = 0.4       # Hz  - lowpass cutoff for both single and dual
+BUTTER_CUTOFF = 0.4  # Hz  - lowpass cutoff for both single and dual
 BUTTER_ORDER = 1
-SAVGOL_FINE = (21, 6)     # (window, poly) - gentle smoothing
+SAVGOL_FINE = (21, 6)  # (window, poly) - gentle smoothing
 SAVGOL_COARSE = (501, 0)  # (window, poly) - strong smoothing / moving average
 
 
@@ -27,7 +29,9 @@ def missing_columns(df: pd.DataFrame, required: list[str]) -> list[str]:
     return [column for column in required if column not in df.columns]
 
 
-def raise_missing_columns(file_kind: str, missing: list[str], required_help: str) -> None:
+def raise_missing_columns(
+    file_kind: str, missing: list[str], required_help: str
+) -> None:
     missing_str = ", ".join(f"'{column}'" for column in missing)
     raise ValueError(
         f"{file_kind} CSV is missing required column(s): {missing_str}\n\n"
@@ -63,11 +67,15 @@ def validate_dual_df(df: pd.DataFrame) -> None:
         raise ValueError("Dual photometry CSV must contain at least 3 rows of data.")
 
 
-def butter_lowpass_filter(data: np.ndarray, cutoff: float, fs: float, order: int = 5) -> np.ndarray:
+def butter_lowpass_filter(
+    data: np.ndarray, cutoff: float, fs: float, order: int = 5
+) -> np.ndarray:
     if len(data) < 4:
         return np.asarray(data, dtype=float).copy()
-    b, a = cast(tuple[np.ndarray, np.ndarray], butter(
-        order, cutoff, fs=fs, btype="low", analog=False))
+    b, a = cast(
+        tuple[np.ndarray, np.ndarray],
+        butter(order, cutoff, fs=fs, btype="low", analog=False),
+    )
     return np.asarray(signal.filtfilt(b, a, data, padtype=None), dtype=float)
 
 
@@ -117,14 +125,25 @@ def compute_adjusted_baselines(
 
 
 def detect_photometry_file_type(selectedfile: str | Path) -> tuple[str, int]:
-    selectedfile = str(Path(selectedfile).expanduser().resolve())
-    cols0 = pd.read_csv(selectedfile, nrows=0, low_memory=False).columns.astype(str).tolist()
+    selectedfile = Path(selectedfile).expanduser().resolve()
+    if selectedfile.suffix.lower() == ".ofrs":
+        return "dual", 0
+
+    cols0 = (
+        pd.read_csv(selectedfile, nrows=0, low_memory=False)
+        .columns.astype(str)
+        .tolist()
+    )
     first0 = cols0[0] if cols0 else ""
     if first0 == "#time(seconds)":
         return "single", 0
     if first0 == "TimeStamp":
         return "dual", 0
-    cols1 = pd.read_csv(selectedfile, nrows=0, skiprows=1, low_memory=False).columns.astype(str).tolist()
+    cols1 = (
+        pd.read_csv(selectedfile, nrows=0, skiprows=1, low_memory=False)
+        .columns.astype(str)
+        .tolist()
+    )
     first1 = cols1[0] if cols1 else ""
     if first1 == "TimeStamp":
         return "dual", 1
@@ -133,6 +152,17 @@ def detect_photometry_file_type(selectedfile: str | Path) -> tuple[str, int]:
         "Expected first column '#time(seconds)' (single) or 'TimeStamp' (dual).\n"
         "Dual files may have metadata in row 1 (we try skiprows=1)."
     )
+
+
+def load_dual_photometry(
+    selectedfile: str | Path,
+    skiprows: int = 0,
+) -> pd.DataFrame:
+    """Load a dual CSV or decode an OFRS recording into the dual schema."""
+    path = Path(selectedfile).expanduser().resolve()
+    if path.suffix.lower() == ".ofrs":
+        return read_ofrs(path)
+    return pd.read_csv(path, skiprows=skiprows, index_col=False, low_memory=False)
 
 
 def expected_analysis_output_path(
@@ -157,7 +187,9 @@ def expected_analysis_output_path(
     raise ValueError("file_type must be 'single' or 'dual'")
 
 
-def window_slice(length: int, dt_sec: float, w_start: str, w_end: str) -> tuple[slice, int, int]:
+def window_slice(
+    length: int, dt_sec: float, w_start: str, w_end: str
+) -> tuple[slice, int, int]:
     if w_start:
         win_start = (float(w_start) / dt_sec) + 1
         if win_start < 0:
@@ -177,6 +209,7 @@ def window_slice(length: int, dt_sec: float, w_start: str, w_end: str) -> tuple[
     min_samples = int(np.ceil(120.0 / dt_sec))
     if (win_end < win_start) or ((win_end - win_start) < (min_samples - 1)):
         raise ValueError(
-            "End time cannot precede Start time, and analysis window must be at least 120 seconds.")
+            "End time cannot precede Start time, and analysis window must be at least 120 seconds."
+        )
 
     return slice(int(win_start) - 1, int(win_end)), int(win_start), int(win_end)

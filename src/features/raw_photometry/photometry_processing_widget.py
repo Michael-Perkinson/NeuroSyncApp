@@ -40,6 +40,7 @@ from src.core.app_settings_manager import AppSettingsManager
 from src.dfer import compute_options, run_analysis, run_pfer
 from src.dfer.df_common import (
     detect_photometry_file_type,
+    load_dual_photometry,
     validate_dual_df,
     validate_single_df,
 )
@@ -83,6 +84,7 @@ from src.gui.framework.qt_view_styles import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _open_path(path: str) -> None:
     target = Path(path)
     if not target.exists():
@@ -95,6 +97,7 @@ def _open_path(path: str) -> None:
         return
     from PySide6.QtCore import QUrl
     from PySide6.QtGui import QDesktopServices
+
     if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(target))):
         raise RuntimeError(f"Could not open:\n{target}")
 
@@ -156,7 +159,9 @@ def _spinbox_css(panel_name: str) -> str:
 
 
 def _raw_graph_tabs_stylesheet() -> str:
-    return APP_TABS_STYLESHEET + f"""
+    return (
+        APP_TABS_STYLESHEET
+        + f"""
 QTabBar::tab:disabled {{
     color: {PALETTE["muted"]};
     background: {PALETTE["card_alt_bg"]};
@@ -166,11 +171,13 @@ QTabBar::tab:enabled {{
     color: {PALETTE["text"]};
 }}
 """
+    )
 
 
 # ---------------------------------------------------------------------------
 # Main widget
 # ---------------------------------------------------------------------------
+
 
 class RawPhotometryProcessingQt(QWidget):
     _log_signal = Signal(str)
@@ -200,9 +207,7 @@ class RawPhotometryProcessingQt(QWidget):
 
     def _build_ui(self) -> None:
         self.setObjectName("rawPhotometryRoot")
-        self.setStyleSheet(
-            f"#rawPhotometryRoot {{ background: {PALETTE['app_bg']}; }}"
-        )
+        self.setStyleSheet(f"#rawPhotometryRoot {{ background: {PALETTE['app_bg']}; }}")
 
         root = QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
@@ -262,7 +267,9 @@ class RawPhotometryProcessingQt(QWidget):
         self._option_preview_combo = QComboBox(opts_bar)
         self._option_preview_combo.addItems(_OPTION_TITLES)
         self._option_preview_combo.setStyleSheet(combo_stylesheet())
-        self._option_preview_combo.currentIndexChanged.connect(self._on_option_dropdown_changed)
+        self._option_preview_combo.currentIndexChanged.connect(
+            self._on_option_dropdown_changed
+        )
         opts_bar_layout.addWidget(self._option_preview_combo, 1)
         opts_bar_layout.addWidget(QLabel("Signals:", opts_bar))
         self._dual_option_display_combo = QComboBox(opts_bar)
@@ -297,7 +304,9 @@ class RawPhotometryProcessingQt(QWidget):
         self._dfer_results_combo = QComboBox(dfer_res_bar)
         self._dfer_results_combo.addItems(["dF/F", "Z-score"])
         self._dfer_results_combo.setStyleSheet(combo_stylesheet())
-        self._dfer_results_combo.currentIndexChanged.connect(self._on_dfer_results_channel_changed)
+        self._dfer_results_combo.currentIndexChanged.connect(
+            self._on_dfer_results_channel_changed
+        )
         dfer_res_bar_layout.addWidget(self._dfer_results_combo)
         self._dfer_show_405_checkbox = QCheckBox("Show 405", dfer_res_bar)
         self._dfer_show_405_checkbox.setChecked(True)
@@ -308,7 +317,9 @@ class RawPhotometryProcessingQt(QWidget):
         dfer_res_bar_layout.addStretch(1)
         btn_save_dfer = QPushButton("Save image", dfer_res_bar)
         apply_button_role(btn_save_dfer)
-        btn_save_dfer.clicked.connect(lambda: self._save_graph_image(self.dfer_results_graph, "dfer_result"))
+        btn_save_dfer.clicked.connect(
+            lambda: self._save_graph_image(self.dfer_results_graph, "dfer_result")
+        )
         dfer_res_bar_layout.addWidget(btn_save_dfer)
         dfer_results_layout.addWidget(dfer_res_bar)
 
@@ -333,7 +344,9 @@ class RawPhotometryProcessingQt(QWidget):
         pfer_res_bar_layout.addStretch(1)
         btn_save_pfer = QPushButton("Save image", pfer_res_bar)
         apply_button_role(btn_save_pfer)
-        btn_save_pfer.clicked.connect(lambda: self._save_graph_image(self.pfer_graph, "pfer_result"))
+        btn_save_pfer.clicked.connect(
+            lambda: self._save_graph_image(self.pfer_graph, "pfer_result")
+        )
         pfer_res_bar_layout.addWidget(btn_save_pfer)
         pfer_results_layout.addWidget(pfer_res_bar)
 
@@ -368,8 +381,7 @@ class RawPhotometryProcessingQt(QWidget):
         panel = QFrame(self.top_frame)
         panel.setObjectName("rawPhotDataPanel")
         panel.setStyleSheet(
-            panel_stylesheet("rawPhotDataPanel")
-            + section_stylesheet("rawPhotDataCard")
+            panel_stylesheet("rawPhotDataPanel") + section_stylesheet("rawPhotDataCard")
         )
 
         layout = QVBoxLayout(panel)
@@ -402,7 +414,7 @@ class RawPhotometryProcessingQt(QWidget):
         self.file_path_edit = QLineEdit(card)
         self.file_path_edit.setReadOnly(True)
         self.file_path_edit.setPlaceholderText(
-            "Single-channel (405/465 nm) or dual-channel (470/560 nm) CSV"
+            "Single-channel (405/465 nm) or dual-channel CSV/OFRS"
         )
         self.file_path_edit.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
@@ -572,9 +584,9 @@ class RawPhotometryProcessingQt(QWidget):
         self._log_edit.setFont(mono)
         self._log_edit.setStyleSheet(f"""
 QPlainTextEdit {{
-    background: {PALETTE['card_alt_bg']};
+    background: {PALETTE["card_alt_bg"]};
     border: none;
-    color: {PALETTE['muted']};
+    color: {PALETTE["muted"]};
     border-radius: 4px;
 }}
 """)
@@ -655,7 +667,9 @@ QPlainTextEdit {{
             try:
                 self._log_signal.disconnect(self._append_log)
             except RuntimeError:
-                logging.getLogger(__name__).debug("Signal disconnect: Qt object already deleted")
+                logging.getLogger(__name__).debug(
+                    "Signal disconnect: Qt object already deleted"
+                )
             self._log_signal_connected = False
 
         if self._log_handler is not None:
@@ -695,7 +709,9 @@ QPlainTextEdit {{
         base_layout.setContentsMargins(8, 8, 8, 8)
         base_layout.setSpacing(6)
 
-        base_title = QLabel("Baseline window for PFer normalization (seconds, optional)", base_card)
+        base_title = QLabel(
+            "Baseline window for PFer normalization (seconds, optional)", base_card
+        )
         base_title.setStyleSheet(section_title_stylesheet())
         base_title.setWordWrap(True)
         base_layout.addWidget(base_title)
@@ -822,7 +838,7 @@ QPlainTextEdit {{
             QMessageBox.warning(
                 self,
                 "No output folder",
-                "Select a raw photometry CSV first.",
+                "Select a raw photometry file first.",
             )
             return
         self._open_folder(self._output_folder, label)
@@ -844,7 +860,7 @@ QPlainTextEdit {{
             self,
             "Select Photometry Data File",
             self.settings_manager.default_data_folder_path or "",
-            "CSV Files (*.csv);;All Files (*.*)",
+            "Photometry Files (*.csv *.ofrs);;CSV Files (*.csv);;OFRS Files (*.ofrs);;All Files (*.*)",
         )
         if file_path:
             self._load_photometry_file(file_path)
@@ -858,7 +874,7 @@ QPlainTextEdit {{
                 "NeuroSyncApp could not load the selected photometry file",
                 exc,
                 self,
-                "Select the original raw photometry CSV rather than a processed DFer or PFer output file.",
+                "Select the original raw photometry CSV or OFRS recording rather than a processed DFer or PFer output file.",
             )
             return
         file_type, _ = detect_photometry_file_type(file_path)
@@ -894,14 +910,16 @@ QPlainTextEdit {{
             y465 = df[y465_col][1:].to_numpy(dtype=float)
             self._draw_single_raw(t, y405, y465)
         else:
-            df = pd.read_csv(file_path, skiprows=skiprows, index_col=False, low_memory=False)
+            df = load_dual_photometry(file_path, skiprows)
             validate_dual_df(df)
             t = df["TimeStamp"].astype(float).to_numpy() / 1000.0
             y470 = df["CH1-470"].astype(float).to_numpy()
             y560 = df["CH1-560"].astype(float).to_numpy()
             self._draw_dual_raw(t, y470, y560)
 
-    def _draw_single_raw(self, t: np.ndarray, y405: np.ndarray, y465: np.ndarray) -> None:
+    def _draw_single_raw(
+        self, t: np.ndarray, y405: np.ndarray, y465: np.ndarray
+    ) -> None:
         figure = Figure(figsize=(10, 4), dpi=100)
         ax465 = figure.add_subplot(111)
         ax405 = ax465.twinx()
@@ -921,8 +939,12 @@ QPlainTextEdit {{
         ax465.set_ylim([s465_min - 0.5 * range_405, s465_max * 1.02])
         ax405.set_ylim(y_bot_405, y_top_405)
 
-        start_line = ax465.axvline(x=t[0], color="red", linestyle="--", linewidth=1.5, label="Window start")
-        end_line = ax465.axvline(x=t[-1], color="blue", linestyle="--", linewidth=1.5, label="Window end")
+        start_line = ax465.axvline(
+            x=t[0], color="red", linestyle="--", linewidth=1.5, label="Window start"
+        )
+        end_line = ax465.axvline(
+            x=t[-1], color="blue", linestyle="--", linewidth=1.5, label="Window end"
+        )
         ax465.set_title("Raw Data — single channel")
         ax465.set_xlabel("Time (s)")
         ax465.set_xlim([t[0], t[-1]])
@@ -942,8 +964,12 @@ QPlainTextEdit {{
         ax.set_ylabel("RFU")
         ax.set_xlabel("Time (s)")
         ax.set_title("Raw Data — dual channel")
-        start_line = ax.axvline(x=t[0], color="red", linestyle="--", linewidth=1.5, label="Window start")
-        end_line = ax.axvline(x=t[-1], color="blue", linestyle="--", linewidth=1.5, label="Window end")
+        start_line = ax.axvline(
+            x=t[0], color="red", linestyle="--", linewidth=1.5, label="Window start"
+        )
+        end_line = ax.axvline(
+            x=t[-1], color="blue", linestyle="--", linewidth=1.5, label="Window end"
+        )
         ax.legend(fontsize=8, loc="upper right")
         ax.set_xlim([t[0], t[-1]])
         _tighten_time_axes(figure)
@@ -989,7 +1015,9 @@ QPlainTextEdit {{
     def _apply_window(self) -> None:
         """Apply the current start/end window to the raw graph markers."""
         if not self._selected_file:
-            QMessageBox.warning(self, "No file", "Please select a raw photometry CSV first.")
+            QMessageBox.warning(
+                self, "No file", "Please select a raw photometry file first."
+            )
             return
         self._refresh_time_preview()
         self._append_log("INFO  [DFer] Analysis window updated.")
@@ -1024,7 +1052,9 @@ QPlainTextEdit {{
     def _on_generate_options(self, show_missing_file_warning: bool = True) -> None:
         if not self._selected_file:
             if show_missing_file_warning:
-                QMessageBox.warning(self, "No file", "Please select a raw photometry CSV first.")
+                QMessageBox.warning(
+                    self, "No file", "Please select a raw photometry file first."
+                )
             return
         w_start, w_end = self._window_inputs()
         self._set_busy(True)
@@ -1044,7 +1074,9 @@ QPlainTextEdit {{
             is_dual = isinstance(data, dict) and data.get("file_type") == "dual"
             self._configure_option_signal_selector(is_dual)
             self._render_option(self._option_preview_combo.currentIndex())
-            self._append_log("INFO  [DFer] Preview complete. Choose option 1-4, then run final.")
+            self._append_log(
+                "INFO  [DFer] Preview complete. Choose option 1-4, then run final."
+            )
         except Exception as exc:
             show_action_error(
                 "DFer preview could not be displayed",
@@ -1065,9 +1097,10 @@ QPlainTextEdit {{
             format_action_error(
                 "DFer could not generate the option preview",
                 exc,
-                "Check the CSV format and ensure the analysis window contains at least 120 seconds of numeric data.",
+                "Check the CSV or OFRS format and ensure the analysis window contains at least 120 seconds of numeric data.",
             ),
         )
+
     def _render_option(self, idx: int) -> None:
         if self._options_data is None:
             return
@@ -1101,7 +1134,9 @@ QPlainTextEdit {{
     def _render_dfer_results(self, csv_path: str) -> None:
         """Render the DFer Results graph for the currently selected graph type."""
         graph = "zscore" if self._dfer_results_combo.currentIndex() == 1 else "dfof"
-        loaded_new_result = self._dfer_result_frame is None or self._dfer_result_csv != csv_path
+        loaded_new_result = (
+            self._dfer_result_frame is None or self._dfer_result_csv != csv_path
+        )
         if loaded_new_result:
             self._dfer_result_frame = _normalise_dfer_result_frame(
                 pd.read_csv(csv_path, index_col=False)
@@ -1137,9 +1172,7 @@ QPlainTextEdit {{
             except Exception:
                 file_type = "single"
             result_stem = (
-                f"{selected.parent.name}_Dual"
-                if file_type == "dual"
-                else selected.stem
+                f"{selected.parent.name}_Dual" if file_type == "dual" else selected.stem
             )
         else:
             result_stem = default_stem
@@ -1159,7 +1192,9 @@ QPlainTextEdit {{
 
     def _save_graph_image(self, panel: GraphPanel, default_stem: str) -> None:
         if panel.canvas is None:
-            QMessageBox.warning(self, "No plot", "Nothing to save — run the analysis first.")
+            QMessageBox.warning(
+                self, "No plot", "Nothing to save — run the analysis first."
+            )
             return
         path = self._next_plot_path(default_stem)
         try:
@@ -1179,7 +1214,9 @@ QPlainTextEdit {{
 
     def _on_run_final(self) -> None:
         if not self._selected_file:
-            QMessageBox.warning(self, "No file", "Please select a photometry CSV first.")
+            QMessageBox.warning(
+                self, "No file", "Please select a photometry file first."
+            )
             return
         w_start, w_end = self._window_inputs()
         option = self._selected_option()
@@ -1228,7 +1265,9 @@ QPlainTextEdit {{
                     ),
                 )
         else:
-            self._dfer_result_label.setText("Analysis complete — no output path returned.")
+            self._dfer_result_label.setText(
+                "Analysis complete — no output path returned."
+            )
 
     def _run_final_failed(self, error: object) -> None:
         if self._unloading:
@@ -1241,7 +1280,7 @@ QPlainTextEdit {{
             format_action_error(
                 "DFer could not complete the analysis",
                 exc,
-                "Check the selected raw CSV, analysis window, and output-folder permissions, then try again.",
+                "Check the selected raw CSV or OFRS file, analysis window, and output-folder permissions, then try again.",
             ),
         )
 
@@ -1249,7 +1288,9 @@ QPlainTextEdit {{
 
     def _on_run_pfer(self) -> None:
         if not self._pfer_selected_csv:
-            QMessageBox.warning(self, "No file", "Please select a DFer output CSV first.")
+            QMessageBox.warning(
+                self, "No file", "Please select a DFer output CSV first."
+            )
             return
         self._set_busy(True)
         self._start_worker(

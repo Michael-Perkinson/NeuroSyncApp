@@ -127,7 +127,7 @@ def test_raw_qt_late_logs_after_deleted_log_widget_are_ignored():
         def appendPlainText(self, _msg):
             raise RuntimeError("Internal C++ object already deleted")
 
-    widget._log_edit = DeletedLogEdit()
+    widget._log_edit = DeletedLogEdit()  # type: ignore[assignment]
     widget._append_log("late worker message")
     logging.getLogger("src.dfer.df_dual").info("late worker message")
 
@@ -208,7 +208,9 @@ def test_raw_qt_file_selection_unlocks_options_and_locks_results(monkeypatch):
     widget = RawPhotometryProcessingQt()
 
     monkeypatch.setattr(widget, "_draw_raw_graph", lambda file_path: None)
-    monkeypatch.setattr(raw_app, "detect_photometry_file_type", lambda file_path: ("single", 0))
+    monkeypatch.setattr(
+        raw_app, "detect_photometry_file_type", lambda file_path: ("single", 0)
+    )
     monkeypatch.setattr(widget, "_refresh_time_preview", lambda: None)
     monkeypatch.setattr(widget, "_on_generate_options", lambda **kwargs: None)
     widget.notebook_graphs.setTabEnabled(2, True)
@@ -230,7 +232,9 @@ def test_raw_qt_dual_file_selection_exports_above_session_folder(monkeypatch):
     widget = RawPhotometryProcessingQt()
 
     monkeypatch.setattr(widget, "_draw_raw_graph", lambda file_path: None)
-    monkeypatch.setattr(raw_app, "detect_photometry_file_type", lambda file_path: ("dual", 0))
+    monkeypatch.setattr(
+        raw_app, "detect_photometry_file_type", lambda file_path: ("dual", 0)
+    )
     monkeypatch.setattr(widget, "_refresh_time_preview", lambda: None)
     monkeypatch.setattr(widget, "_on_generate_options", lambda **kwargs: None)
 
@@ -239,6 +243,46 @@ def test_raw_qt_dual_file_selection_exports_above_session_folder(monkeypatch):
     assert widget._output_folder == str(
         raw_app.Path("parent/session/Fluorescence.csv").parent.parent / "dfof_results"
     )
+    widget.deleteLater()
+
+
+def test_raw_qt_ofrs_raw_graph_uses_dual_loader(tmp_path, monkeypatch):
+    import pandas as pd
+
+    _app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    file_path = tmp_path / "recording.ofrs"
+    frame = pd.DataFrame(
+        {
+            "TimeStamp": [0.0, 100.0, 200.0],
+            "CH1-410": [1.0, 1.1, 1.2],
+            "CH1-470": [2.0, 2.1, 2.2],
+            "CH1-560": [3.0, 3.1, 3.2],
+        }
+    )
+    captured = {}
+
+    monkeypatch.setattr(
+        raw_app,
+        "detect_photometry_file_type",
+        lambda path: ("dual", 0),
+    )
+    monkeypatch.setattr(
+        raw_app,
+        "load_dual_photometry",
+        lambda path, skiprows: frame,
+    )
+    monkeypatch.setattr(
+        widget,
+        "_draw_dual_raw",
+        lambda t, y470, y560: captured.update({"t": t, "y470": y470, "y560": y560}),
+    )
+
+    widget._draw_raw_graph(str(file_path))
+
+    assert captured["t"].tolist() == [0.0, 0.1, 0.2]
+    assert captured["y470"].tolist() == [2.0, 2.1, 2.2]
+    assert captured["y560"].tolist() == [3.0, 3.1, 3.2]
     widget.deleteLater()
 
 

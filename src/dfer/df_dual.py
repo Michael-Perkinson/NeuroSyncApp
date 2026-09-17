@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 from src.processing.behaviour_metrics import compute_full_trace_zscore
 
@@ -17,6 +16,7 @@ from .df_common import (
     butter_lowpass_filter,
     compute_adjusted_baselines,
     expected_analysis_output_path,
+    load_dual_photometry,
     safe_savgol,
     validate_dual_df,
     window_slice,
@@ -41,7 +41,7 @@ def compute_dual_options(
     Returns a dict with numpy arrays for inline display (no file I/O, no plots).
     """
     selectedfile = str(Path(selectedfile).expanduser().resolve())
-    df = pd.read_csv(selectedfile, skiprows=skiprows, index_col=False, low_memory=False)
+    df = load_dual_photometry(selectedfile, skiprows)
     validate_dual_df(df)
 
     t_ms = df["TimeStamp"].astype(float).to_numpy()
@@ -93,8 +93,7 @@ def run_dual_analysis(
     mode: str,
 ) -> str:
     """Run the dual-photometry DFer workflow."""
-    df = pd.read_csv(selectedfile, skiprows=skiprows,
-                     index_col=False, low_memory=False)
+    df = load_dual_photometry(selectedfile, skiprows)
     validate_dual_df(df)
     logger.info("Begin analysing (DUAL) %s", filename)
 
@@ -154,8 +153,20 @@ def run_dual_analysis(
     out_file_path = str(expected_analysis_output_path(selectedfile, file_type="dual"))
     np.savetxt(
         out_file_path,
-        np.c_[t_min, y410, y470, y560, p470["target_smooth"], fit470,
-              dfof_470, z_470, p560["target_smooth"], fit560, dfof_560, z_560],
+        np.c_[
+            t_min,
+            y410,
+            y470,
+            y560,
+            p470["target_smooth"],
+            fit470,
+            dfof_470,
+            z_470,
+            p560["target_smooth"],
+            fit560,
+            dfof_560,
+            z_560,
+        ],
         delimiter=",",
         header="t_min,410,470,560,filtered_470,fitted_410_to_470,dFoF_470,Z_470,filtered_560,fitted_410_to_560,dFoF_560,Z_560",
         fmt="%f",
