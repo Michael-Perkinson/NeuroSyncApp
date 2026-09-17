@@ -8,7 +8,7 @@ The app opens to a dashboard. The default first tool is **Analyse Raw Data**.
 
 | Tool | App ID | Purpose |
 | --- | --- | --- |
-| Analyse Raw Data | `raw_analysis` | Inspect raw photometry CSVs, choose an analysis window, preview DFer options, run DFer, and run PFer peak finding. |
+| Analyse Raw Data | `raw_analysis` | Inspect raw photometry CSVs or OFRS recordings, choose an analysis window, preview DFer options, run DFer, and run PFer peak finding. |
 | Align Photometry and Behaviour | `single_animal` | Align photometry with coded behaviour events, use Full Trace Display, Single Row Display, and Behaviour Mean and SEM views, and export aligned metrics. |
 | Align Telemetry Data | `telemetry_photom_opto` | Align telemetry, photometry, and optogenetic recordings; detect clusters; export workbook summaries. |
 | Combine Data | `combine_data` | Dashboard placeholder; the Qt version is not yet available. |
@@ -84,7 +84,7 @@ The dashboard remembers the last active supported tool and opens it next time.
 This is the default first screen.
 
 1. Optional: click **Select Folder** to remember a default data folder.
-2. Click **Raw Photometry File** and choose a raw photometry CSV.
+2. Click **Raw Photometry File** and choose a raw photometry CSV or OFRS recording.
 3. The raw trace appears in the **Raw Data** tab.
 4. Set the analysis window:
    - `start`, `min`, or blank means the start of the recording.
@@ -97,7 +97,7 @@ This is the default first screen.
 9. Use **DFer Results** to view dF/F or Z-score output, optionally show the 405 nm reference, and save plots.
 10. For PFer, select a DFer output CSV in the PFer settings, choose baseline/prominence settings, then click **Run peak finder**.
 
-DFer/PFer outputs are written beside the selected recording or into the app-created output folders. The app log panel shows progress and saved paths.
+OFRS recordings are decoded directly into the same dual-channel DataFrame used by the CSV workflow; no manual channel export is required. DFer/PFer outputs are written beside the selected recording or into the app-created output folders. The app log panel shows progress and saved paths.
 
 ## Align Photometry and Behaviour
 
