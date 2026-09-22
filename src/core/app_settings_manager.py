@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from src.core.settings_defaults import get_default_settings
 from src.persistence.settings_store import load_settings, save_settings
@@ -10,6 +10,87 @@ from src.persistence.settings_store import load_settings, save_settings
 
 class AppSettingsManager:
     """Coordinates settings defaults and persistence using plain Python state."""
+
+    # Defaults are installed from a mapping at runtime. Keep the dynamic
+    # settings visible to static type checkers without changing that contract.
+    if TYPE_CHECKING:
+        selected_trace_color: Any
+        selected_sem_color: Any
+        selected_bar_sem_color: Any
+        selected_bar_fill_color: Any
+        selected_bar_border_color: Any
+        selected_line_color: Any
+        selected_temp_line_color: Any
+        selected_activity_bar_color: Any
+        selected_cluster_box_color: Any
+        default_onset_line_color: Any
+        default_sem_color: Any
+        default_line_color: Any
+        default_bar_sem_color: Any
+        default_bar_fill_color: Any
+        default_bar_border_color: Any
+        default_trace_color: Any
+        default_temp_line_color: Any
+        default_activity_bar_color: Any
+        default_temp_sem_color: Any
+        default_photometry_line_color: Any
+        default_cluster_box_color: Any
+        default_cluster_box_alpha: Any
+        default_cluster_box_height_modifier: Any
+        selected_label_color: Any
+        selected_label_symbol: Any
+        selected_label_size: Any
+        selected_y_offset_peak_symbol: Any
+        selected_peak_count_color: Any
+        selected_peak_count_size: Any
+        selected_y_for_peak_count: Any
+        selected_baseline_multiplier: Any
+        selected_baseline_color: Any
+        selected_baseline_style: Any
+        selected_baseline_thickness: Any
+        selected_photometry_line_color: Any
+        selected_photometry_line_alpha: Any
+        selected_cluster_box_alpha: Any
+        selected_cluster_box_height_modifier: Any
+        light_off_time_var: Any
+        selected_photometry_line_width: Any
+        selected_horizontal_scale_bar_offset: Any
+        selected_vertical_scale_bar_offset: Any
+        selected_scale_bar_color: Any
+        selected_scale_bar_width: Any
+        selected_scale_bar_size: Any
+        selected_temp_mean_line_width: Any
+        selected_temp_mean_line_color: Any
+        selected_temp_sem_color: Any
+        selected_temp_mean_line_alpha: Any
+        selected_temp_sem_line_alpha: Any
+        selected_temp_desired_offset: Any
+        selected_temp_desired_scale: Any
+        selected_temp_y_axis_color: Any
+        selected_temp_num_ticks: Any
+        selected_activity_mean_bar_color: Any
+        selected_activity_mean_bar_alpha: Any
+        selected_activity_desired_offset: Any
+        selected_activity_desired_scale: Any
+        selected_activity_y_axis_color: Any
+        selected_activity_num_bins: Any
+        selected_activity_num_ticks: Any
+        telemetry_folder_path: Any
+        default_data_folder_path: Any
+        number_of_minor_ticks: Any
+        remove_first_60_minutes_var: Any
+        onset_line_color: Any
+        onset_line_thickness: Any
+        onset_line_style: Any
+        duration_box_placement: Any
+        box_height_factor: Any
+        alpha: Any
+        bar_graph_size: Any
+        selected_time_column: Any
+        selected_405nm_column: Any
+        selected_465nm_column: Any
+        last_run_dfer_option: Any
+        raw_dual_y_axis_mode: str
 
     APP_TYPE_ALIASES: ClassVar[dict[str, str]] = {
         "raw_photometry_processing_app": "raw_photometry_processing",
@@ -19,11 +100,14 @@ class AppSettingsManager:
         "405nm_column": "selected_405nm_column",
         "465nm_column": "selected_465nm_column",
     }
+    RAW_DUAL_Y_AXIS_MODES: ClassVar[frozenset[str]] = frozenset(
+        {"shared", "individual"}
+    )
 
     def __init__(self, app_type: str = "default"):
         self.app_type = self.APP_TYPE_ALIASES.get(app_type, app_type)
         self._initialize_default_settings()
-        self.unique_behaviours = []
+        self.unique_behaviours: list[object] = []
         self.selected_column_name = None
 
         self.display_duration_box_var = True
@@ -31,7 +115,7 @@ class AppSettingsManager:
 
     def _initialize_default_settings(self) -> None:
         """Initialize default scalar settings on the manager."""
-        self.behaviour_colors = {}
+        self.behaviour_colors: dict[str, object] = {}
         self.default_settings = get_default_settings()
         for key, value in self.default_settings.items():
             setattr(self, key, value)
@@ -149,6 +233,7 @@ class AppSettingsManager:
             "selected_405nm_column": self.selected_405nm_column,
             "selected_465nm_column": self.selected_465nm_column,
             "last_run_dfer_option": self.last_run_dfer_option,
+            "raw_dual_y_axis_mode": self.raw_dual_y_axis_mode,
         }
 
     def save_config_to_file(self, config: dict) -> None:
@@ -171,8 +256,20 @@ class AppSettingsManager:
             else:
                 setattr(self, key, value)
 
-        if str(getattr(self, "last_run_dfer_option", "1")) not in {"1", "2", "3", "4"}:
+        if str(getattr(self, "last_run_dfer_option", "1")) not in {
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+        }:
             self.last_run_dfer_option = "1"
+        if (
+            self.app_type == "raw_photometry_processing"
+            and str(getattr(self, "raw_dual_y_axis_mode", "shared"))
+            not in self.RAW_DUAL_Y_AXIS_MODES
+        ):
+            self.raw_dual_y_axis_mode = "shared"
         self.selected_temp_line_width = self.selected_temp_mean_line_width
 
     def _normalise_setting_keys(self, settings: dict) -> dict:

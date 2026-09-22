@@ -91,13 +91,16 @@ This is the default first screen.
    - `end`, `max`, or blank means the end of the recording.
    - Numeric values are seconds.
 5. Click **Apply** to update the red/blue window markers and regenerate DFer option previews.
-6. Open the **DFer Options** graph tab to inspect options 1-4.
+6. Open the **DFer Options** graph tab to inspect options 1-5, including option 5's independent 10% `msbackadj` correction (which does not use the 405/410 control).
 7. In **DFer Settings**, select the final DFer option and click **Run final analysis**.
+   The generated `*_Data.csv` stores the selected option once in the header as an extra `# option used=...` column; its data cells are blank, so the option is not repeated per row or placed on a separate metadata row.
 8. In **DFer Options**, use the Signals selector to show **Both**, **470nm**, or **560nm** for dual-channel recordings.
-9. Use **DFer Results** to view dF/F or Z-score output, optionally show the 405 nm reference, and save plots.
+9. Use **DFer Results** to view dF/F or Z-score output, optionally show the 405 nm reference for control-based options, and save plots.
 10. For PFer, select a DFer output CSV in the PFer settings, choose baseline/prominence settings, then click **Run peak finder**.
 
 OFRS recordings are decoded directly into the same dual-channel DataFrame used by the CSV workflow; no manual channel export is required. DFer/PFer outputs are written beside the selected recording or into the app-created output folders. The app log panel shows progress and saved paths.
+
+For raw recordings, the Raw Data header provides a toggle for the 405 nm or 410 nm control signal. For dual-channel recordings, the shared axis is the default and keeps the plot wide; enable **Individual y-axes** when you need each signal's range fitted separately. This choice is saved for the next session.
 
 ## Align Photometry and Behaviour
 
@@ -228,13 +231,13 @@ Do not add transitive packages to `pyproject.toml` unless the app imports them d
 The DFer/PFer raw photometry analysis workflow in NeuroSyncApp was ported from
 the Argotech/Tussock Innovation DFer_v1.4 + PFer_2.4 analysis scripts and README
 (OCT-2024), distributed through the Argotech fibre photometry resources:
-https://www.argotech.co.nz/fibre-photometry
+<https://www.argotech.co.nz/fibre-photometry>
 
 The DFer/PFer workflow is based on analysis methods from GuPPy:
 
 Sherathiya, V. N., Schaid, M. D., Seiler, J. L., Lopez, G. C., & Lerner, T. N.
 GuPPy, a Python toolbox for the analysis of fiber photometry data.
-Scientific Reports 11, 24212 (2021). https://doi.org/10.1038/s41598-021-03626-9
+Scientific Reports 11, 24212 (2021). <https://doi.org/10.1038/s41598-021-03626-9>
 
 ## License
 

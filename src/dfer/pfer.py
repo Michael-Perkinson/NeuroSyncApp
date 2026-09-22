@@ -5,9 +5,12 @@ import time
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
-from .df_common import missing_columns, raise_missing_columns
+from .df_common import (
+    missing_columns,
+    raise_missing_columns,
+    read_analysis_output,
+)
 from .pfer_detection import (
     DEFAULT_ART_THRESHOLD,
     DEFAULT_PROMINENCE,
@@ -21,24 +24,36 @@ from .pfer_plots import build_bokeh_plots
 logger = logging.getLogger(__name__)
 
 
-def _stats_output_path(outdir: Path, stem: str, signal_name: str, is_dual: bool) -> Path:
+def _stats_output_path(
+    outdir: Path, stem: str, signal_name: str, is_dual: bool
+) -> Path:
     if is_dual:
         return outdir / f"{stem}_{signal_name}_Peak_STATS.csv"
     return outdir / f"{stem}_Peak_STATS.csv"
 
 
-def _waveform_output_path(outdir: Path, stem: str, signal_name: str, is_dual: bool) -> Path:
+def _waveform_output_path(
+    outdir: Path, stem: str, signal_name: str, is_dual: bool
+) -> Path:
     if is_dual:
         return outdir / f"{stem}_{signal_name}_Peak_WAVEFORM.csv"
     return outdir / f"{stem}_Peak_WAVEFORM.csv"
 
 
-def _export_results(outdir: Path, stem: str, signal_name: str, result: PFerResult, is_dual: bool) -> Path:
+def _export_results(
+    outdir: Path, stem: str, signal_name: str, result: PFerResult, is_dual: bool
+) -> Path:
     out_path = _stats_output_path(outdir, stem, signal_name, is_dual)
     np.savetxt(
         out_path,
-        np.c_[result["peak_min"], result["trough_min"], result["peak_amp"],
-              result["trough_amp"], result["amplitudes"], result["rise_t"]],
+        np.c_[
+            result["peak_min"],
+            result["trough_min"],
+            result["peak_amp"],
+            result["trough_amp"],
+            result["amplitudes"],
+            result["rise_t"],
+        ],
         delimiter=",",
         header="peak_time_min,trough_time_min,peak_amplitude,trough_amplitude,relative_amplitude,rise_time_s",
         fmt="%f",
@@ -81,13 +96,14 @@ def run_pfer(
     outdir = Path(csv_path).parent
     outdir.mkdir(parents=True, exist_ok=True)
 
-    df = pd.read_csv(csv_path, index_col=False)
+    df = read_analysis_output(csv_path)
     df.columns = [str(col).strip().lstrip("#").strip() for col in df.columns]
 
     missing = missing_columns(df, ["t_min"])
     if missing:
         raise_missing_columns(
-            "PFer input", missing,
+            "PFer input",
+            missing,
             "t_min plus DFer output columns such as dFoF_465/dFoF_405 or dFoF_470/dFoF_560",
         )
 
@@ -125,7 +141,11 @@ def run_pfer(
 
         traces[signal_name] = signal_trace
         results[signal_name] = result
-        output_paths.append(_export_results(outdir, stem, signal_name, result, is_dual=(dataset_kind == "dual")))
+        output_paths.append(
+            _export_results(
+                outdir, stem, signal_name, result, is_dual=(dataset_kind == "dual")
+            )
+        )
 
         logger.info("Final peak count (%s): %s", signal_name, result["peak_count"])
         amplitudes = result["amplitudes"]
@@ -136,15 +156,23 @@ def run_pfer(
 
         baseline_peak_count = int(result["baseline_peak_count"])
         baseline_amp_mean = result["baseline_amp_mean"]
-        if dataset_kind == "single" and result["peak_count"] > 0 and baseline_peak_count > 0:
+        if (
+            dataset_kind == "single"
+            and result["peak_count"] > 0
+            and baseline_peak_count > 0
+        ):
             if result["peak_count"] < baseline_peak_count:
-                logger.warning("PFer warning 1: data may not be suitable for PFer analysis")
+                logger.warning(
+                    "PFer warning 1: data may not be suitable for PFer analysis"
+                )
             if (
                 len(amplitudes) > 0
                 and baseline_amp_mean is not None
                 and (float(np.mean(amplitudes)) * 0.85) < baseline_amp_mean
             ):
-                logger.warning("PFer warning 2: data may not be suitable for PFer analysis")
+                logger.warning(
+                    "PFer warning 2: data may not be suitable for PFer analysis"
+                )
 
     if make_plots:
         build_bokeh_plots(filename, t_vec, specs, traces, results)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-DEFAULT_SETTINGS: dict[str, str] = {
+DEFAULT_SETTINGS: dict[str, str | bool] = {
     "selected_trace_color": "green",
     "selected_sem_color": "grey",
     "selected_bar_sem_color": "grey",
@@ -82,9 +82,10 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "selected_405nm_column": "405nm",
     "selected_465nm_column": "465nm",
     "last_run_dfer_option": "1",
+    "raw_dual_y_axis_mode": "shared",
 }
 
 
-def get_default_settings() -> dict[str, str]:
+def get_default_settings() -> dict[str, str | bool]:
     """Return a fresh copy of the project default settings."""
     return deepcopy(DEFAULT_SETTINGS)

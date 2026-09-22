@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import logging
 
+import numpy as np
 import pytest
-from PySide6.QtWidgets import QApplication
+from matplotlib.colors import to_hex
+from PySide6.QtWidgets import QApplication, QLabel, QToolButton
 
 import src.features.raw_photometry.photometry_processing_widget as raw_app
 from src.dfer.df_common import expected_analysis_output_path
@@ -19,6 +21,19 @@ def _isolated_neurosync_config(tmp_path, monkeypatch):
     monkeypatch.setenv("NEUROSYNCAPP_CONFIG_DIR", str(tmp_path / "config"))
 
 
+def test_raw_shared_axis_limits_use_widest_signal_range_for_padding():
+    signals = [
+        np.array([0.0, 0.1]),
+        np.array([100.0, 160.0]),
+        np.array([500.0, 500.01]),
+    ]
+
+    lower, upper = raw_app._shared_signal_axis_limits(signals)
+
+    assert np.isclose(lower, -2.4)
+    assert np.isclose(upper, 502.41)
+
+
 def test_raw_qt_app_instantiates():
     _app = QApplication.instance() or QApplication([])
     widget = RawPhotometryProcessingQt()
@@ -29,12 +44,275 @@ def test_raw_qt_app_instantiates():
     assert widget.end_time_edit.placeholderText() == "end"
     assert widget.start_time_edit.width() == 63
     assert widget.end_time_edit.width() == 63
+    assert widget._option_preview_combo.count() == 5
+    assert widget._opt_buttons["5"].text().startswith("5 =")
     assert widget.total_time_label.minimumWidth() >= 84
     assert widget._dfer_show_405_checkbox.isChecked() is True
+    assert widget._raw_individual_y_axes_toggle.isChecked() is False
+    assert widget._raw_control_toggle.isChecked() is True
+    assert widget._raw_graph_controls.isHidden() is True
+    assert widget._raw_individual_y_axes_toggle.isVisible() is False
+    assert widget._raw_individual_y_axes_toggle.isEnabled() is False
+    assert "signal baseline" in widget._option_preview_combo.itemText(1)
+    assert "465 baseline" not in widget._option_preview_combo.itemText(1)
+    assert "no 405/410 control" in widget._option_preview_combo.itemText(4)
     assert widget.notebook_graphs.isTabEnabled(0) is True
     assert widget.notebook_graphs.isTabEnabled(1) is False
     assert widget.notebook_graphs.isTabEnabled(2) is False
     assert widget.notebook_graphs.isTabEnabled(3) is False
+    widget.deleteLater()
+
+
+def test_raw_qt_raw_y_axis_mode_is_saved_and_redrawn(monkeypatch):
+    _app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    widget._selected_file = "recording.ofrs"
+    widget._raw_graph_controls.setVisible(True)
+    widget._raw_individual_y_axes_toggle.setVisible(True)
+    widget._raw_individual_y_axes_toggle.setEnabled(True)
+    redraws = []
+    saves = []
+
+    monkeypatch.setattr(
+        widget,
+        "_draw_raw_graph",
+        lambda file_path: redraws.append(file_path),
+    )
+    monkeypatch.setattr(
+        widget.settings_manager,
+        "save_variables",
+        lambda: saves.append(widget.settings_manager.raw_dual_y_axis_mode),
+    )
+
+    widget._raw_individual_y_axes_toggle.setChecked(True)
+
+    assert widget.settings_manager.raw_dual_y_axis_mode == "individual"
+    assert saves == ["individual"]
+    assert redraws == ["recording.ofrs"]
+    widget.deleteLater()
+
+
+def test_raw_qt_single_raw_graph_retains_405_control_signal():
+    _app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    widget._draw_single_raw(
+        np.array([0.0, 1.0, 2.0]),
+        np.array([10.0, 11.0, 12.0]),
+        np.array([1.0, 1.1, 1.2]),
+    )
+
+    toolbar = widget.raw_graph_panel.toolbar
+    assert toolbar is not None
+    assert toolbar.objectName() == ""
+    assert toolbar.isMovable() is True
+    assert toolbar.isFloatable() is True
+    assert "background: #DCE8F2" in toolbar.styleSheet()
+    assert "QToolBar QLabel" in toolbar.styleSheet()
+    assert "color: #17324D" in toolbar.styleSheet()
+    assert toolbar.property("rawToolbarIconsTinted") is True
+    assert any(
+        button.defaultAction() is not None and not button.icon().isNull()
+        for button in toolbar.findChildren(QToolButton)
+    )
+    assert [
+        label.text()
+        for label in widget.raw_graph_panel.findChildren(QLabel, "rawGraphAxisLabel")
+    ] == ["465nm", "405nm"]
+
+    ref = widget._raw_graph_ref
+    assert ref is not None
+    assert np.isclose(ref.figure.subplotpars.bottom, 0.09)
+    assert ref.secondary_axis is not None
+    assert ref.secondary_axis.get_ylabel() == "405nm"
+    assert ref.primary_axis.get_ylabel() == "465nm"
+    assert ref.primary_axis.yaxis.get_ticklabels()[0].get_color() == "green"
+    assert np.isclose(
+        np.ptp([1.0, 1.1, 1.2]) / np.ptp(ref.primary_axis.get_ylim()), 0.80
+    )
+    assert np.isclose(
+        np.ptp([10.0, 11.0, 12.0]) / np.ptp(ref.secondary_axis.get_ylim()), 0.30
+    )
+    assert ref.primary_axis.lines[0].get_alpha() == 0.65
+    assert ref.secondary_axis.lines[0].get_alpha() == 0.55
+    assert np.asarray(ref.secondary_axis.lines[0].get_ydata()).tolist() == [
+        10.0,
+        11.0,
+        12.0,
+    ]
+    assert [text.get_text() for text in ref.primary_axis.get_legend().texts] == [
+        "Window start",
+        "Window end",
+    ]
+
+    widget._raw_control_toggle.setChecked(False)
+    widget._draw_single_raw(
+        np.array([0.0, 1.0, 2.0]),
+        np.array([10.0, 11.0, 12.0]),
+        np.array([1.0, 1.1, 1.2]),
+    )
+    hidden_ref = widget._raw_graph_ref
+    assert hidden_ref is not None
+    assert hidden_ref.secondary_axis is not None
+    assert hidden_ref.secondary_axis.get_visible() is False
+    assert len(hidden_ref.secondary_axis.lines) == 0
+    widget.deleteLater()
+
+
+def test_raw_qt_single_raw_graph_uses_selected_490_signal_label():
+    _app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    widget._draw_single_raw(
+        np.array([0.0, 1.0, 2.0]),
+        np.array([10.0, 11.0, 12.0]),
+        np.array([1.0, 1.1, 1.2]),
+        "490nm",
+    )
+
+    ref = widget._raw_graph_ref
+    assert ref is not None
+    assert ref.primary_axis.get_ylabel() == "490nm"
+    widget.deleteLater()
+
+
+def test_raw_qt_raw_graph_toggles_are_configured_for_single_and_dual(monkeypatch):
+    _app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    file_type = {"value": "single"}
+
+    monkeypatch.setattr(
+        raw_app,
+        "detect_photometry_file_type",
+        lambda _file_path: (file_type["value"], 0),
+    )
+    monkeypatch.setattr(widget, "_draw_raw_graph", lambda _file_path: None)
+    monkeypatch.setattr(widget, "_on_generate_options", lambda **_kwargs: None)
+
+    widget._load_photometry_file("recording.csv")
+    assert widget._raw_graph_controls.isHidden() is False
+    assert widget._raw_control_toggle.text() == "Show 405 nm control"
+    assert widget._raw_individual_y_axes_toggle.isHidden() is True
+    assert widget._raw_individual_y_axes_toggle.isEnabled() is False
+
+    file_type["value"] = "dual"
+    widget._load_photometry_file("recording.ofrs")
+    assert widget._raw_graph_controls.isHidden() is False
+    assert widget._raw_control_toggle.text() == "Show 410 nm control"
+    assert widget._raw_individual_y_axes_toggle.isHidden() is False
+    assert widget._raw_individual_y_axes_toggle.isEnabled() is True
+    widget.deleteLater()
+
+
+def test_raw_qt_dual_raw_graph_includes_control_and_supports_axis_modes(monkeypatch):
+    _app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    t = np.array([0.0, 1.0, 2.0])
+    y410 = np.array([10.0, 11.0, 12.0])
+    y470 = np.array([1.0, 1.1, 1.2])
+    y560 = np.array([100.0, 101.0, 102.0])
+
+    assert widget._raw_y_axis_mode() == "shared"
+    widget._draw_dual_raw(t, y410, y470, y560)
+    shared_default_ref = widget._raw_graph_ref
+    assert shared_default_ref is not None
+    assert len(shared_default_ref.figure.axes) == 1
+    assert shared_default_ref.primary_axis.get_ylabel() == "470nm"
+    assert shared_default_ref.primary_axis.yaxis.label.get_color() == "black"
+    assert (
+        to_hex(shared_default_ref.primary_axis.spines["left"].get_edgecolor())
+        == "#000000"
+    )
+    assert shared_default_ref.primary_axis.lines[0].get_alpha() == 0.55
+    assert shared_default_ref.primary_axis.lines[1].get_alpha() == 0.65
+    assert shared_default_ref.primary_axis.lines[2].get_alpha() == 0.65
+
+    widget._raw_individual_y_axes_toggle.setChecked(True)
+    widget._draw_dual_raw(t, y410, y470, y560)
+    individual_ref = widget._raw_graph_ref
+    assert individual_ref is not None
+    figure = individual_ref.figure
+    assert len(figure.axes) == 3
+    assert np.isclose(figure.subplotpars.bottom, 0.09)
+    assert np.isclose(figure.subplotpars.right, 0.90)
+    assert [
+        label.text()
+        for label in widget.raw_graph_panel.findChildren(QLabel, "rawGraphAxisLabel")
+    ] == ["470nm", "410nm", "560nm"]
+    assert individual_ref.primary_axis.get_ylabel() == "470nm"
+    assert individual_ref.primary_axis.yaxis.get_ticklabels()[0].get_color() == "green"
+    assert (
+        to_hex(individual_ref.primary_axis.spines["left"].get_edgecolor()) == "#008000"
+    )
+    assert individual_ref.primary_axis.get_ylim()[0] < float(y470.min())
+    assert individual_ref.primary_axis.get_ylim()[1] > float(y470.max())
+    assert np.isclose(
+        np.ptp(y470) / np.ptp(individual_ref.primary_axis.get_ylim()), 0.50
+    )
+    assert individual_ref.secondary_axis is not None
+    assert individual_ref.secondary_axis.get_ylabel() == "410nm"
+    assert individual_ref.secondary_axis.get_ylim()[0] < float(y410.min())
+    assert individual_ref.secondary_axis.get_ylim()[1] > float(y410.max())
+    assert np.isclose(
+        np.ptp(y410) / np.ptp(individual_ref.secondary_axis.get_ylim()), 0.30
+    )
+    assert individual_ref.primary_axis.lines[0].get_alpha() == 0.65
+    assert individual_ref.secondary_axis.lines[0].get_alpha() == 0.55
+    assert figure.axes[2].lines[0].get_alpha() == 0.65
+    assert figure.axes[2].get_ylim()[0] < float(y560.min())
+    assert figure.axes[2].get_ylim()[1] > float(y560.max())
+    assert np.isclose(np.ptp(y560) / np.ptp(figure.axes[2].get_ylim()), 0.80)
+    assert [
+        str(line.get_label())
+        for axis in figure.axes
+        for line in axis.lines
+        if not str(line.get_label()).startswith("Window")
+    ] == ["470nm", "410nm control", "560nm"]
+    individual_legend = figure.axes[0].get_legend()
+    assert individual_legend is not None
+    assert [text.get_text() for text in individual_legend.texts] == [
+        "410nm control",
+        "470nm",
+        "560nm",
+        "Window start",
+        "Window end",
+    ]
+
+    widget._selected_file = "recording.ofrs"
+    widget._raw_graph_controls.setVisible(True)
+    widget._raw_individual_y_axes_toggle.setVisible(True)
+    widget._raw_individual_y_axes_toggle.setEnabled(True)
+    widget.start_time_edit.setText("0.5")
+    widget.end_time_edit.setText("1.5")
+    widget._refresh_time_preview()
+    monkeypatch.setattr(
+        widget,
+        "_draw_raw_graph",
+        lambda _file_path: widget._draw_dual_raw(t, y410, y470, y560),
+    )
+    widget._raw_individual_y_axes_toggle.setChecked(False)
+
+    shared_ref = widget._raw_graph_ref
+    assert shared_ref is not None
+    shared_figure = shared_ref.figure
+    assert len(shared_figure.axes) == 1
+    assert [line.get_label() for line in shared_figure.axes[0].lines] == [
+        "410nm control",
+        "470nm",
+        "560nm",
+        "Window start",
+        "Window end",
+    ]
+    assert np.asarray(shared_ref.start_line.get_xdata()).tolist() == [0.5, 0.5]
+    assert np.asarray(shared_ref.end_line.get_xdata()).tolist() == [1.5, 1.5]
+
+    widget._raw_control_toggle.setChecked(False)
+    no_control_ref = widget._raw_graph_ref
+    assert no_control_ref is not None
+    assert [line.get_label() for line in no_control_ref.primary_axis.lines] == [
+        "470nm",
+        "560nm",
+        "Window start",
+        "Window end",
+    ]
     widget.deleteLater()
 
 
@@ -108,14 +386,23 @@ def test_raw_qt_remembers_selected_dfer_option(monkeypatch):
     )
 
     widget._opt_buttons["3"].setChecked(True)
+    assert widget._option_preview_combo.currentIndex() == 2
     widget._save_dfer_option_selection("3")
+
+    widget._opt_buttons["5"].setChecked(True)
+    assert widget._selected_option() == "5"
+    assert widget._option_preview_combo.currentIndex() == 4
 
     assert widget.settings_manager.last_run_dfer_option == "3"
     assert saved == ["3"]
 
+    widget._option_preview_combo.setCurrentIndex(0)
+    assert widget._selected_option() == "1"
+
     widget.settings_manager.last_run_dfer_option = "4"
     widget._restore_dfer_option_selection()
     assert widget._selected_option() == "4"
+    assert widget._option_preview_combo.currentIndex() == 3
     widget.deleteLater()
 
 
@@ -275,12 +562,15 @@ def test_raw_qt_ofrs_raw_graph_uses_dual_loader(tmp_path, monkeypatch):
     monkeypatch.setattr(
         widget,
         "_draw_dual_raw",
-        lambda t, y470, y560: captured.update({"t": t, "y470": y470, "y560": y560}),
+        lambda t, y410, y470, y560: captured.update(
+            {"t": t, "y410": y410, "y470": y470, "y560": y560}
+        ),
     )
 
     widget._draw_raw_graph(str(file_path))
 
     assert captured["t"].tolist() == [0.0, 0.1, 0.2]
+    assert captured["y410"].tolist() == [1.0, 1.1, 1.2]
     assert captured["y470"].tolist() == [2.0, 2.1, 2.2]
     assert captured["y560"].tolist() == [3.0, 3.1, 3.2]
     widget.deleteLater()
@@ -413,6 +703,30 @@ def test_raw_qt_dfer_results_405_checkbox_disables_for_dual():
     widget._dfer_result_csv = "dual.csv"
 
     widget._render_dfer_results("dual.csv")
+
+    assert widget._dfer_show_405_checkbox.isEnabled() is False
+    assert widget._dfer_show_405_checkbox.isChecked() is False
+    widget.deleteLater()
+
+
+def test_raw_qt_dfer_results_405_checkbox_disables_for_option_five():
+    import pandas as pd
+
+    _app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    widget._dfer_result_frame = pd.DataFrame(
+        {
+            "t_min": [0.0, 1.0],
+            "dFoF_405": [float("nan"), float("nan")],
+            "dFoF_465": [0.2, 0.3],
+            "Z_405": [float("nan"), float("nan")],
+            "Z_465": [1.0, 0.0],
+        }
+    )
+    widget._dfer_result_frame.attrs["dfer_option"] = 5
+    widget._dfer_result_csv = "option-five.csv"
+
+    widget._render_dfer_results("option-five.csv")
 
     assert widget._dfer_show_405_checkbox.isEnabled() is False
     assert widget._dfer_show_405_checkbox.isChecked() is False

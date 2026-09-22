@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, SignalInstance
 
 
 class AnalysisWorker(QObject):
@@ -29,7 +29,7 @@ class AnalysisWorker(QObject):
 class QtSignalLogHandler(logging.Handler):
     """Forward formatted log records through a Qt signal."""
 
-    def __init__(self, signal: Signal) -> None:
+    def __init__(self, signal: SignalInstance) -> None:
         super().__init__()
         self._signal = signal
 

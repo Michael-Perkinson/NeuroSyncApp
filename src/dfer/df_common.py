@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import logging
 from pathlib import Path
 from typing import cast
@@ -163,6 +164,80 @@ def load_dual_photometry(
     if path.suffix.lower() == ".ofrs":
         return read_ofrs(path)
     return pd.read_csv(path, skiprows=skiprows, index_col=False, low_memory=False)
+
+
+_OPTION_HEADER_PREFIX = "# option used="
+
+
+def _option_from_header(frame: pd.DataFrame) -> tuple[int | None, str | None]:
+    for column in frame.columns:
+        text = str(column).strip()
+        if not text.startswith(_OPTION_HEADER_PREFIX):
+            continue
+        try:
+            return int(text[len(_OPTION_HEADER_PREFIX) :].strip()), str(column)
+        except ValueError:
+            return None, str(column)
+    return None, None
+
+
+def analysis_option_from_frame(frame: pd.DataFrame) -> int | None:
+    """Return one stored DFer option from metadata or legacy CSV columns."""
+    metadata_option = frame.attrs.get("dfer_option")
+    if metadata_option is not None:
+        try:
+            return int(metadata_option)
+        except (TypeError, ValueError):
+            return None
+
+    header_option, _ = _option_from_header(frame)
+    if header_option is not None:
+        return header_option
+
+    if "dfer_option" not in frame.columns:
+        return None
+    values = pd.to_numeric(frame["dfer_option"], errors="coerce").dropna()
+    if values.empty or not bool((values == values.iloc[0]).all()):
+        return None
+    return int(values.iloc[0])
+
+
+def read_analysis_output(output_path: str | Path) -> pd.DataFrame:
+    """Read a DFer output, supporting metadata and legacy CSV layouts."""
+    output = Path(output_path).expanduser().resolve()
+    frame = pd.read_csv(output, index_col=False)
+    metadata_option, metadata_column = _option_from_header(frame)
+    if metadata_option is not None:
+        frame.attrs["dfer_option"] = metadata_option
+        if metadata_column is not None:
+            frame = frame.drop(columns=[metadata_column])
+            frame.attrs["dfer_option"] = metadata_option
+    return frame
+
+
+def save_analysis_output(
+    output_path: str | Path,
+    data: np.ndarray,
+    header: str,
+    analysis_option: str | int,
+) -> None:
+    """Write a DFer output with one metadata-only option column in its header."""
+    option_text = str(analysis_option).strip()
+    if not option_text.isdigit() or int(option_text) < 1:
+        raise ValueError("analysis_option must be a positive integer")
+    option_number = int(option_text)
+
+    values = np.asarray(data)
+    if values.ndim != 2:
+        raise ValueError("DFer output data must be a two-dimensional array")
+
+    output = Path(output_path).expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
+        writer.writerow([*header.split(","), f"{_OPTION_HEADER_PREFIX}{option_number}"])
+        for row in values:
+            writer.writerow([f"{float(value):f}" for value in row] + [""])
 
 
 def expected_analysis_output_path(

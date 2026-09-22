@@ -8,6 +8,8 @@ import pandas as pd
 from numpy.typing import NDArray
 from scipy.signal import find_peaks
 
+from .df_common import analysis_option_from_frame
+
 # ---------------------------------------------------------------------------
 # Peak-finding parameters
 # ---------------------------------------------------------------------------
@@ -56,17 +58,37 @@ def baseline_mask(t_vec: np.ndarray, w_start: str, w_end: str) -> np.ndarray:
 
 def signal_specs(df: pd.DataFrame) -> tuple[str, list[dict[str, str]]]:
     if "dFoF_465" in df.columns and "dFoF_405" in df.columns:
+        baseline_col = "dFoF_405"
+        if analysis_option_from_frame(df) == 5:
+            baseline_col = "dFoF_465"
         return "single", [
-            {"name": "465", "signal_col": "dFoF_465", "baseline_col": "dFoF_405", "color": "green"}
+            {
+                "name": "465",
+                "signal_col": "dFoF_465",
+                "baseline_col": baseline_col,
+                "color": "green",
+            }
         ]
 
     dual_specs: list[dict[str, str]] = []
     if "dFoF_470" in df.columns:
-        dual_specs.append({"name": "470", "signal_col": "dFoF_470",
-                          "baseline_col": "dFoF_470", "color": "green"})
+        dual_specs.append(
+            {
+                "name": "470",
+                "signal_col": "dFoF_470",
+                "baseline_col": "dFoF_470",
+                "color": "green",
+            }
+        )
     if "dFoF_560" in df.columns:
-        dual_specs.append({"name": "560", "signal_col": "dFoF_560",
-                          "baseline_col": "dFoF_560", "color": "red"})
+        dual_specs.append(
+            {
+                "name": "560",
+                "signal_col": "dFoF_560",
+                "baseline_col": "dFoF_560",
+                "color": "red",
+            }
+        )
     if dual_specs:
         return "dual", dual_specs
 
@@ -103,8 +125,12 @@ def _fix_jitter(
     if len(peaks_arr) == 0 or len(troughs_arr) == 0:
         return peaks_arr, troughs_arr, prom_arr, width_arr
 
-    peak_id = np.column_stack([peaks_arr, np.ones(len(peaks_arr)), np.arange(len(peaks_arr))])
-    trough_id = np.column_stack([troughs_arr, np.full(len(troughs_arr), 2), np.arange(len(troughs_arr))])
+    peak_id = np.column_stack(
+        [peaks_arr, np.ones(len(peaks_arr)), np.arange(len(peaks_arr))]
+    )
+    trough_id = np.column_stack(
+        [troughs_arr, np.full(len(troughs_arr), 2), np.arange(len(troughs_arr))]
+    )
     combined = np.vstack([peak_id, trough_id])
     order = np.argsort(combined[:, 0])
     sorted_combined = combined[order]
@@ -135,7 +161,9 @@ def _waveforms_for_peaks(
     signal_trace: np.ndarray,
     t_vec: np.ndarray,
     peak_times_min: np.ndarray,
-) -> tuple[list[NDArray[np.float64]], NDArray[np.float64] | None, NDArray[np.float64] | None]:
+) -> tuple[
+    list[NDArray[np.float64]], NDArray[np.float64] | None, NDArray[np.float64] | None
+]:
     peak_indices = np.searchsorted(t_vec, peak_times_min)
     waveform_len = WAVEFORM_HALF + WAVEFORM_TAIL
 
@@ -160,7 +188,9 @@ def _find_peak_features(
     trace: np.ndarray,
     prominence: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    peaks, raw_peak_props = find_peaks(trace, prominence=prominence, width=0, rel_height=0.5)
+    peaks, raw_peak_props = find_peaks(
+        trace, prominence=prominence, width=0, rel_height=0.5
+    )
     troughs, _ = find_peaks(-trace, prominence=prominence, width=0, rel_height=0.5)
     peak_props = cast(Mapping[str, np.ndarray], raw_peak_props)
     peak_prom = np.asarray(peak_props["prominences"], dtype=float)
@@ -183,10 +213,25 @@ def _apply_peak_mask(
     trough_min: np.ndarray,
     amplitudes: np.ndarray,
     rise_t: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+]:
     return (
-        peaks[mask], troughs[mask], peak_amp[mask], trough_amp[mask],
-        peak_min[mask], trough_min[mask], amplitudes[mask], rise_t[mask],
+        peaks[mask],
+        troughs[mask],
+        peak_amp[mask],
+        trough_amp[mask],
+        peak_min[mask],
+        trough_min[mask],
+        amplitudes[mask],
+        rise_t[mask],
     )
 
 
@@ -198,7 +243,10 @@ def _baseline_amplitude_mean(
     if len(baseline_peaks) == 0 or len(baseline_troughs) == 0:
         return None
     n_base = min(len(baseline_peaks), len(baseline_troughs))
-    baseline_amps = baseline_trace[baseline_peaks[:n_base]] - baseline_trace[baseline_troughs[:n_base]]
+    baseline_amps = (
+        baseline_trace[baseline_peaks[:n_base]]
+        - baseline_trace[baseline_troughs[:n_base]]
+    )
     if len(baseline_amps) == 0:
         return None
     return float(np.mean(baseline_amps))
@@ -213,14 +261,24 @@ def analyze_signal(
 ) -> PFerResult:
     end_t = float(t_vec.max())
 
-    peaks, troughs, peak_prom, peak_width = _find_peak_features(signal_trace, prominence)
-    baseline_peaks, baseline_troughs, _, _ = _find_peak_features(baseline_trace, prominence)
+    peaks, troughs, peak_prom, peak_width = _find_peak_features(
+        signal_trace, prominence
+    )
+    baseline_peaks, baseline_troughs, _, _ = _find_peak_features(
+        baseline_trace, prominence
+    )
 
-    peaks, troughs, peak_prom_opt, peak_width_opt = _fix_jitter(peaks, troughs, peak_prom, peak_width)
-    baseline_peaks, baseline_troughs, _, _ = _fix_jitter(baseline_peaks, baseline_troughs)
+    peaks, troughs, peak_prom_opt, peak_width_opt = _fix_jitter(
+        peaks, troughs, peak_prom, peak_width
+    )
+    baseline_peaks, baseline_troughs, _, _ = _fix_jitter(
+        baseline_peaks, baseline_troughs
+    )
 
     if peak_prom_opt is None or peak_width_opt is None:
-        raise ValueError("Peak properties were unavailable for the detected signal peaks.")
+        raise ValueError(
+            "Peak properties were unavailable for the detected signal peaks."
+        )
     peak_prom = peak_prom_opt
     peak_width = peak_width_opt
 
@@ -240,8 +298,19 @@ def analyze_signal(
 
     amp_ok = amplitudes > DEFAULT_AMP_THRESHOLD
     rise_t = (peak_min - trough_min) * 60
-    peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t = _apply_peak_mask(
-        amp_ok, peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t)
+    peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t = (
+        _apply_peak_mask(
+            amp_ok,
+            peaks,
+            troughs,
+            peak_amp,
+            trough_amp,
+            peak_min,
+            trough_min,
+            amplitudes,
+            rise_t,
+        )
+    )
 
     sigma = float(np.std(baseline_trace))
     if sigma == 0:
@@ -249,16 +318,40 @@ def analyze_signal(
 
     z_value = amplitudes / sigma
     z_ok = z_value > DEFAULT_Z_THRESHOLD
-    peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t = _apply_peak_mask(
-        z_ok, peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t)
+    peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t = (
+        _apply_peak_mask(
+            z_ok,
+            peaks,
+            troughs,
+            peak_amp,
+            trough_amp,
+            peak_min,
+            trough_min,
+            amplitudes,
+            rise_t,
+        )
+    )
 
     end_thresh = end_t - (END_GUARD_SEC / 60.0)
     end_ok = (peak_min < end_thresh) & (trough_min < end_thresh)
-    peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t = _apply_peak_mask(
-        end_ok, peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t)
+    peaks, troughs, peak_amp, trough_amp, peak_min, trough_min, amplitudes, rise_t = (
+        _apply_peak_mask(
+            end_ok,
+            peaks,
+            troughs,
+            peak_amp,
+            trough_amp,
+            peak_min,
+            trough_min,
+            amplitudes,
+            rise_t,
+        )
+    )
 
     sigs, waveform_time, mean_wave = _waveforms_for_peaks(signal_trace, t_vec, peak_min)
-    baseline_amp_mean = _baseline_amplitude_mean(baseline_trace, baseline_peaks, baseline_troughs)
+    baseline_amp_mean = _baseline_amplitude_mean(
+        baseline_trace, baseline_peaks, baseline_troughs
+    )
 
     return {
         "peak_count": len(peaks),

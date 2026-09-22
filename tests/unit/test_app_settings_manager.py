@@ -37,9 +37,35 @@ def test_align_config_construction_no_longer_requires_widget_instances():
 def test_raw_settings_reject_invalid_last_run_dfer_option():
     manager = AppSettingsManager(app_type="raw_photometry_processing")
 
+    manager.apply_settings({"last_run_dfer_option": "5"})
+    assert manager.last_run_dfer_option == "5"
+
     manager.apply_settings({"last_run_dfer_option": "9"})
 
     assert manager.last_run_dfer_option == "1"
+
+
+def test_raw_settings_persist_and_validate_dual_y_axis_mode(tmp_path, monkeypatch):
+    monkeypatch.setenv("NEUROSYNCAPP_CONFIG_DIR", str(tmp_path / "config"))
+    manager = AppSettingsManager(app_type="raw_photometry_processing")
+    assert manager.raw_dual_y_axis_mode == "shared"
+
+    manager.raw_dual_y_axis_mode = "shared"
+
+    config = manager.construct_config({})
+
+    assert config["raw_dual_y_axis_mode"] == "shared"
+
+    manager.apply_settings({"raw_dual_y_axis_mode": "invalid"})
+    assert manager.raw_dual_y_axis_mode == "shared"
+
+    manager.apply_settings({"raw_dual_y_axis_mode": "shared"})
+    assert manager.raw_dual_y_axis_mode == "shared"
+
+    manager.save_variables()
+    reloaded = AppSettingsManager(app_type="raw_photometry_processing")
+    reloaded.load_variables()
+    assert reloaded.raw_dual_y_axis_mode == "shared"
 
 
 def test_raw_settings_construct_config_uses_loadable_column_keys():

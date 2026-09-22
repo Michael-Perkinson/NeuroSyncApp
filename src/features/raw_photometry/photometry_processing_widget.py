@@ -5,10 +5,13 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -39,8 +42,10 @@ from src import path_config
 from src.core.app_settings_manager import AppSettingsManager
 from src.dfer import compute_options, run_analysis, run_pfer
 from src.dfer.df_common import (
+    analysis_option_from_frame,
     detect_photometry_file_type,
     load_dual_photometry,
+    read_analysis_output,
     validate_dual_df,
     validate_single_df,
 )
@@ -118,7 +123,10 @@ def _parse_window_endpoint(text: str, fallback: float, aliases: set[str]) -> flo
     value = text.strip().lower()
     if not value or value in aliases:
         return fallback
-    return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"Invalid time endpoint: {text!r}") from error
 
 
 def _normalise_window_input(text: str, aliases: set[str]) -> str:
@@ -126,6 +134,88 @@ def _normalise_window_input(text: str, aliases: set[str]) -> str:
     if not value or value.lower() in aliases:
         return ""
     return value
+
+
+def _signal_range(values: np.ndarray) -> tuple[float, float] | None:
+    try:
+        finite_values = np.asarray(values, dtype=float)
+        finite_values = finite_values[np.isfinite(finite_values)]
+        if finite_values.size == 0:
+            return None
+        return float(np.min(finite_values)), float(np.max(finite_values))
+    except (TypeError, ValueError) as error:
+        raise ValueError("Signal values must be numeric") from error
+
+
+def _raw_time_bounds(values: np.ndarray) -> tuple[float, float]:
+    try:
+        return float(values[0]), float(values[-1])
+    except (IndexError, TypeError, ValueError) as error:
+        raise ValueError("Raw signal data must contain numeric time values") from error
+
+
+_RAW_CONTROL_OCCUPANCY = 0.30
+_RAW_LARGER_SIGNAL_OCCUPANCY = 0.80
+_RAW_SMALLER_SIGNAL_OCCUPANCY = 0.50
+_RAW_INDIVIDUAL_CONTROL_ALPHA = 0.55
+_RAW_INDIVIDUAL_SIGNAL_ALPHA = 0.65
+_RAW_GRAPH_BOTTOM_MARGIN = 0.09
+
+
+def _signal_span(values: np.ndarray) -> float:
+    observed_range = _signal_range(values)
+    if observed_range is None:
+        return 0.0
+    return observed_range[1] - observed_range[0]
+
+
+def _signal_axis_limits(
+    values: np.ndarray, occupancy: float = 1.0
+) -> tuple[float, float]:
+    """Return y-limits with an optional fraction of the axis occupied by data."""
+    if not 0 < occupancy <= 1:
+        raise ValueError("occupancy must be greater than zero and at most one")
+
+    observed_range = _signal_range(values)
+    if observed_range is None:
+        return (0.0, 1.0)
+
+    value_min, value_max = observed_range
+    value_span = value_max - value_min
+    scale_reference = max(abs(value_min), abs(value_max))
+    if value_span == 0:
+        value_span = max(scale_reference * 0.002, 1e-6)
+
+    if occupancy < 1:
+        axis_span = value_span / occupancy
+        midpoint = (value_min + value_max) / 2
+        return midpoint - axis_span / 2, midpoint + axis_span / 2
+
+    padding = max(value_span * 0.04, scale_reference * 0.001, 1e-6)
+    return value_min - padding, value_max + padding
+
+
+def _shared_signal_axis_limits(signals: list[np.ndarray]) -> tuple[float, float]:
+    """Keep all signals visible while letting the widest range set the padding."""
+    observed_ranges = [
+        observed_range
+        for signal in signals
+        if (observed_range := _signal_range(signal)) is not None
+    ]
+    if not observed_ranges:
+        return (0.0, 1.0)
+
+    value_min = min(observed_range[0] for observed_range in observed_ranges)
+    value_max = max(observed_range[1] for observed_range in observed_ranges)
+    global_span = value_max - value_min
+    dominant_span = max(
+        observed_range[1] - observed_range[0] for observed_range in observed_ranges
+    )
+    scale_reference = max(abs(value_min), abs(value_max))
+    padding = max(dominant_span * 0.04, scale_reference * 0.001, 1e-6)
+    if global_span == 0:
+        padding = max(scale_reference * 0.02, 1e-6)
+    return value_min - padding, value_max + padding
 
 
 def _safe_path_part(value: str) -> str:
@@ -153,7 +243,31 @@ def _spinbox_css(panel_name: str) -> str:
 }}
 #{panel_name} QRadioButton {{
     color: {PALETTE["text"]};
-    spacing: 6px;
+    spacing: 8px;
+    padding: 4px 6px;
+    border-radius: 6px;
+}}
+#{panel_name} QRadioButton:hover {{
+    background: {PALETTE["button_bg"]};
+}}
+#{panel_name} QRadioButton:checked {{
+    color: {PALETTE["accent"]};
+    background: {PALETTE["accent_soft"]};
+    font-weight: 600;
+}}
+#{panel_name} QRadioButton::indicator {{
+    width: 16px;
+    height: 16px;
+    border: 2px solid {PALETTE["border_strong"]};
+    border-radius: 9px;
+    background: {PALETTE["card_bg"]};
+}}
+#{panel_name} QRadioButton::indicator:hover {{
+    border-color: {PALETTE["accent"]};
+}}
+#{panel_name} QRadioButton::indicator:checked {{
+    border-color: {PALETTE["accent"]};
+    background: {PALETTE["accent"]};
 }}
 """
 
@@ -189,6 +303,11 @@ class RawPhotometryProcessingQt(QWidget):
         self._selected_file: str | None = None
         self._output_folder: str | None = None
         self._raw_graph_ref: GraphReference | None = None
+        self._raw_graph_controls: QWidget
+        self._raw_control_toggle: QCheckBox
+        self._raw_individual_y_axes_toggle: QCheckBox
+        self.dfer_results_graph: GraphPanel
+        self.pfer_graph: GraphPanel
         self._options_data: dict | None = None
         self._dfer_result_csv: str | None = None
         self._dfer_result_frame: pd.DataFrame | None = None
@@ -246,7 +365,83 @@ class RawPhotometryProcessingQt(QWidget):
         raw_page = QWidget()
         raw_page_layout = QVBoxLayout(raw_page)
         raw_page_layout.setContentsMargins(0, 0, 0, 0)
-        raw_page_layout.addWidget(self.raw_graph_panel)
+        raw_page_layout.setSpacing(0)
+
+        raw_header = QFrame(raw_page)
+        raw_header.setObjectName("rawGraphHeader")
+        raw_header.setStyleSheet(
+            f"""
+#rawGraphHeader {{
+    background: {PALETTE["panel_bg"]};
+    border-bottom: 1px solid {PALETTE["border"]};
+}}
+#rawGraphHeader QCheckBox {{
+    color: {PALETTE["text"]};
+    spacing: 6px;
+}}
+#rawGraphHeader QCheckBox:disabled {{
+    color: {PALETTE["muted"]};
+}}
+#rawGraphHeader QCheckBox::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1px solid {PALETTE["border_strong"]};
+    background: {PALETTE["card_bg"]};
+}}
+#rawGraphHeader QCheckBox::indicator:checked {{
+    background: {PALETTE["accent"]};
+    border-color: {PALETTE["accent"]};
+}}
+"""
+        )
+        raw_header_layout = QHBoxLayout(raw_header)
+        raw_header_layout.setContentsMargins(10, 6, 10, 6)
+        raw_header_layout.setSpacing(8)
+
+        raw_header_title = QLabel("Raw signal", raw_header)
+        raw_header_title.setStyleSheet(title_stylesheet())
+        raw_header_layout.addWidget(raw_header_title)
+        raw_header_layout.addStretch(1)
+
+        self._raw_graph_controls = QWidget(raw_header)
+        raw_controls_layout = QHBoxLayout(self._raw_graph_controls)
+        raw_controls_layout.setContentsMargins(0, 0, 0, 0)
+        raw_controls_layout.setSpacing(12)
+
+        self._raw_control_toggle = QCheckBox(
+            "Show control signal", self._raw_graph_controls
+        )
+        self._raw_control_toggle.setChecked(True)
+        self._raw_control_toggle.setAccessibleName("Show raw control signal")
+        self._raw_control_toggle.setToolTip(
+            "Show or hide the 405 nm or 410 nm control signal."
+        )
+        raw_controls_layout.addWidget(self._raw_control_toggle)
+
+        self._raw_individual_y_axes_toggle = QCheckBox(
+            "Individual y-axes", self._raw_graph_controls
+        )
+        self._raw_individual_y_axes_toggle.setAccessibleName(
+            "Use individual raw signal y-axes"
+        )
+        self._raw_individual_y_axes_toggle.setToolTip(
+            "On: range-based axis for each signal. Off: one shared axis, padded from the widest signal range."
+        )
+        self._restore_raw_y_axis_mode()
+        self._raw_control_toggle.toggled.connect(
+            self._on_raw_control_visibility_changed
+        )
+        self._raw_individual_y_axes_toggle.toggled.connect(
+            self._on_raw_y_axis_mode_changed
+        )
+        raw_controls_layout.addWidget(self._raw_individual_y_axes_toggle)
+        raw_header_layout.addWidget(self._raw_graph_controls)
+        self._raw_graph_controls.setVisible(False)
+        self._raw_individual_y_axes_toggle.setVisible(False)
+        self._raw_individual_y_axes_toggle.setEnabled(False)
+
+        raw_page_layout.addWidget(raw_header)
+        raw_page_layout.addWidget(self.raw_graph_panel, 1)
         self.notebook_graphs.addTab(raw_page, "Raw Data")
 
         # DFer Options tab — dropdown + full-canvas single-option plot
@@ -374,6 +569,35 @@ class RawPhotometryProcessingQt(QWidget):
         self.notebook_graphs.setTabEnabled(1, False)
         self.notebook_graphs.setTabEnabled(2, False)
         self.notebook_graphs.setTabEnabled(3, False)
+
+    def _restore_raw_y_axis_mode(self) -> None:
+        mode = str(getattr(self.settings_manager, "raw_dual_y_axis_mode", "shared"))
+        self._raw_individual_y_axes_toggle.setChecked(mode == "individual")
+
+    def _raw_y_axis_mode(self) -> str:
+        return (
+            "individual" if self._raw_individual_y_axes_toggle.isChecked() else "shared"
+        )
+
+    def _raw_show_control_signal(self) -> bool:
+        return self._raw_control_toggle.isChecked()
+
+    def _on_raw_y_axis_mode_changed(self, _checked: bool) -> None:
+        mode = self._raw_y_axis_mode()
+        self.settings_manager.raw_dual_y_axis_mode = mode
+        self.settings_manager.save_variables()
+        if self._selected_file:
+            self._draw_raw_graph(self._selected_file)
+            self._refresh_time_preview()
+
+    def _on_raw_control_visibility_changed(self, _checked: bool) -> None:
+        if self._selected_file:
+            self._draw_raw_graph(self._selected_file)
+            self._refresh_time_preview()
+
+    def _set_raw_control_label(self, file_type: str) -> None:
+        wavelength = "410 nm" if file_type == "dual" else "405 nm"
+        self._raw_control_toggle.setText(f"Show {wavelength} control")
 
     # ── top panels ─────────────────────────────────────────────────────────
 
@@ -540,11 +764,17 @@ class RawPhotometryProcessingQt(QWidget):
             "2": "2 = alternative baseline fit",
             "3": "3 = no noise correction",
             "4": "4 = no noise correction and no activity baseline correction",
+            "5": "5 = independent 10% msbackadj (no 405/410 control)",
         }
-        for key in ("1", "2", "3", "4"):
+        for key in ("1", "2", "3", "4", "5"):
             rb = QRadioButton(opt_labels[key], choose_card)
             self._opt_button_group.addButton(rb)
             self._opt_buttons[key] = rb
+            rb.toggled.connect(
+                lambda checked, option=key: self._on_dfer_option_radio_toggled(
+                    option, checked
+                )
+            )
             choose_layout.addWidget(rb)
         self._restore_dfer_option_selection()
 
@@ -814,7 +1044,7 @@ QPlainTextEdit {{
         self.btn_run_pfer.setEnabled(not busy)
         self.btn_apply_window.setEnabled(not busy)
         if busy:
-            QApplication.setOverrideCursor(Qt.WaitCursor)
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         else:
             QApplication.restoreOverrideCursor()
 
@@ -879,7 +1109,13 @@ QPlainTextEdit {{
             return
         file_type, _ = detect_photometry_file_type(file_path)
         self._selected_file = file_path
-        if file_type == "dual":
+        is_dual = file_type == "dual"
+        self._set_raw_control_label(file_type)
+        self._raw_graph_controls.setVisible(True)
+        self._raw_control_toggle.setEnabled(True)
+        self._raw_individual_y_axes_toggle.setVisible(is_dual)
+        self._raw_individual_y_axes_toggle.setEnabled(is_dual)
+        if is_dual:
             self._output_folder = str(Path(file_path).parent.parent / "dfof_results")
         else:
             self._output_folder = str(Path(file_path).parent / "dfof_results")
@@ -908,75 +1144,241 @@ QPlainTextEdit {{
             y405 = df["405nm"][1:].to_numpy(dtype=float)
             y465_col = "465nm" if "465nm" in df.columns else "490nm"
             y465 = df[y465_col][1:].to_numpy(dtype=float)
-            self._draw_single_raw(t, y405, y465)
+            self._draw_single_raw(t, y405, y465, y465_col)
         else:
             df = load_dual_photometry(file_path, skiprows)
             validate_dual_df(df)
             t = df["TimeStamp"].astype(float).to_numpy() / 1000.0
+            y410 = df["CH1-410"].astype(float).to_numpy()
             y470 = df["CH1-470"].astype(float).to_numpy()
             y560 = df["CH1-560"].astype(float).to_numpy()
-            self._draw_dual_raw(t, y470, y560)
+            self._draw_dual_raw(t, y410, y470, y560)
 
     def _draw_single_raw(
-        self, t: np.ndarray, y405: np.ndarray, y465: np.ndarray
+        self,
+        t: np.ndarray,
+        y405: np.ndarray,
+        y465: np.ndarray,
+        signal_label: str = "465nm",
     ) -> None:
         figure = Figure(figsize=(10, 4), dpi=100)
-        ax465 = figure.add_subplot(111)
-        ax405 = ax465.twinx()
+        ax465 = cast(Axes, figure.add_subplot(111))
+        ax405 = cast(Axes, ax465.twinx())
+        time_start, time_end = _raw_time_bounds(t)
 
-        s405_min, s405_max = float(y405.min()), float(y405.max())
-        y_top_405 = s405_max + s405_min
-        y_bot_405 = s405_min - 0.01 * s405_min
-        range_405 = y_top_405 - y_bot_405
+        show_control = self._raw_show_control_signal()
+        ax465.plot(
+            t,
+            y465,
+            color="green",
+            linewidth=0.6,
+            alpha=_RAW_INDIVIDUAL_SIGNAL_ALPHA,
+        )
+        ax465.set_ylabel(signal_label, color="green")
+        ax465.tick_params(axis="y", colors="green")
+        ax465.spines["left"].set_color("green")
+        ax465.set_ylim(*_signal_axis_limits(y465, _RAW_LARGER_SIGNAL_OCCUPANCY))
+        if show_control:
+            ax405.plot(
+                t,
+                y405,
+                color="purple",
+                linewidth=0.6,
+                alpha=_RAW_INDIVIDUAL_CONTROL_ALPHA,
+            )
+            ax405.set_ylabel("405nm", color="purple")
+            ax405.tick_params(axis="y", colors="purple")
+            ax405.spines["right"].set_color("purple")
+            ax405.set_ylim(*_signal_axis_limits(y405, _RAW_CONTROL_OCCUPANCY))
+        else:
+            ax405.set_visible(False)
 
-        s465_min, s465_max = float(y465.min()), float(y465.max())
-        ax465.plot(t, y465, color="green", linewidth=0.6)
-        ax405.plot(t, y405, color="purple", linewidth=0.6, alpha=0.5)
-        ax465.set_ylabel("465nm Signal", color="green")
-        ax405.set_ylabel("405nm Signal", color="purple")
-        ax465.tick_params(axis="y", labelcolor="green")
-        ax405.tick_params(axis="y", labelcolor="purple")
-        ax465.set_ylim([s465_min - 0.5 * range_405, s465_max * 1.02])
-        ax405.set_ylim(y_bot_405, y_top_405)
+        for axis in (ax465, ax405):
+            axis.yaxis.label.set_visible(False)
 
         start_line = ax465.axvline(
-            x=t[0], color="red", linestyle="--", linewidth=1.5, label="Window start"
+            x=time_start,
+            color="red",
+            linestyle="--",
+            linewidth=1.5,
+            label="Window start",
         )
         end_line = ax465.axvline(
-            x=t[-1], color="blue", linestyle="--", linewidth=1.5, label="Window end"
+            x=time_end,
+            color="blue",
+            linestyle="--",
+            linewidth=1.5,
+            label="Window end",
         )
         ax465.set_title("Raw Data — single channel")
         ax465.set_xlabel("Time (s)")
-        ax465.set_xlim([t[0], t[-1]])
+        ax465.set_xlim((time_start, time_end))
         handles, labels = ax465.get_legend_handles_labels()
         ax465.legend(handles, labels, fontsize=8, loc="upper right")
         _tighten_time_axes(figure)
         figure.tight_layout()
+        figure.subplots_adjust(bottom=_RAW_GRAPH_BOTTOM_MARGIN)
 
-        self._raw_graph_ref = GraphReference(figure, ax465, ax405, start_line, end_line)
-        self.raw_graph_panel.set_figure(figure)
+        self._raw_graph_ref = GraphReference(
+            figure,
+            ax465,
+            ax405,
+            start_line,
+            end_line,
+            time_start,
+            time_end,
+        )
+        self.raw_graph_panel.set_figure(figure, compact_axis_labels=True)
 
-    def _draw_dual_raw(self, t: np.ndarray, y470: np.ndarray, y560: np.ndarray) -> None:
+    def _draw_dual_raw(
+        self,
+        t: np.ndarray,
+        y410: np.ndarray,
+        y470: np.ndarray,
+        y560: np.ndarray,
+    ) -> None:
         figure = Figure(figsize=(10, 4), dpi=100)
-        ax = figure.add_subplot(111)
-        ax.plot(t, y470, color="green", linewidth=0.6, label="470nm")
-        ax.plot(t, y560, color="red", linewidth=0.6, alpha=0.8, label="560nm")
-        ax.set_ylabel("RFU")
-        ax.set_xlabel("Time (s)")
-        ax.set_title("Raw Data — dual channel")
-        start_line = ax.axvline(
-            x=t[0], color="red", linestyle="--", linewidth=1.5, label="Window start"
+        axis470 = cast(Axes, figure.add_subplot(111))
+        time_start, time_end = _raw_time_bounds(t)
+        individual_axes = self._raw_y_axis_mode() == "individual"
+        show_control = self._raw_show_control_signal()
+        line410: Line2D | None = None
+        span470 = _signal_span(y470)
+        span560 = _signal_span(y560)
+        if span470 >= span560:
+            occupancy470 = _RAW_LARGER_SIGNAL_OCCUPANCY
+            occupancy560 = _RAW_SMALLER_SIGNAL_OCCUPANCY
+        else:
+            occupancy470 = _RAW_SMALLER_SIGNAL_OCCUPANCY
+            occupancy560 = _RAW_LARGER_SIGNAL_OCCUPANCY
+
+        if individual_axes:
+            axis410 = cast(Axes, axis470.twinx())
+            axis560 = cast(Axes, axis470.twinx())
+            axis410.spines["right"].set_position(("axes", 1.0))
+            axis560.spines["right"].set_position(
+                ("axes", 1.06 if show_control else 1.0)
+            )
+            axis410.patch.set_visible(False)
+            axis560.patch.set_visible(False)
+
+            line470 = axis470.plot(
+                t,
+                y470,
+                color="green",
+                linewidth=0.6,
+                alpha=_RAW_INDIVIDUAL_SIGNAL_ALPHA,
+                label="470nm",
+            )[0]
+            line560 = axis560.plot(
+                t,
+                y560,
+                color="red",
+                linewidth=0.6,
+                alpha=_RAW_INDIVIDUAL_SIGNAL_ALPHA,
+                label="560nm",
+            )[0]
+            axis470.set_ylabel("470nm", color="green")
+            axis470.tick_params(axis="y", colors="green")
+            axis470.spines["left"].set_color("green")
+            axis470.set_ylim(*_signal_axis_limits(y470, occupancy470))
+            if show_control:
+                line410 = axis410.plot(
+                    t,
+                    y410,
+                    color="purple",
+                    linewidth=0.6,
+                    alpha=_RAW_INDIVIDUAL_CONTROL_ALPHA,
+                    label="410nm control",
+                )[0]
+                axis410.set_ylabel("410nm", color="purple")
+                axis410.tick_params(axis="y", colors="purple")
+                axis410.spines["right"].set_color("purple")
+                axis410.set_ylim(*_signal_axis_limits(y410, _RAW_CONTROL_OCCUPANCY))
+            else:
+                axis410.set_visible(False)
+            axis560.set_ylabel("560nm", color="red")
+            axis560.tick_params(axis="y", colors="red")
+            axis560.spines["right"].set_color("red")
+            axis560.set_ylim(*_signal_axis_limits(y560, occupancy560))
+            secondary_axis = axis410 if show_control else axis560
+        else:
+            displayed_signals = [y470, y560]
+            if show_control:
+                line410 = axis470.plot(
+                    t,
+                    y410,
+                    color="purple",
+                    linewidth=0.6,
+                    alpha=_RAW_INDIVIDUAL_CONTROL_ALPHA,
+                    label="410nm control",
+                )[0]
+                displayed_signals.insert(0, y410)
+            line470 = axis470.plot(
+                t,
+                y470,
+                color="green",
+                linewidth=0.6,
+                alpha=_RAW_INDIVIDUAL_SIGNAL_ALPHA,
+                label="470nm",
+            )[0]
+            line560 = axis470.plot(
+                t,
+                y560,
+                color="red",
+                linewidth=0.6,
+                alpha=_RAW_INDIVIDUAL_SIGNAL_ALPHA,
+                label="560nm",
+            )[0]
+            axis470.set_ylim(*_shared_signal_axis_limits(displayed_signals))
+            axis470.set_ylabel("470nm", color="black")
+            axis470.tick_params(axis="y", colors="black")
+            axis470.spines["left"].set_color("black")
+            secondary_axis = None
+
+        for axis in figure.axes:
+            if axis.get_visible() and axis.get_ylabel():
+                axis.yaxis.label.set_visible(False)
+
+        axis470.set_xlabel("Time (s)")
+        axis470.set_title("Raw Data — dual channel")
+        start_line = axis470.axvline(
+            x=time_start,
+            color="black",
+            linestyle="--",
+            linewidth=1.2,
+            label="Window start",
         )
-        end_line = ax.axvline(
-            x=t[-1], color="blue", linestyle="--", linewidth=1.5, label="Window end"
+        end_line = axis470.axvline(
+            x=time_end,
+            color="blue",
+            linestyle="--",
+            linewidth=1.2,
+            label="Window end",
         )
-        ax.legend(fontsize=8, loc="upper right")
-        ax.set_xlim([t[0], t[-1]])
+        axis470.set_xlim((time_start, time_end))
+        handles = [line470, line560, start_line, end_line]
+        legend_labels = ["470nm", "560nm", "Window start", "Window end"]
+        if line410 is not None:
+            handles.insert(0, line410)
+            legend_labels.insert(0, "410nm control")
+        axis470.legend(handles, legend_labels, fontsize=8, loc="upper right")
         _tighten_time_axes(figure)
         figure.tight_layout()
+        figure.subplots_adjust(bottom=_RAW_GRAPH_BOTTOM_MARGIN)
+        if individual_axes:
+            figure.subplots_adjust(right=0.90 if show_control else 0.94)
 
-        self._raw_graph_ref = GraphReference(figure, ax, None, start_line, end_line)
-        self.raw_graph_panel.set_figure(figure)
+        self._raw_graph_ref = GraphReference(
+            figure,
+            axis470,
+            secondary_axis,
+            start_line,
+            end_line,
+            time_start,
+            time_end,
+        )
+        self.raw_graph_panel.set_figure(figure, compact_axis_labels=True)
 
     # ── time window ────────────────────────────────────────────────────────
 
@@ -984,13 +1386,7 @@ QPlainTextEdit {{
         ref = self._raw_graph_ref
         if ref is None:
             return
-        lines = ref.primary_axis.lines
-        if not lines:
-            return
-        x_data = lines[0].get_xdata()
-        if len(x_data) == 0:
-            return
-        t_min_val, t_max_val = float(x_data[0]), float(x_data[-1])
+        t_min_val, t_max_val = ref.time_start, ref.time_end
         try:
             start = _parse_window_endpoint(
                 self.start_time_edit.text(), t_min_val, {"start", "min"}
@@ -1009,8 +1405,14 @@ QPlainTextEdit {{
         self.total_time_label.setText(_format_duration(end - start))
         ref.start_line.set_xdata([start, start])
         ref.end_line.set_xdata([end, end])
-        if ref.figure.canvas:
-            ref.figure.canvas.draw_idle()
+        canvas = ref.figure.canvas
+        if canvas:
+            try:
+                canvas.draw()
+            except RuntimeError:
+                logging.getLogger(__name__).debug(
+                    "Raw graph redraw skipped: Qt canvas already deleted"
+                )
 
     def _apply_window(self) -> None:
         """Apply the current start/end window to the raw graph markers."""
@@ -1047,6 +1449,34 @@ QPlainTextEdit {{
         self.settings_manager.last_run_dfer_option = option
         self.settings_manager.save_variables()
 
+    def _set_dfer_option_button(self, option: str) -> None:
+        if option not in self._opt_buttons:
+            return
+        button = self._opt_buttons[option]
+        if button.isChecked():
+            return
+        for candidate in self._opt_buttons.values():
+            candidate.blockSignals(True)
+        try:
+            button.setChecked(True)
+        finally:
+            for candidate in self._opt_buttons.values():
+                candidate.blockSignals(False)
+
+    def _on_dfer_option_radio_toggled(self, option: str, checked: bool) -> None:
+        if not checked or option not in self._opt_buttons:
+            return
+        try:
+            index = int(option) - 1
+        except ValueError:
+            return
+        self._option_preview_combo.blockSignals(True)
+        try:
+            self._option_preview_combo.setCurrentIndex(index)
+        finally:
+            self._option_preview_combo.blockSignals(False)
+        self._render_option(index)
+
     # ── DFer option plots ──────────────────────────────────────────────────
 
     def _on_generate_options(self, show_missing_file_warning: bool = True) -> None:
@@ -1069,13 +1499,16 @@ QPlainTextEdit {{
         if self._unloading:
             return
         self._set_busy(False)
+        if not isinstance(data, dict):
+            self._options_failed(TypeError("DFer preview returned invalid data"))
+            return
         self._options_data = data
         try:
-            is_dual = isinstance(data, dict) and data.get("file_type") == "dual"
+            is_dual = data.get("file_type") == "dual"
             self._configure_option_signal_selector(is_dual)
             self._render_option(self._option_preview_combo.currentIndex())
             self._append_log(
-                "INFO  [DFer] Preview complete. Choose option 1-4, then run final."
+                "INFO  [DFer] Preview complete. Choose option 1-5, then run final."
             )
         except Exception as exc:
             show_action_error(
@@ -1113,6 +1546,8 @@ QPlainTextEdit {{
         self.dfer_options_graph.set_figure(fig)
 
     def _on_option_dropdown_changed(self, idx: int) -> None:
+        if 0 <= idx < len(_OPTION_TITLES):
+            self._set_dfer_option_button(str(idx + 1))
         self._render_option(idx)
 
     def _configure_option_signal_selector(self, is_dual: bool) -> None:
@@ -1137,23 +1572,27 @@ QPlainTextEdit {{
         loaded_new_result = (
             self._dfer_result_frame is None or self._dfer_result_csv != csv_path
         )
+        result_frame: pd.DataFrame | None
         if loaded_new_result:
-            self._dfer_result_frame = _normalise_dfer_result_frame(
-                pd.read_csv(csv_path, index_col=False)
-            )
+            result_frame = _normalise_dfer_result_frame(read_analysis_output(csv_path))
+            self._dfer_result_frame = result_frame
             self._dfer_result_csv = csv_path
-        is_dual = "dFoF_470" in self._dfer_result_frame.columns
+        else:
+            result_frame = self._dfer_result_frame
+        if result_frame is None:
+            return
+        is_dual = "dFoF_470" in result_frame.columns
+        uses_independent_msbackadj = analysis_option_from_frame(result_frame) == 5
+        show_405_available = not is_dual and not uses_independent_msbackadj
         self._dfer_show_405_checkbox.blockSignals(True)
-        self._dfer_show_405_checkbox.setEnabled(not is_dual)
-        if is_dual:
+        self._dfer_show_405_checkbox.setEnabled(show_405_available)
+        if not show_405_available:
             self._dfer_show_405_checkbox.setChecked(False)
         elif loaded_new_result:
             self._dfer_show_405_checkbox.setChecked(True)
         self._dfer_show_405_checkbox.blockSignals(False)
         show_405 = self._dfer_show_405_checkbox.isChecked()
-        fig = _mpl_dfer_results_figure_from_frame(
-            self._dfer_result_frame, graph, show_405
-        )
+        fig = _mpl_dfer_results_figure_from_frame(result_frame, graph, show_405)
         self.dfer_results_graph.set_figure(fig)
 
     def _on_dfer_results_channel_changed(self, idx: int) -> None:
@@ -1315,8 +1754,16 @@ QPlainTextEdit {{
             QMessageBox.information(self, "PFer complete", "Peak finding complete.")
             return
         stats_csv = str(out_csv).splitlines()[0]
+        csv_path = self._pfer_selected_csv
+        if not csv_path:
+            QMessageBox.warning(
+                self,
+                "PFer result plot unavailable",
+                "PFer completed, but its source DFer CSV is no longer selected.",
+            )
+            return
         try:
-            fig = mpl_pfer_figure(self._pfer_selected_csv, stats_csv)
+            fig = mpl_pfer_figure(csv_path, stats_csv)
             self.pfer_graph.set_figure(fig)
             self.notebook_graphs.setTabEnabled(3, True)
             self.notebook_graphs.setCurrentIndex(3)

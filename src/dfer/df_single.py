@@ -18,6 +18,7 @@ from .df_common import (
     compute_adjusted_baselines,
     expected_analysis_output_path,
     safe_savgol,
+    save_analysis_output,
     validate_single_df,
     window_slice,
 )
@@ -26,8 +27,47 @@ from .df_plots import (
     render_single_preview,
     render_single_results,
 )
+from .msbackadj import msbackadj, msbackadj_window_size
 
 logger = logging.getLogger(__name__)
+
+
+def _compute_single_msbackadj_target(
+    y465: np.ndarray,
+    t_sec: np.ndarray,
+    fs: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    filter_465 = butter_lowpass_filter(y465, BUTTER_CUTOFF, fs, BUTTER_ORDER)
+    smooth_465 = safe_savgol(filter_465, *SAVGOL_FINE)
+    window_size = msbackadj_window_size(t_sec)
+    result = msbackadj(t_sec, smooth_465, window_size, window_size)
+    return smooth_465, result.baseline, result.corrected
+
+
+def _compute_single_option_traces(
+    y405: np.ndarray,
+    y465: np.ndarray,
+    t_sec: np.ndarray,
+    fs: float,
+) -> dict[str, np.ndarray]:
+    adj1, adj2, _, scaled_quad = compute_adjusted_baselines(y405, y465)
+    filter_adj1 = butter_lowpass_filter(adj1, BUTTER_CUTOFF, fs, BUTTER_ORDER)
+    filter_adj2 = butter_lowpass_filter(adj2, BUTTER_CUTOFF, fs, BUTTER_ORDER)
+    smooth_465, ms_baseline_465, ms_corrected_465 = _compute_single_msbackadj_target(
+        y465, t_sec, fs
+    )
+
+    return {
+        "smooth_465": smooth_465,
+        "smooth_adj_1": safe_savgol(filter_adj1, *SAVGOL_FINE),
+        "smooth_adj_2": safe_savgol(filter_adj2, *SAVGOL_FINE),
+        "smooth_adj_3": safe_savgol(filter_adj1, *SAVGOL_COARSE),
+        "smooth_adj_4": safe_savgol(filter_adj2, *SAVGOL_COARSE),
+        "smooth_adj_5": ms_baseline_465,
+        "ms_baseline_465": ms_baseline_465,
+        "ms_corrected_465": ms_corrected_465,
+        "scaled_quad": scaled_quad,
+    }
 
 
 def compute_single_options(
@@ -35,7 +75,7 @@ def compute_single_options(
     w_start: str,
     w_end: str,
 ) -> dict:
-    """Compute the four DFer option traces for a single-channel file.
+    """Compute the five DFer option traces for a single-channel file.
 
     Returns a dict with numpy arrays for inline display (no file I/O, no plots).
     """
@@ -54,23 +94,21 @@ def compute_single_options(
 
     y405 = np.asarray(y405[sl], dtype=float)
     y465 = np.asarray(y465[sl], dtype=float)
-    t_min = np.asarray(t_vec[sl], dtype=float) / 60.0
-
-    adj1, adj2, _, _ = compute_adjusted_baselines(y405, y465)
-    filter_adj1 = butter_lowpass_filter(adj1, BUTTER_CUTOFF, fs, BUTTER_ORDER)
-    filter_adj2 = butter_lowpass_filter(adj2, BUTTER_CUTOFF, fs, BUTTER_ORDER)
-    filter_465 = butter_lowpass_filter(y465, BUTTER_CUTOFF, fs, BUTTER_ORDER)
+    t_sec = np.asarray(t_vec[sl], dtype=float)
+    t_min = t_sec / 60.0
+    traces = _compute_single_option_traces(y405, y465, t_sec, fs)
 
     return {
         "file_type": "single",
         "filename": Path(selectedfile).name,
         "signal_label": y465_col,
         "t_min": t_min,
-        "smooth_465": safe_savgol(filter_465, *SAVGOL_FINE),
-        "smooth_adj_1": safe_savgol(filter_adj1, *SAVGOL_FINE),
-        "smooth_adj_2": safe_savgol(filter_adj2, *SAVGOL_FINE),
-        "smooth_adj_3": safe_savgol(filter_adj1, *SAVGOL_COARSE),
-        "smooth_adj_4": safe_savgol(filter_adj2, *SAVGOL_COARSE),
+        "smooth_465": traces["smooth_465"],
+        "smooth_adj_1": traces["smooth_adj_1"],
+        "smooth_adj_2": traces["smooth_adj_2"],
+        "smooth_adj_3": traces["smooth_adj_3"],
+        "smooth_adj_4": traces["smooth_adj_4"],
+        "smooth_adj_5": traces["smooth_adj_5"],
     }
 
 
@@ -108,51 +146,109 @@ def run_single_analysis(
 
     logger.info("Samples %s to %s processed", win_start, win_end)
 
-    adj1, adj2, _, scaled_quad = compute_adjusted_baselines(y405, y465)
-    filter_adj1 = butter_lowpass_filter(adj1, BUTTER_CUTOFF, fs, BUTTER_ORDER)
-    filter_adj2 = butter_lowpass_filter(adj2, BUTTER_CUTOFF, fs, BUTTER_ORDER)
-    filter_465 = butter_lowpass_filter(y465, BUTTER_CUTOFF, fs, BUTTER_ORDER)
+    if analysis_path not in {"1", "2", "3", "4", "5"}:
+        raise ValueError("analysis_path must be '1','2','3','4','5'")
 
-    smooth_adj_1 = safe_savgol(filter_adj1, *SAVGOL_FINE)
-    smooth_adj_2 = safe_savgol(filter_adj2, *SAVGOL_FINE)
-    smooth_adj_3 = safe_savgol(filter_adj1, *SAVGOL_COARSE)
-    smooth_adj_4 = safe_savgol(filter_adj2, *SAVGOL_COARSE)
-    smooth_465 = safe_savgol(filter_465, *SAVGOL_FINE)
+    if analysis_path == "5":
+        if do_preview_plots:
+            preview_traces = _compute_single_option_traces(y405, y465, t_sec, fs)
+            option_plot_args: tuple[
+                str,
+                np.ndarray,
+                np.ndarray,
+                np.ndarray,
+                np.ndarray,
+                np.ndarray,
+                np.ndarray,
+                np.ndarray,
+            ] = (
+                filename,
+                t_min,
+                preview_traces["smooth_465"],
+                preview_traces["smooth_adj_1"],
+                preview_traces["smooth_adj_2"],
+                preview_traces["smooth_adj_3"],
+                preview_traces["smooth_adj_4"],
+                preview_traces["smooth_adj_5"],
+            )
+            render_single_option_plots(*option_plot_args)
 
-    if do_preview_plots:
-        render_single_option_plots(
-            filename, t_min, smooth_465, smooth_adj_1, smooth_adj_2, smooth_adj_3, smooth_adj_4)
+        smooth_465, ms_baseline_465, ms_corrected_465 = (
+            _compute_single_msbackadj_target(y465, t_sec, fs)
+        )
+        smooth_adjusted_405 = np.full_like(smooth_465, np.nan)
+        dfof_465 = ms_corrected_465 / ms_baseline_465
+        dfof_405 = np.full_like(dfof_465, np.nan)
+    else:
+        traces = _compute_single_option_traces(y405, y465, t_sec, fs)
+        smooth_465 = traces["smooth_465"]
+        smooth_adj_map = {
+            "1": traces["smooth_adj_1"],
+            "2": traces["smooth_adj_2"],
+            "3": traces["smooth_adj_3"],
+            "4": traces["smooth_adj_4"],
+        }
+        dfof_adj_for_405 = {
+            "1": traces["smooth_adj_1"],
+            "2": traces["smooth_adj_2"],
+            "3": traces["smooth_adj_1"],
+            "4": traces["smooth_adj_2"],
+        }
+        smooth_adjusted_405 = smooth_adj_map[analysis_path]
+        if do_preview_plots:
+            option_plot_args = (
+                filename,
+                t_min,
+                smooth_465,
+                traces["smooth_adj_1"],
+                traces["smooth_adj_2"],
+                traces["smooth_adj_3"],
+                traces["smooth_adj_4"],
+                traces["smooth_adj_5"],
+            )
+            render_single_option_plots(*option_plot_args)
+        dfof_465 = (smooth_465 - smooth_adjusted_405) / smooth_adjusted_405
+        dfof_405 = (dfof_adj_for_405[analysis_path] - traces["scaled_quad"]) / traces[
+            "scaled_quad"
+        ]
 
     if mode == "options_only":
         return ""
 
-    smooth_adj_map = {"1": smooth_adj_1, "2": smooth_adj_2,
-                      "3": smooth_adj_3, "4": smooth_adj_4}
-    dfof_adj_for_405 = {"1": smooth_adj_1, "2": smooth_adj_2,
-                        "3": smooth_adj_1, "4": smooth_adj_2}
-
-    if analysis_path not in smooth_adj_map:
-        raise ValueError("analysis_path must be '1','2','3','4'")
-
-    smooth_adjusted_405 = smooth_adj_map[analysis_path]
-    dfof_465 = (smooth_465 - smooth_adjusted_405) / smooth_adjusted_405
-    dfof_405 = (dfof_adj_for_405[analysis_path] - scaled_quad) / scaled_quad
-
     z_465, _, _ = compute_full_trace_zscore(dfof_465)
-    z_405, _, _ = compute_full_trace_zscore(dfof_405)
+    if analysis_path == "5":
+        z_405 = np.full_like(dfof_405, np.nan)
+    else:
+        z_405, _, _ = compute_full_trace_zscore(dfof_405)
 
     out_file_path = str(expected_analysis_output_path(selectedfile, file_type="single"))
-    np.savetxt(
+    save_analysis_output(
         out_file_path,
-        np.c_[t_min, y405, y465, smooth_465, smooth_adjusted_405,
-              dfof_405, z_405, dfof_465, z_465],
-        delimiter=",",
-        header="t_min,405,465,filtered_465,fitted_405,dFoF_405,Z_405,dFoF_465,Z_465",
-        fmt="%f",
+        np.c_[
+            t_min,
+            y405,
+            y465,
+            smooth_465,
+            smooth_adjusted_405,
+            dfof_405,
+            z_405,
+            dfof_465,
+            z_465,
+        ],
+        "t_min,405,465,filtered_465,fitted_405,dFoF_405,Z_405,dFoF_465,Z_465",
+        analysis_path,
     )
 
     if do_final_plots:
-        render_single_results(filename, t_min, dfof_405, dfof_465, z_405, z_465)
+        render_single_results(
+            filename,
+            t_min,
+            dfof_405,
+            dfof_465,
+            z_405,
+            z_465,
+            show_405=analysis_path != "5",
+        )
 
     logger.info("%s analysis complete", filename)
     time.sleep(1)

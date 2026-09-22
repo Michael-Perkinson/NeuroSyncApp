@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt
 
 def _asset_path(relative: str) -> str:
     if getattr(sys, "frozen", False):
-        base = Path(sys._MEIPASS)
+        base = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
     else:
         base = Path(__file__).parent
     return str(base / "assets" / relative).replace("\\", "/")
@@ -267,5 +267,5 @@ QComboBox QAbstractItemView {{
 
 
 def apply_button_role(button, role: str = "primary") -> None:
-    button.setCursor(Qt.PointingHandCursor)
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
     button.setStyleSheet(button_stylesheet(role))
