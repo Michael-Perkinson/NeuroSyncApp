@@ -5,10 +5,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
-import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
@@ -41,30 +40,6 @@ from PySide6.QtWidgets import (
 from src import path_config
 from src.core.app_settings_manager import AppSettingsManager
 from src.dfer import compute_options, run_analysis, run_pfer
-from src.dfer.df_common import (
-    analysis_option_from_frame,
-    detect_photometry_file_type,
-    load_dual_photometry,
-    read_analysis_output,
-    validate_dual_df,
-    validate_single_df,
-)
-from src.dfer.df_plots import mpl_pfer_figure
-from src.features.raw_photometry.plotting import (
-    OPTION_TITLES as _OPTION_TITLES,
-)
-from src.features.raw_photometry.plotting import (
-    _tighten_time_axes,
-)
-from src.features.raw_photometry.plotting import (
-    mpl_dfer_results_figure_from_frame as _mpl_dfer_results_figure_from_frame,
-)
-from src.features.raw_photometry.plotting import (
-    mpl_single_option_figure as _mpl_single_option_figure,
-)
-from src.features.raw_photometry.plotting import (
-    normalise_dfer_result_frame as _normalise_dfer_result_frame,
-)
 from src.features.raw_photometry.views.graph_panel import GraphPanel, GraphReference
 from src.features.raw_photometry.workers import (
     AnalysisWorker as _Worker,
@@ -84,6 +59,9 @@ from src.gui.framework.qt_view_styles import (
     subtitle_stylesheet,
     title_stylesheet,
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -160,6 +138,41 @@ _RAW_SMALLER_SIGNAL_OCCUPANCY = 0.50
 _RAW_INDIVIDUAL_CONTROL_ALPHA = 0.55
 _RAW_INDIVIDUAL_SIGNAL_ALPHA = 0.65
 _RAW_GRAPH_BOTTOM_MARGIN = 0.09
+_OPTION_TITLES = [
+    "Option 1: Good noise correction and bleach correction",
+    "Option 2: Assumes shifts in signal baseline are independent of activity",
+    "Option 3: No noise correction",
+    "Option 4: No noise correction, no activity-dependent baseline correction",
+    "Option 5: Independent 10% msbackadj (no 405/410 control)",
+]
+
+
+def _mpl_dfer_results_figure_from_frame(
+    df: pd.DataFrame,
+    graph: str = "dfof",
+    show_405: bool = True,
+) -> Figure:
+    """Build a DFer result figure only when a result is rendered."""
+    from src.features.raw_photometry.plotting import (
+        mpl_dfer_results_figure_from_frame,
+    )
+
+    return mpl_dfer_results_figure_from_frame(df, graph, show_405)
+
+
+def detect_photometry_file_type(selectedfile: str | Path) -> tuple[str, int]:
+    from src.dfer.df_common import detect_photometry_file_type as _detect
+
+    return _detect(selectedfile)
+
+
+def load_dual_photometry(
+    selectedfile: str | Path,
+    skiprows: int = 0,
+) -> pd.DataFrame:
+    from src.dfer.df_common import load_dual_photometry as _load_dual
+
+    return _load_dual(selectedfile, skiprows)
 
 
 def _signal_span(values: np.ndarray) -> float:
@@ -1136,6 +1149,10 @@ QPlainTextEdit {{
     # ── raw graph ──────────────────────────────────────────────────────────
 
     def _draw_raw_graph(self, file_path: str) -> None:
+        import pandas as pd
+
+        from src.dfer.df_common import validate_dual_df, validate_single_df
+
         file_type, skiprows = detect_photometry_file_type(file_path)
         if file_type == "single":
             df = pd.read_csv(file_path, index_col=False, low_memory=False)
@@ -1161,6 +1178,8 @@ QPlainTextEdit {{
         y465: np.ndarray,
         signal_label: str = "465nm",
     ) -> None:
+        from src.features.raw_photometry.plotting import _tighten_time_axes
+
         figure = Figure(figsize=(10, 4), dpi=100)
         ax465 = cast(Axes, figure.add_subplot(111))
         ax405 = cast(Axes, ax465.twinx())
@@ -1237,6 +1256,8 @@ QPlainTextEdit {{
         y470: np.ndarray,
         y560: np.ndarray,
     ) -> None:
+        from src.features.raw_photometry.plotting import _tighten_time_axes
+
         figure = Figure(figsize=(10, 4), dpi=100)
         axis470 = cast(Axes, figure.add_subplot(111))
         time_start, time_end = _raw_time_bounds(t)
@@ -1537,6 +1558,10 @@ QPlainTextEdit {{
     def _render_option(self, idx: int) -> None:
         if self._options_data is None:
             return
+        from src.features.raw_photometry.plotting import (
+            mpl_single_option_figure as _mpl_single_option_figure,
+        )
+
         dual_display = {
             "Both": "both",
             "470nm": "470",
@@ -1568,6 +1593,14 @@ QPlainTextEdit {{
 
     def _render_dfer_results(self, csv_path: str) -> None:
         """Render the DFer Results graph for the currently selected graph type."""
+        from src.dfer.df_common import (
+            analysis_option_from_frame,
+            read_analysis_output,
+        )
+        from src.features.raw_photometry.plotting import (
+            normalise_dfer_result_frame as _normalise_dfer_result_frame,
+        )
+
         graph = "zscore" if self._dfer_results_combo.currentIndex() == 1 else "dfof"
         loaded_new_result = (
             self._dfer_result_frame is None or self._dfer_result_csv != csv_path
@@ -1749,6 +1782,8 @@ QPlainTextEdit {{
     def _pfer_done(self, out_csv: object) -> None:
         if self._unloading:
             return
+        from src.dfer.df_plots import mpl_pfer_figure
+
         self._set_busy(False)
         if not out_csv:
             QMessageBox.information(self, "PFer complete", "Peak finding complete.")

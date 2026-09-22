@@ -686,6 +686,48 @@ def test_dfer_results_graph_softens_dual_traces():
     assert [line.get_linewidth() for line in fig.axes[0].lines] == [0.6, 0.6]
 
 
+def test_raw_qt_dfer_results_uses_lazy_plot_wrapper(monkeypatch):
+    from types import SimpleNamespace
+
+    import pandas as pd
+
+    _app = QApplication.instance() or QApplication([])
+    widget = RawPhotometryProcessingQt()
+    frame = pd.DataFrame(
+        {
+            "t_min": [0.0, 1.0],
+            "dFoF_405": [0.0, 0.1],
+            "dFoF_465": [0.2, 0.3],
+            "Z_405": [0.0, 1.0],
+            "Z_465": [1.0, 0.0],
+        }
+    )
+    widget._dfer_result_frame = frame
+    widget._dfer_result_csv = "result.csv"
+    captured = {}
+    sentinel = object()
+
+    def fake_builder(result_frame, graph="dfof", show_405=True):
+        captured["args"] = (result_frame, graph, show_405)
+        return sentinel
+
+    def fake_set_figure(figure):
+        captured["figure"] = figure
+
+    original_panel = widget.dfer_results_graph
+    widget.dfer_results_graph = SimpleNamespace(set_figure=fake_set_figure)
+    monkeypatch.setattr(raw_app, "_mpl_dfer_results_figure_from_frame", fake_builder)
+
+    try:
+        widget._render_dfer_results("result.csv")
+    finally:
+        widget.dfer_results_graph = original_panel
+        widget.deleteLater()
+
+    assert captured["args"] == (frame, "dfof", True)
+    assert captured["figure"] is sentinel
+
+
 def test_raw_qt_dfer_results_405_checkbox_disables_for_dual():
     import pandas as pd
 
